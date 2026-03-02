@@ -1,0 +1,89 @@
+[
+    {
+        "type": "event",
+        "name": "PropertyRegistered",
+        "inputs": [
+            {
+                "name": "propertyCode",
+                "type": "string",
+                "indexed": false
+            },
+            {
+                "name": "owner",
+                "type": "address",
+                "indexed": true
+            },
+            {
+                "name": "tokenId",
+                "type": "uint256",
+                "indexed": true
+            }
+        ]
+    },
+    {
+        "type": "event",
+        "name": "OwnershipTransferred",
+        "inputs": [
+            {
+                "name": "tokenId",
+                "type": "uint256",
+                "indexed": true
+            },
+            {
+                "name": "from",
+                "type": "address",
+                "indexed": true
+            },
+            {
+                "name": "to",
+                "type": "address",
+                "indexed": true
+            }
+        ]
+    },
+    {
+        "type": "function",
+        "name": "registerProperty",
+        "inputs": [
+            {
+                "name": "propertyCode",
+                "type": "string"
+            },
+            {
+                "name": "owner",
+                "type": "address"
+            },
+            {
+                "name": "documentHash",
+                "type": "string"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "getProperty",
+        "inputs": [
+            {
+                "name": "propertyCode",
+                "type": "string"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "owner",
+                "type": "address"
+            },
+            {
+                "name": "tokenId",
+                "type": "uint256"
+            },
+            {
+                "name": "documentHash",
+                "type": "string"
+            }
+        ],
+        "stateMutability": "view"
+    }
+]

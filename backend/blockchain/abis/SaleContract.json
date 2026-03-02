@@ -1,0 +1,80 @@
+[
+    {
+        "type": "event",
+        "name": "SaleInitiated",
+        "inputs": [
+            {
+                "name": "saleId",
+                "type": "uint256",
+                "indexed": true
+            },
+            {
+                "name": "seller",
+                "type": "address",
+                "indexed": true
+            },
+            {
+                "name": "buyer",
+                "type": "address",
+                "indexed": true
+            }
+        ]
+    },
+    {
+        "type": "event",
+        "name": "SaleCompleted",
+        "inputs": [
+            {
+                "name": "saleId",
+                "type": "uint256",
+                "indexed": true
+            },
+            {
+                "name": "tokenId",
+                "type": "uint256",
+                "indexed": false
+            }
+        ]
+    },
+    {
+        "type": "function",
+        "name": "initiateSale",
+        "inputs": [
+            {
+                "name": "tokenId",
+                "type": "uint256"
+            },
+            {
+                "name": "seller",
+                "type": "address"
+            },
+            {
+                "name": "buyer",
+                "type": "address"
+            },
+            {
+                "name": "price",
+                "type": "uint256"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "completeSale",
+        "inputs": [
+            {
+                "name": "saleId",
+                "type": "uint256"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    }
+]

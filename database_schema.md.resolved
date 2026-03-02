@@ -1,0 +1,388 @@
+# Database Schema — Blockchain-Integrated Land Registry
+
+> Relational schema (PostgreSQL, 3NF) for Squrify/Digiverify with ASBA-style fund blocking, multi-signature workflow, court actions, and audit logging.
+
+---
+
+## Entity Relationship Overview
+
+```mermaid
+erDiagram
+    users ||--o{ properties : "owns"
+    users ||--o{ sale_transactions : "buyer"
+    users ||--o{ sale_transactions : "seller"
+    users ||--o{ court_freeze_orders : "issued_by"
+    users ||--o{ court_reversals : "issued_by"
+    users ||--o{ audit_logs : "actor"
+
+    properties ||--o{ sale_transactions : "subject_of"
+    properties ||--o{ court_freeze_orders : "frozen"
+    properties ||--o{ property_documents : "has"
+
+    sale_transactions ||--o{ fund_blocks : "secures"
+    sale_transactions ||--o{ multi_sig_approvals : "approved_via"
+
+    court_freeze_orders ||--o{ court_reversals : "reversed_by"
+```
+
+### Key Relationships
+
+| Relationship | Type | Description |
+|---|---|---|
+| `users` → `properties` | 1:N | A user (owner wallet) can own many properties |
+| `users` → `sale_transactions` | 1:N | A user can be buyer or seller in many transactions |
+| `properties` → `sale_transactions` | 1:N | A property can appear in multiple transactions over time |
+| `sale_transactions` → `fund_blocks` | 1:N | Each sale can have multiple fund-block attempts |
+| `sale_transactions` → `multi_sig_approvals` | 1:N | Each sale collects multiple signature approvals |
+| `properties` → `court_freeze_orders` | 1:N | Courts can freeze a property multiple times |
+| `court_freeze_orders` → `court_reversals` | 1:1 | A freeze order can be reversed once |
+| `properties` → `property_documents` | 1:N | A property can have many IPFS-backed documents |
+
+---
+
+## Table Definitions
+
+### 1. `users`
+
+Stores all registered participants — buyers, sellers, government authorities, courts, and banks.
+
+```sql
+CREATE TABLE users (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    wallet_address  VARCHAR(42) NOT NULL UNIQUE,       -- Ethereum-style 0x...
+    name            VARCHAR(128) NOT NULL,
+    email           VARCHAR(255) NOT NULL UNIQUE,
+    password_hash   VARCHAR(255) NOT NULL,
+    role            VARCHAR(20)  NOT NULL
+                        CHECK (role IN ('buyer','seller','authority','court','bank')),
+    kyc_verified    BOOLEAN NOT NULL DEFAULT FALSE,
+    kyc_document_hash VARCHAR(128),                     -- IPFS hash of KYC docs
+    face_verified   BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX idx_users_wallet   ON users (wallet_address);
+CREATE INDEX idx_users_role     ON users (role);
+CREATE INDEX idx_users_email    ON users (email);
+```
+
+> [!IMPORTANT]
+> `password_hash` must be stored using bcrypt/argon2. Never store plaintext passwords. `wallet_address` should be validated at the application layer for checksum correctness.
+
+---
+
+### 2. `properties`
+
+Central registry of all land parcels with IPFS document anchoring and geospatial data.
+
+```sql
+CREATE TABLE properties (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_code       VARCHAR(40)  NOT NULL UNIQUE,   -- Human-readable ID, e.g. MH-PNE-2025-00142
+    survey_number       VARCHAR(60)  NOT NULL,
+    survey_details      TEXT,
+    geo_lat             DECIMAL(10,7),                  -- Latitude  (±90.0000000)
+    geo_lng             DECIMAL(10,7),                  -- Longitude (±180.0000000)
+    area_sqft           DECIMAL(12,2),
+    address_line        VARCHAR(512),
+    district            VARCHAR(128),
+    state               VARCHAR(128),
+    document_hash       VARCHAR(128),                   -- Primary IPFS CID of title deed
+    owner_wallet        VARCHAR(42)  NOT NULL,
+    encumbrance_status  BOOLEAN NOT NULL DEFAULT FALSE, -- TRUE = encumbered
+    status              VARCHAR(20)  NOT NULL DEFAULT 'active'
+                            CHECK (status IN ('active','frozen','under_dispute')),
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_property_owner
+        FOREIGN KEY (owner_wallet) REFERENCES users (wallet_address)
+);
+
+-- Indexes
+CREATE INDEX idx_props_owner       ON properties (owner_wallet);
+CREATE INDEX idx_props_status      ON properties (status);
+CREATE INDEX idx_props_code        ON properties (property_code);
+CREATE INDEX idx_props_survey      ON properties (survey_number);
+CREATE INDEX idx_props_district    ON properties (district);
+```
+
+---
+
+### 3. `property_documents`
+
+Stores multiple IPFS-pinned documents per property (mutation entries, encumbrance certificates, survey maps, etc.).
+
+```sql
+CREATE TABLE property_documents (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_id     UUID NOT NULL,
+    document_type   VARCHAR(60)  NOT NULL,          -- 'title_deed', 'survey_map', 'ec', etc.
+    ipfs_hash       VARCHAR(128) NOT NULL,
+    description     TEXT,
+    uploaded_by     UUID NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_pd_property FOREIGN KEY (property_id) REFERENCES properties (id),
+    CONSTRAINT fk_pd_uploader FOREIGN KEY (uploaded_by)  REFERENCES users (id)
+);
+
+CREATE INDEX idx_pd_property ON property_documents (property_id);
+```
+
+---
+
+### 4. `sale_transactions`
+
+Tracks the full lifecycle of a property sale, from initiation through multi-sig approval to completion.
+
+```sql
+CREATE TABLE sale_transactions (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_id         UUID NOT NULL,
+    buyer_wallet        VARCHAR(42) NOT NULL,
+    seller_wallet       VARCHAR(42) NOT NULL,
+    sale_price          DECIMAL(18,2) NOT NULL,         -- Max ~10^16 currency units
+    buyer_signed        BOOLEAN NOT NULL DEFAULT FALSE,
+    seller_signed       BOOLEAN NOT NULL DEFAULT FALSE,
+    authority_signed    BOOLEAN NOT NULL DEFAULT FALSE,
+    funds_blocked       BOOLEAN NOT NULL DEFAULT FALSE,
+    smart_contract_addr VARCHAR(42),                    -- On-chain contract address
+    tx_hash             VARCHAR(66),                    -- Blockchain tx hash
+    status              VARCHAR(20) NOT NULL DEFAULT 'initiated'
+                            CHECK (status IN (
+                                'initiated','payment_secured','approved',
+                                'completed','cancelled','expired'
+                            )),
+    expiry_at           TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_st_property FOREIGN KEY (property_id)   REFERENCES properties (id),
+    CONSTRAINT fk_st_buyer    FOREIGN KEY (buyer_wallet)   REFERENCES users (wallet_address),
+    CONSTRAINT fk_st_seller   FOREIGN KEY (seller_wallet)  REFERENCES users (wallet_address)
+);
+
+-- Indexes
+CREATE INDEX idx_st_property ON sale_transactions (property_id);
+CREATE INDEX idx_st_buyer    ON sale_transactions (buyer_wallet);
+CREATE INDEX idx_st_seller   ON sale_transactions (seller_wallet);
+CREATE INDEX idx_st_status   ON sale_transactions (status);
+CREATE INDEX idx_st_expiry   ON sale_transactions (expiry_at)
+    WHERE status NOT IN ('completed','cancelled','expired');  -- Partial index
+```
+
+---
+
+### 5. `multi_sig_approvals`
+
+Records each individual signature event on a sale transaction (buyer, seller, authority).
+
+```sql
+CREATE TABLE multi_sig_approvals (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transaction_id  UUID NOT NULL,
+    signer_wallet   VARCHAR(42) NOT NULL,
+    signer_role     VARCHAR(20) NOT NULL
+                        CHECK (signer_role IN ('buyer','seller','authority')),
+    signature_hash  VARCHAR(132),                       -- ECDSA signature
+    signed_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_msa_txn    FOREIGN KEY (transaction_id) REFERENCES sale_transactions (id),
+    CONSTRAINT fk_msa_signer FOREIGN KEY (signer_wallet)  REFERENCES users (wallet_address),
+    CONSTRAINT uq_msa_unique UNIQUE (transaction_id, signer_role)
+);
+
+CREATE INDEX idx_msa_txn ON multi_sig_approvals (transaction_id);
+```
+
+---
+
+### 6. `fund_blocks` (ASBA-style)
+
+Models the Application Supported by Blocked Amount pattern — funds are frozen in the buyer's bank account rather than transferred, until the sale is finalized.
+
+```sql
+CREATE TABLE fund_blocks (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transaction_id      UUID NOT NULL,
+    bank_reference_id   VARCHAR(64) UNIQUE,             -- Bank's unique lien ref
+    buyer_wallet        VARCHAR(42) NOT NULL,
+    block_amount        DECIMAL(18,2) NOT NULL,
+    currency            VARCHAR(3) NOT NULL DEFAULT 'INR',
+    blocked_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    unblocked_at        TIMESTAMPTZ,
+    bank_confirmed      BOOLEAN NOT NULL DEFAULT FALSE,
+    bank_confirm_ts     TIMESTAMPTZ,
+    status              VARCHAR(20) NOT NULL DEFAULT 'pending'
+                            CHECK (status IN ('pending','blocked','released','failed')),
+    bank_user_id        UUID,                           -- Bank officer who confirmed
+
+    CONSTRAINT fk_fb_txn   FOREIGN KEY (transaction_id) REFERENCES sale_transactions (id),
+    CONSTRAINT fk_fb_buyer FOREIGN KEY (buyer_wallet)   REFERENCES users (wallet_address),
+    CONSTRAINT fk_fb_bank  FOREIGN KEY (bank_user_id)   REFERENCES users (id)
+);
+
+CREATE INDEX idx_fb_txn    ON fund_blocks (transaction_id);
+CREATE INDEX idx_fb_buyer  ON fund_blocks (buyer_wallet);
+CREATE INDEX idx_fb_status ON fund_blocks (status);
+```
+
+---
+
+### 7. `court_freeze_orders`
+
+Encodes a court order that freezes a property, preventing any sale or transfer.
+
+```sql
+CREATE TABLE court_freeze_orders (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_id         UUID NOT NULL,
+    court_user_id       UUID NOT NULL,                  -- Court official who issued
+    court_order_hash    VARCHAR(128) NOT NULL,           -- IPFS hash of court order PDF
+    case_number         VARCHAR(60),
+    reason              TEXT,
+    frozen_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+
+    CONSTRAINT fk_cfo_property FOREIGN KEY (property_id)  REFERENCES properties (id),
+    CONSTRAINT fk_cfo_court    FOREIGN KEY (court_user_id) REFERENCES users (id)
+);
+
+CREATE INDEX idx_cfo_property ON court_freeze_orders (property_id);
+CREATE INDEX idx_cfo_active   ON court_freeze_orders (is_active) WHERE is_active = TRUE;
+```
+
+---
+
+### 8. `court_reversals`
+
+Records the reversal of a court freeze, including previous-owner reference for restitution.
+
+```sql
+CREATE TABLE court_reversals (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    freeze_order_id     UUID NOT NULL UNIQUE,           -- 1:1 with freeze order
+    property_id         UUID NOT NULL,
+    court_user_id       UUID NOT NULL,
+    reversal_order_hash VARCHAR(128) NOT NULL,           -- IPFS hash of reversal order
+    previous_owner_wallet VARCHAR(42),                   -- Owner before freeze
+    reason              TEXT,
+    reversed_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_cr_freeze   FOREIGN KEY (freeze_order_id) REFERENCES court_freeze_orders (id),
+    CONSTRAINT fk_cr_property FOREIGN KEY (property_id)     REFERENCES properties (id),
+    CONSTRAINT fk_cr_court    FOREIGN KEY (court_user_id)   REFERENCES users (id),
+    CONSTRAINT fk_cr_prev     FOREIGN KEY (previous_owner_wallet) REFERENCES users (wallet_address)
+);
+
+CREATE INDEX idx_cr_freeze   ON court_reversals (freeze_order_id);
+CREATE INDEX idx_cr_property ON court_reversals (property_id);
+```
+
+---
+
+### 9. `audit_logs`
+
+Immutable, append-only audit trail for every significant action in the system.
+
+```sql
+CREATE TABLE audit_logs (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    action_type     VARCHAR(60) NOT NULL,               -- e.g. 'PROPERTY_CREATED', 'SALE_INITIATED'
+    actor_wallet    VARCHAR(42),
+    actor_user_id   UUID,
+    ip_address      INET,                               -- PostgreSQL native IP type
+    property_id     UUID,
+    transaction_id  UUID,
+    metadata        JSONB,                              -- Flexible extra data
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indexes (optimised for common queries)
+CREATE INDEX idx_al_actor      ON audit_logs (actor_wallet);
+CREATE INDEX idx_al_property   ON audit_logs (property_id);
+CREATE INDEX idx_al_txn        ON audit_logs (transaction_id);
+CREATE INDEX idx_al_action     ON audit_logs (action_type);
+CREATE INDEX idx_al_created    ON audit_logs (created_at DESC);
+```
+
+> [!TIP]
+> For production at scale, partition `audit_logs` by `created_at` using PostgreSQL native range partitioning (monthly or quarterly) to keep query performance high as the table grows to billions of rows.
+
+---
+
+## Relationship Diagram (Text)
+
+```
+users
+  │
+  ├── 1:N ──► properties              (owner_wallet → wallet_address)
+  ├── 1:N ──► sale_transactions        (buyer_wallet / seller_wallet → wallet_address)
+  ├── 1:N ──► fund_blocks              (buyer_wallet → wallet_address)
+  ├── 1:N ──► multi_sig_approvals      (signer_wallet → wallet_address)
+  ├── 1:N ──► court_freeze_orders      (court_user_id → id)
+  ├── 1:N ──► court_reversals          (court_user_id → id)
+  └── 1:N ──► audit_logs              (actor_wallet / actor_user_id)
+
+properties
+  ├── 1:N ──► property_documents       (property_id → id)
+  ├── 1:N ──► sale_transactions        (property_id → id)
+  ├── 1:N ──► court_freeze_orders      (property_id → id)
+  └── 1:N ──► court_reversals          (property_id → id)
+
+sale_transactions
+  ├── 1:N ──► fund_blocks              (transaction_id → id)
+  └── 1:N ──► multi_sig_approvals      (transaction_id → id)
+
+court_freeze_orders
+  └── 1:1 ──► court_reversals          (freeze_order_id → id)
+```
+
+---
+
+## Security Notes
+
+| Concern | Mitigation |
+|---|---|
+| **Password storage** | Use bcrypt (cost ≥ 12) or argon2id. Never store plaintext. |
+| **Wallet address validation** | Validate EIP-55 checksum at the application layer before INSERT. |
+| **Row-level security** | Enable PostgreSQL RLS so users can only query their own rows (except `authority`/`court`). |
+| **Audit log immutability** | Revoke `UPDATE` and `DELETE` on `audit_logs` for application roles. Grant only `INSERT` and `SELECT`. |
+| **Encryption at rest** | Enable PostgreSQL TDE or use disk-level encryption (LUKS / BitLocker). |
+| **Sensitive columns** | Encrypt `kyc_document_hash` and PII fields using `pgcrypto` `pgp_sym_encrypt`. |
+| **Connection security** | Enforce `sslmode=verify-full` on all database connections. |
+| **SQL injection** | Always use parameterised queries (`$1`, `$2`, ...) — already followed in the codebase. |
+
+---
+
+## Indexing & Scalability Notes
+
+| Strategy | Detail |
+|---|---|
+| **Primary keys** | UUID v4 — avoids sequential guessing attacks and allows distributed ID generation. |
+| **Partial indexes** | `idx_st_expiry` filters out completed transactions; `idx_cfo_active` filters inactive freezes — these dramatically reduce index size. |
+| **Composite indexes** | Add [(property_id, status)](file:///c:/Users/Akshay/Desktop/Digiverify/backend/models/User.js#21-33) on `sale_transactions` if queries frequently filter by both. |
+| **Table partitioning** | Partition `audit_logs` by month on `created_at`. Consider partitioning `sale_transactions` by year if volume justifies it. |
+| **Connection pooling** | Use PgBouncer in transaction mode for high-concurrency workloads. |
+| **Read replicas** | Route read-heavy queries (property search, audit log viewing) to streaming replicas. |
+| **VACUUM tuning** | Set aggressive autovacuum on high-churn tables (`audit_logs`, `sale_transactions`). |
+| **Full-text search** | For property address search at scale, add a GIN index on a `tsvector` column derived from `address_line`, `district`, `state`. |
+
+---
+
+## Data Type Rationale
+
+| Column Pattern | Type | Why |
+|---|---|---|
+| IDs | `UUID` | Globally unique, no sequence contention, safe for distributed systems |
+| Wallet addresses | `VARCHAR(42)` | Ethereum addresses are 42 characters (0x + 40 hex) |
+| Prices / amounts | `DECIMAL(18,2)` | Exact arithmetic for financial data, avoids floating-point rounding |
+| Geo-coordinates | `DECIMAL(10,7)` | Sub-meter precision (~1.1 cm) — sufficient for parcel boundaries |
+| Timestamps | `TIMESTAMPTZ` | Timezone-aware — critical for a multi-region system |
+| IP addresses | `INET` | Native PostgreSQL type with built-in validation and operators |
+| Flexible metadata | `JSONB` | Schemaless extension point for audit log details without schema migration |
+| IPFS hashes | `VARCHAR(128)` | CIDv1 base32 hashes can be up to ~62 chars; 128 provides headroom |
