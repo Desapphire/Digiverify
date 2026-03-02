@@ -1,5 +1,5 @@
 {
-  "name": "squrify-land-registry-backend",
+  "name": "digiverify-land-registry-backend",
   "version": "2.0.0",
   "description": "Government-Grade Blockchain Land Registry System on Avalanche Fuji C-Chain",
   "main": "server.js",
