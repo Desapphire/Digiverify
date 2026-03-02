@@ -69,7 +69,7 @@ function Register() {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                placeholder="John Doe"
+                placeholder="Kartik"
                 required
               />
             </div>
