@@ -1,6 +1,6 @@
 # Database Schema — Blockchain-Integrated Land Registry
 
-> Relational schema (PostgreSQL, 3NF) for Squrify/Digiverify with ASBA-style fund blocking, multi-signature workflow, court actions, and audit logging.
+> Relational schema (PostgreSQL, 3NF) for Digiverify with ASBA-style fund blocking, multi-signature workflow, court actions, and audit logging.
 
 ---
 
