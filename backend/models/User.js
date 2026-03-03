@@ -19,6 +19,8 @@ const mapUser = (row) => {
         kycStatus: row.kyc_status,
         kycDocumentHash: row.kyc_document_hash,
         faceVerified: row.face_verified,
+        faceIdHash: row.face_id_hash,
+        birthdate: row.birthdate,
         isActive: row.is_active,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
@@ -49,14 +51,14 @@ const findByRole = async (role) => {
 };
 
 const create = async ({
-    walletAddress, name, email, password, phone, governmentIdHash, role, authNonce,
+    walletAddress, name, email, password, phone, governmentIdHash, role, authNonce, birthdate,
 }) => {
     const id = crypto.randomUUID();
     const result = await pool.query(
-        `INSERT INTO users (id, wallet_address, name, email, password, phone, government_id_hash, role, auth_nonce)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `INSERT INTO users (id, wallet_address, name, email, password, phone, government_id_hash, role, auth_nonce, birthdate)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING *`,
-        [id, walletAddress, name, email, password || null, phone || null, governmentIdHash || null, role || 'user', authNonce || null]
+        [id, walletAddress, name, email, password || null, phone || null, governmentIdHash || null, role || 'user', authNonce || null, birthdate || null]
     );
     return mapUser(result.rows[0]);
 };
@@ -107,6 +109,15 @@ const updateFaceVerified = async (id, faceVerified) => {
     return mapUser(result.rows[0]);
 };
 
+const updateFaceIdHash = async (id, faceIdHash) => {
+    const result = await pool.query(
+        `UPDATE users SET face_id_hash = $1, updated_at = NOW()
+     WHERE id = $2 RETURNING *`,
+        [faceIdHash, id]
+    );
+    return mapUser(result.rows[0]);
+};
+
 const deactivate = async (id) => {
     const result = await pool.query(
         'UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = $1 RETURNING *',
@@ -132,5 +143,6 @@ module.exports = {
     updateKycStatus,
     updateWallet,
     updateFaceVerified,
+    updateFaceIdHash,
     deactivate,
 };

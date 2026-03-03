@@ -16,7 +16,7 @@ const { ROLES } = require('../config/constants');
 router.post(
     '/',
     authenticate,
-    authorize(ROLES.SELLER, ROLES.AUTHORITY, ROLES.SUPER_ADMIN),
+    authorize(ROLES.USER, ROLES.AUTHORITY, ROLES.SUPER_ADMIN),
     validate(registerPropertySchema),
     registerProperty
 );

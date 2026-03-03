@@ -11,7 +11,7 @@ const AppError = require('../utils/AppError');
 /**
  * Register a new user with wallet address.
  */
-const register = async ({ walletAddress, name, email, password, phone, governmentId, role }) => {
+const register = async ({ walletAddress, name, email, password, phone, governmentId, role, birthdate }) => {
     // Check uniqueness
     const existingWallet = await User.findByWallet(walletAddress);
     if (existingWallet) {
@@ -42,6 +42,7 @@ const register = async ({ walletAddress, name, email, password, phone, governmen
         governmentIdHash,
         role: role || 'user',
         authNonce,
+        birthdate,
     });
 
     return {
@@ -94,8 +95,22 @@ const getProfile = async (userId) => {
     if (!user) throw new AppError('User not found.', 404);
 
     // Strip sensitive fields
-    const { governmentIdHash, authNonce, ...safeUser } = user;
+    const { governmentIdHash, authNonce, password, ...safeUser } = user;
     return safeUser;
 };
 
-module.exports = { register, submitKyc, approveKyc, rejectKyc, getProfile };
+/**
+ * Bind Face ID hash to user.
+ */
+const bindFaceId = async (userId, faceIdHash) => {
+    const user = await User.findById(userId);
+    if (!user) throw new AppError('User not found.', 404);
+
+    if (user.faceIdHash) {
+        throw new AppError('Face ID already bound.', 400);
+    }
+
+    return User.updateFaceIdHash(userId, faceIdHash);
+};
+
+module.exports = { register, submitKyc, approveKyc, rejectKyc, getProfile, bindFaceId };

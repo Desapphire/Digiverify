@@ -3,17 +3,17 @@
  */
 const express = require('express');
 const router = express.Router();
-const { register, submitKyc, approveKyc, rejectKyc, getProfile } = require('../controllers/userController');
+const { submitKyc, getProfile, bindFaceId } = require('../controllers/userController');
+const { requestRecovery } = require('../controllers/walletRecoveryController');
 const authenticate = require('../middlewares/authenticate');
-const authorize = require('../middlewares/authorize');
 const validate = require('../middlewares/validate');
-const { registerUserSchema, updateKycSchema } = require('../utils/validators');
-const { ROLES } = require('../config/constants');
+const { updateKycSchema, requestRecoverySchema, bindFaceIdSchema } = require('../utils/validators');
 
-router.post('/register', validate(registerUserSchema), register);
 router.get('/profile', authenticate, getProfile);
 router.post('/kyc', authenticate, validate(updateKycSchema), submitKyc);
-router.put('/:id/kyc/approve', authenticate, authorize(ROLES.AUTHORITY, ROLES.SUPER_ADMIN), approveKyc);
-router.put('/:id/kyc/reject', authenticate, authorize(ROLES.AUTHORITY, ROLES.SUPER_ADMIN), rejectKyc);
+router.put('/face-id', authenticate, validate(bindFaceIdSchema), bindFaceId);
+
+// Wallet Recovery (User initiated)
+router.post('/recovery/request', authenticate, validate(requestRecoverySchema), requestRecovery);
 
 module.exports = router;
