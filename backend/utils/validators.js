@@ -48,6 +48,13 @@ const bindFaceIdSchema = z.object({
     }),
 });
 
+const updateProfileSchema = z.object({
+    body: z.object({
+        email: z.string().email().optional(),
+        phone: z.string().min(7).max(20).optional(),
+    }),
+});
+
 const loginPasswordSchema = z.object({
     body: z.object({
         email: z.string().email(),
@@ -141,6 +148,7 @@ module.exports = {
     verifySignatureSchema,
     registerUserSchema,
     updateKycSchema,
+    updateProfileSchema,
     loginPasswordSchema,
     registerPropertySchema,
     initiateSaleSchema,

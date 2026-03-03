@@ -6,5 +6,7 @@ export const saleService = {
     getMySales: () => api.get('/sales/my'),
     getSaleById: (id) => api.get(`/sales/${id}`),
     signSale: (id, signatureHash) => api.post(`/sales/${id}/sign`, { signatureHash }),
-    cancelSale: (id) => api.post(`/sales/${id}/cancel`)
+    cancelSale: (id) => api.post(`/sales/${id}/cancel`),
+    getTransactionsByProperty: (propertyId) => api.get(`/sales/property/${propertyId}`),
+    completeSale: (id) => api.post(`/sales/${id}/complete`),
 };

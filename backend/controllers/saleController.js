@@ -136,4 +136,16 @@ const getMySales = catchAsync(async (req, res) => {
     });
 });
 
-module.exports = { initiateSale, signSale, completeSale, cancelSale, getSale, getMySales };
+/**
+ * GET /api/sales/property/:propertyId
+ */
+const getByProperty = catchAsync(async (req, res) => {
+    const sales = await SaleTransaction.findByProperty(req.params.propertyId);
+
+    return res.status(200).json({
+        success: true,
+        data: sales,
+    });
+});
+
+module.exports = { initiateSale, signSale, completeSale, cancelSale, getSale, getMySales, getByProperty };

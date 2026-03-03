@@ -6,7 +6,7 @@ c = DigiverifyClient(verbose=False)
 code, res = c.login('notakshay@proton.me', '3Us@x$E3cU6.Lz$')
 print(f"Login Response: {code}")
 if code == 200:
-    code2, profile = c.get_profile()
-    print(json.dumps(profile, indent=2))
+    code2, me = c.get_me()
+    print("ME endpoint:", json.dumps(me, indent=2))
 else:
     print(res)
