@@ -15,14 +15,14 @@ const { ROLES } = require('../config/constants');
 router.post(
     '/',
     authenticate,
-    authorize(ROLES.SELLER, ROLES.SUPER_ADMIN),
+    authorize(ROLES.USER, ROLES.SUPER_ADMIN),
     validate(initiateSaleSchema),
     initiateSale
 );
 router.get('/my', authenticate, getMySales);
 router.get('/:id', authenticate, getSale);
-router.post('/:id/sign', authenticate, authorize(ROLES.BUYER, ROLES.SELLER), validate(signSaleSchema), signSale);
+router.post('/:id/sign', authenticate, authorize(ROLES.USER), validate(signSaleSchema), signSale);
 router.post('/:id/complete', authenticate, authorize(ROLES.AUTHORITY, ROLES.SUPER_ADMIN), completeSale);
-router.post('/:id/cancel', authenticate, authorize(ROLES.BUYER, ROLES.SELLER), cancelSale);
+router.post('/:id/cancel', authenticate, authorize(ROLES.USER), cancelSale);
 
 module.exports = router;

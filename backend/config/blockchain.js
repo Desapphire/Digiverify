@@ -3,7 +3,7 @@
  * Provides Ethers.js provider and signer instances.
  */
 
-const { ethers } = require('ethers');
+const ethers = require('ethers');
 const env = require('./env');
 
 let provider = null;

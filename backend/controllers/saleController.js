@@ -32,7 +32,21 @@ const initiateSale = catchAsync(async (req, res) => {
  * POST /api/sales/:id/sign
  */
 const signSale = catchAsync(async (req, res) => {
-    const signerRole = req.user.role === 'buyer' ? 'buyer' : 'seller';
+    // Determine signerRole based on matching wallet to the sale record, rather than a global account role
+    const saleInstance = await SaleTransaction.findById(req.params.id);
+    if (!saleInstance) {
+        throw new AppError('Sale transaction not found.', 404);
+    }
+
+    let signerRole;
+    if (req.user.walletAddress.toLowerCase() === saleInstance.buyer_wallet.toLowerCase()) {
+        signerRole = 'buyer';
+    } else if (req.user.walletAddress.toLowerCase() === saleInstance.seller_wallet.toLowerCase()) {
+        signerRole = 'seller';
+    } else {
+        throw new AppError('You are not authorized to sign this transaction.', 403);
+    }
+
     const sale = await saleService.signSale(
         req.params.id,
         req.user.walletAddress,

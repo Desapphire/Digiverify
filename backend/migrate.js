@@ -47,6 +47,7 @@ const migrations = [
     // ── Indexes ─────────────────────────────────────────────
     `CREATE INDEX IF NOT EXISTS idx_users_wallet ON users (wallet_address)`,
     `CREATE INDEX IF NOT EXISTS idx_users_kyc_status ON users (kyc_status)`,
+    `CREATE INDEX IF NOT EXISTS idx_users_wallet_lower ON users (LOWER(wallet_address))`,
 ];
 
 const run = async () => {

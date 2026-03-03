@@ -28,6 +28,7 @@ const registerUserSchema = z.object({
         walletAddress,
         name: z.string().min(2).max(128),
         email: z.string().email(),
+        password: z.string().min(6),
         phone: z.string().min(7).max(20).optional(),
         governmentId: z.string().min(4).max(50).optional(),
         role: z.enum(ALL_ROLES).optional(),
@@ -37,6 +38,13 @@ const registerUserSchema = z.object({
 const updateKycSchema = z.object({
     body: z.object({
         kycDocumentHash: ipfsHash,
+    }),
+});
+
+const loginPasswordSchema = z.object({
+    body: z.object({
+        email: z.string().email(),
+        password: z.string().min(6),
     }),
 });
 
@@ -126,6 +134,7 @@ module.exports = {
     verifySignatureSchema,
     registerUserSchema,
     updateKycSchema,
+    loginPasswordSchema,
     registerPropertySchema,
     initiateSaleSchema,
     signSaleSchema,

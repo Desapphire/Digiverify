@@ -3,6 +3,7 @@
  */
 
 const User = require('../models/User');
+const bcrypt = require('bcrypt');
 const { encrypt } = require('../utils/crypto');
 const { generateNonce } = require('../utils/crypto');
 const AppError = require('../utils/AppError');
@@ -10,7 +11,7 @@ const AppError = require('../utils/AppError');
 /**
  * Register a new user with wallet address.
  */
-const register = async ({ walletAddress, name, email, phone, governmentId, role }) => {
+const register = async ({ walletAddress, name, email, password, phone, governmentId, role }) => {
     // Check uniqueness
     const existingWallet = await User.findByWallet(walletAddress);
     if (existingWallet) {
@@ -25,6 +26,10 @@ const register = async ({ walletAddress, name, email, phone, governmentId, role 
     // Encrypt government ID before storage
     const governmentIdHash = governmentId ? encrypt(governmentId) : null;
 
+    // Hash the password securely
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     // Generate initial auth nonce
     const authNonce = generateNonce();
 
@@ -32,9 +37,10 @@ const register = async ({ walletAddress, name, email, phone, governmentId, role 
         walletAddress,
         name,
         email,
+        password: hashedPassword,
         phone,
         governmentIdHash,
-        role: role || 'buyer',
+        role: role || 'user',
         authNonce,
     });
 

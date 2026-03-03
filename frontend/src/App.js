@@ -1,94 +1,88 @@
-import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import API from "./services/api";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import OwnerDashboard from "./pages/OwnerDashboard";
-import VerifierDashboard from "./pages/VerifierDashboard";
-import AdminDashboard from "./pages/AdminDashboard";
-import Navbar from "./components/Navbar";
-import "./App.css";
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Navbar from './components/common/Navbar';
+import Login from './pages/Auth/Login';
+import Register from './pages/Auth/Register';
+import WalletRecovery from './pages/Auth/WalletRecovery';
+import Dashboard from './pages/Dashboard/Dashboard';
+
+import PropertyList from './pages/Properties/PropertyList';
+import PropertyDetails from './pages/Properties/PropertyDetails';
+import SalesList from './pages/Sales/SalesList';
+
+import AuthorityDashboard from './pages/Admin/AuthorityDashboard';
+import BankDashboard from './pages/Admin/BankDashboard';
+import { Web3Provider } from './context/Web3Context';
+
+import './App.css';
 
 function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetchUser = async () => {
-    try {
-      const res = await API.get("/auth/me");
-      if (res.data.success) {
-        setUser(res.data.data);
-      }
-    } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
-    fetchUser();
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    let user = null;
+    if (userStr && userStr !== 'undefined') {
+      try { user = JSON.parse(userStr); } catch (e) { }
+    }
+
+    if (token) {
+      setIsAuthenticated(true);
+      if (user) setUserRole(user.role);
+    }
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await API.post("/auth/logout");
-      setUser(null);
-    } catch (err) {
-      console.error("Logout failed");
-    }
-  };
-
-  if (loading) {
+  const ProtectedRoute = ({ children }) => {
+    if (!isAuthenticated) return <Navigate to="/login" />;
     return (
-      <div className="loading-screen">
-        <div className="loading-spinner"></div>
-        <p>Loading your workspace...</p>
-      </div>
+      <>
+        <Navbar onLogout={() => { setIsAuthenticated(false); setUserRole(null); }} />
+        {children}
+      </>
     );
-  }
-
-  const getDashboardRoute = () => {
-    if (!user) return "/login";
-    switch (user.role) {
-      case "owner": return "/owner";
-      case "verifier": return "/verifier";
-      case "admin": return "/admin";
-      default: return "/login";
-    }
   };
 
   return (
-    <Router>
-      <div className="app">
-        {user && <Navbar user={user} onLogout={handleLogout} />}
-        {user ? (
-          <div className="main-content">
+    <Web3Provider>
+      <Router>
+        <div className="app-container">
+          <main className="main-content">
             <Routes>
-              <Route
-                path="/owner"
-                element={user.role === "owner" ? <OwnerDashboard user={user} /> : <Navigate to={getDashboardRoute()} />}
-              />
-              <Route
-                path="/verifier"
-                element={user.role === "verifier" ? <VerifierDashboard user={user} /> : <Navigate to={getDashboardRoute()} />}
-              />
-              <Route
-                path="/admin"
-                element={user.role === "admin" ? <AdminDashboard user={user} /> : <Navigate to={getDashboardRoute()} />}
-              />
-              <Route path="*" element={<Navigate to={getDashboardRoute()} />} />
+              {/* Public Routes */}
+              <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
+              <Route path="/login" element={!isAuthenticated ? <Login setAuth={(status) => {
+                setIsAuthenticated(status);
+                const userStr = localStorage.getItem('user');
+                if (userStr && userStr !== 'undefined') {
+                  try {
+                    const u = JSON.parse(userStr);
+                    if (u) setUserRole(u.role);
+                  } catch (e) { }
+                }
+              }} /> : <Navigate to="/dashboard" />} />
+              <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/dashboard" />} />
+              <Route path="/recovery" element={<WalletRecovery />} />
+
+              {/* General Protected Routes */}
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/properties" element={<ProtectedRoute><PropertyList type="my" /></ProtectedRoute>} />
+              <Route path="/marketplace" element={<ProtectedRoute><PropertyList type="search" /></ProtectedRoute>} />
+              <Route path="/properties/:id" element={<ProtectedRoute><PropertyDetails /></ProtectedRoute>} />
+              <Route path="/sales" element={<ProtectedRoute><SalesList /></ProtectedRoute>} />
+
+              {/* Admin Routes */}
+              <Route path="/admin/approvals" element={<ProtectedRoute><AuthorityDashboard /></ProtectedRoute>} />
+              <Route path="/bank" element={<ProtectedRoute><BankDashboard /></ProtectedRoute>} />
+
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
             </Routes>
-          </div>
-        ) : (
-          <Routes>
-            <Route path="/login" element={<Login setUser={setUser} />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="*" element={<Navigate to="/login" />} />
-          </Routes>
-        )}
-      </div>
-    </Router>
+          </main>
+        </div>
+      </Router>
+    </Web3Provider>
   );
 }
 
