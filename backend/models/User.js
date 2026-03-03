@@ -50,6 +50,22 @@ const findByRole = async (role) => {
     return result.rows.map(mapUser);
 };
 
+const findByKycStatus = async (kycStatus) => {
+    const result = await pool.query(
+        'SELECT * FROM users WHERE kyc_status = $1 ORDER BY created_at DESC',
+        [kycStatus]
+    );
+    return result.rows.map(mapUser);
+};
+
+const findAll = async (limit = 50, offset = 0) => {
+    const result = await pool.query(
+        'SELECT * FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+        [limit, offset]
+    );
+    return result.rows.map(mapUser);
+};
+
 const create = async ({
     walletAddress, name, email, password, phone, governmentIdHash, role, authNonce, birthdate,
 }) => {
@@ -118,6 +134,15 @@ const updateFaceIdHash = async (id, faceIdHash) => {
     return mapUser(result.rows[0]);
 };
 
+const updateProfile = async (id, { email, phone }) => {
+    const result = await pool.query(
+        `UPDATE users SET email = COALESCE($1, email), phone = COALESCE($2, phone), updated_at = NOW()
+     WHERE id = $3 RETURNING *`,
+        [email, phone, id]
+    );
+    return mapUser(result.rows[0]);
+};
+
 const deactivate = async (id) => {
     const result = await pool.query(
         'UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = $1 RETURNING *',
@@ -137,11 +162,14 @@ module.exports = {
     findByEmail,
     findByEmailForLogin,
     findByRole,
+    findByKycStatus,
+    findAll,
     create,
     updateNonce,
     updateNonceById,
     updateKycStatus,
     updateWallet,
+    updateProfile,
     updateFaceVerified,
     updateFaceIdHash,
     deactivate,

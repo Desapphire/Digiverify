@@ -65,9 +65,13 @@ const refreshToken = catchAsync(async (req, res) => {
  * GET /api/auth/me
  */
 const getMe = catchAsync(async (req, res) => {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+    }
     return res.status(200).json({
         success: true,
-        data: req.user,
+        data: user,
     });
 });
 

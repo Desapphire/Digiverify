@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-    initiateSale, signSale, cancelSale, getSale, getMySales,
+    initiateSale, signSale, cancelSale, getSale, getMySales, getByProperty,
 } = require('../controllers/saleController');
 const authenticate = require('../middlewares/authenticate');
 const authorize = require('../middlewares/authorize');
@@ -20,6 +20,7 @@ router.post(
     initiateSale
 );
 router.get('/my', authenticate, getMySales);
+router.get('/property/:propertyId', authenticate, getByProperty);
 router.get('/:id', authenticate, getSale);
 router.post('/:id/sign', authenticate, authorize(ROLES.USER), validate(signSaleSchema), signSale);
 router.post('/:id/cancel', authenticate, authorize(ROLES.USER), cancelSale);

@@ -27,7 +27,8 @@ const {
 
 const {
     approveKyc,
-    rejectKyc
+    rejectKyc,
+    listUsers
 } = require('../controllers/userController');
 
 const {
@@ -69,6 +70,7 @@ router.post('/property/reverse-freeze/:freezeOrderId', reverseFreezeOrder);
 router.post('/property/force-transfer', validate(forceTransferSchema), forceTransfer);
 
 // --- User KYC Management ---
+router.get('/users', listUsers);
 router.put('/kyc/:id/approve', approveKyc);
 router.put('/kyc/:id/reject', rejectKyc);
 

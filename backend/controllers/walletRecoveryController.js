@@ -6,6 +6,22 @@ const walletRecoveryService = require('../services/walletRecoveryService');
 const auditService = require('../services/auditService');
 const { AUDIT_ACTIONS } = require('../config/constants');
 const catchAsync = require('../utils/catchAsync');
+const WalletRecovery = require('../models/WalletRecovery');
+
+/**
+ * GET /api/users/recovery
+ * Get user's own recovery requests.
+ */
+const getMyRecoveries = catchAsync(async (req, res) => {
+    const recoveries = await walletRecoveryService.getPendingRecoveries();
+    // Since service only gets pending, but we want all for the user, use the raw method:
+    const userRecoveries = await WalletRecovery.findByUser(req.user.id);
+
+    return res.status(200).json({
+        success: true,
+        data: userRecoveries,
+    });
+});
 
 /**
  * POST /api/recovery/request
@@ -108,4 +124,4 @@ const getPendingRecoveries = catchAsync(async (req, res) => {
     });
 });
 
-module.exports = { requestRecovery, verifyIdentity, completeRecovery, rejectRecovery, getPendingRecoveries };
+module.exports = { requestRecovery, verifyIdentity, completeRecovery, rejectRecovery, getPendingRecoveries, getMyRecoveries };

@@ -112,5 +112,22 @@ const bindFaceId = async (userId, faceIdHash) => {
 
     return User.updateFaceIdHash(userId, faceIdHash);
 };
+/**
+ * Update user profile (email, phone).
+ */
+const updateProfile = async (userId, { email, phone }) => {
+    const user = await User.findById(userId);
+    if (!user) throw new AppError('User not found.', 404);
 
-module.exports = { register, submitKyc, approveKyc, rejectKyc, getProfile, bindFaceId };
+    // If email is changing, check uniqueness
+    if (email && email.toLowerCase() !== user.email.toLowerCase()) {
+        const existingEmail = await User.findByEmail(email);
+        if (existingEmail) {
+            throw new AppError('Email already in use by another account.', 409);
+        }
+    }
+
+    return User.updateProfile(userId, { email: email || null, phone: phone || null });
+};
+
+module.exports = { register, submitKyc, approveKyc, rejectKyc, getProfile, updateProfile, bindFaceId };
