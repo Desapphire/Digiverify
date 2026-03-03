@@ -33,6 +33,8 @@ const migrations = [
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS face_verified BOOLEAN DEFAULT FALSE`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS face_id_hash VARCHAR(128)`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS birthdate DATE`,
 
     // Make password nullable for wallet-only users
     `ALTER TABLE users ALTER COLUMN password DROP NOT NULL`,
@@ -41,7 +43,7 @@ const migrations = [
     `DO $$ BEGIN
      ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
      ALTER TABLE users ADD CONSTRAINT users_role_check
-       CHECK (role IN ('admin','verifier','owner','buyer','seller','authority','court','bank','bank_admin','super_admin'));
+       CHECK (role IN ('user','admin','verifier','owner','buyer','seller','authority','court','bank','bank_admin','super_admin'));
    END $$`,
 
     // ── Indexes ─────────────────────────────────────────────

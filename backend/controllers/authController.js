@@ -74,72 +74,35 @@ const getMe = catchAsync(async (req, res) => {
 // ── Phase 1 Registration Flow ────────────────────────────
 
 /**
- * POST /api/auth/register/legal
+ * POST /api/auth/request-nonce
+ * Unified registration flow nonce request.
  */
-const registerLegal = catchAsync(async (req, res) => {
-    const { fullName, governmentId, email, phone, faceImageCid, kycDocumentCids } = req.body;
-
-    // Hash government ID (placeholder encryption)
-    const governmentIdHash = Buffer.from(governmentId).toString('base64');
-    const kycDocumentHash = kycDocumentCids && kycDocumentCids.length ? kycDocumentCids[0] : null;
-
-    const user = await User.create({
-        name: fullName,
-        email,
-        phone,
-        governmentIdHash,
-        role: 'user',
-    });
-
-    await User.updateKycStatus(user.id, 'pending', kycDocumentHash);
-
-    return res.status(201).json({
-        success: true,
-        message: 'Legal details submitted. Status: PENDING',
-        data: { userId: user.id, status: 'PENDING' }
-    });
-});
-
-/**
- * POST /api/auth/register/wallet/nonce
- */
-const getWalletNonce = catchAsync(async (req, res) => {
-    const { userId } = req.body;
+const requestNonceRegistration = catchAsync(async (req, res) => {
+    const { walletAddress } = req.body;
     const nonce = generateNonce();
-
-    const user = await User.findById(userId);
-    if (!user) {
-        return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    await User.updateNonceById(userId, nonce);
-
+    // In a real production app, we might store this in Redis or a temp table
+    // For now, we'll return it and expect it back in the verify step.
     return res.status(200).json({
         success: true,
-        data: { nonce }
+        nonce
     });
 });
 
 /**
- * POST /api/auth/register/wallet/verify
+ * POST /api/auth/verify-signature
+ * Unified registration flow signature verification.
  */
-const verifyWallet = catchAsync(async (req, res) => {
-    const { userId, signature } = req.body;
+const verifySignatureRegistration = catchAsync(async (req, res) => {
+    const { walletAddress, signature, nonce } = req.body;
+    const recoveredAddress = verifySignature(nonce, signature);
 
-    const user = await User.findById(userId);
-    if (!user || !user.authNonce) {
-        return res.status(400).json({ success: false, message: 'Invalid request or missing nonce' });
+    if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+        return res.status(400).json({ success: false, message: 'Invalid signature' });
     }
-
-    const recoveredAddress = verifySignature(user.authNonce, signature);
-
-    await User.updateWallet(userId, recoveredAddress);
-    await User.updateKycStatus(userId, 'verified', user.kycDocumentHash);
 
     return res.status(200).json({
         success: true,
-        message: 'Wallet linked and KYC verified.',
-        data: { walletAddress: recoveredAddress, status: 'APPROVED' }
+        message: 'Signature verified'
     });
 });
 
@@ -149,7 +112,6 @@ module.exports = {
     loginWithPassword,
     refreshToken,
     getMe,
-    registerLegal,
-    getWalletNonce,
-    verifyWallet,
+    requestNonce: requestNonceRegistration,
+    verifySignatureRegistration,
 };

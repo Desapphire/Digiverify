@@ -31,6 +31,7 @@ const registerUserSchema = z.object({
         password: z.string().min(6),
         phone: z.string().min(7).max(20).optional(),
         governmentId: z.string().min(4).max(50).optional(),
+        birthdate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').optional(),
         role: z.enum(ALL_ROLES).optional(),
     }),
 });
@@ -38,6 +39,12 @@ const registerUserSchema = z.object({
 const updateKycSchema = z.object({
     body: z.object({
         kycDocumentHash: ipfsHash,
+    }),
+});
+
+const bindFaceIdSchema = z.object({
+    body: z.object({
+        faceIdHash: z.string().min(32).max(128),
     }),
 });
 
@@ -144,4 +151,5 @@ module.exports = {
     forceTransferSchema,
     requestRecoverySchema,
     completeRecoverySchema,
+    bindFaceIdSchema,
 };

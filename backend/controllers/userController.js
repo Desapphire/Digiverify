@@ -106,4 +106,18 @@ const getProfile = catchAsync(async (req, res) => {
     });
 });
 
-module.exports = { register, submitKyc, approveKyc, rejectKyc, getProfile };
+/**
+ * PUT /api/users/face-id
+ * Bind Face ID hash.
+ */
+const bindFaceId = catchAsync(async (req, res) => {
+    const user = await userService.bindFaceId(req.user.id, req.body.faceIdHash);
+
+    return res.status(200).json({
+        success: true,
+        message: 'Face ID bound successfully.',
+        data: user,
+    });
+});
+
+module.exports = { register, submitKyc, approveKyc, rejectKyc, getProfile, bindFaceId };

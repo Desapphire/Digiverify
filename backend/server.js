@@ -23,14 +23,12 @@ const { startEventListeners } = require('./events/eventListener');
 
 // ── Route Imports ───────────────────────────────────────
 const authRoutes = require('./routes/authRoutes');
+const onboardingRoutes = require('./routes/onboardingRoutes');
 const userRoutes = require('./routes/userRoutes');
 const propertyRoutes = require('./routes/propertyRoutes');
 const saleRoutes = require('./routes/saleRoutes');
 const bankRoutes = require('./routes/bankRoutes');
-const authorityRoutes = require('./routes/authorityRoutes');
-const courtRoutes = require('./routes/courtRoutes');
-const walletRecoveryRoutes = require('./routes/walletRecoveryRoutes');
-const auditRoutes = require('./routes/auditRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 // ── Bootstrap ───────────────────────────────────────────
 const app = express();
@@ -63,14 +61,12 @@ app.set('trust proxy', 1);
 
 // ── API Routes ──────────────────────────────────────────
 app.use('/api/auth', authRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/sales', saleRoutes);
 app.use('/api/bank', bankRoutes);
-app.use('/api/authority', authorityRoutes);
-app.use('/api/court', courtRoutes);
-app.use('/api/recovery', walletRecoveryRoutes);
-app.use('/api/audit', auditRoutes);
+app.use('/api/admin', adminRoutes);
 
 // ── Health Check ────────────────────────────────────────
 app.get('/', (req, res) => {
@@ -94,12 +90,17 @@ app.get('/api/docs', (req, res) => {
                 'POST /api/auth/refresh': 'Refresh access token',
                 'GET /api/auth/me': 'Get current user (requires auth)',
             },
+            onboarding: {
+                'POST /api/onboarding/request-nonce': 'Request nonce for registration',
+                'POST /api/onboarding/verify-signature': 'Verify signature for registration',
+                'POST /api/onboarding/register': 'Register new user (Unified flow: name, email, password, wallet, birthdate)',
+            },
             users: {
-                'POST /api/users/register': 'Register new user',
                 'GET /api/users/profile': 'Get own profile',
                 'POST /api/users/kyc': 'Submit KYC document hash',
                 'PUT /api/users/:id/kyc/approve': 'Approve KYC (authority)',
                 'PUT /api/users/:id/kyc/reject': 'Reject KYC (authority)',
+                'PUT /api/users/face-id': 'Bind Face ID hash to user account',
             },
             properties: {
                 'POST /api/properties': 'Register property (seller/authority)',
@@ -123,26 +124,23 @@ app.get('/api/docs', (req, res) => {
                 'PUT /api/bank/fund-block/:id/release': 'Release funds (bank_admin)',
                 'GET /api/bank/fund-block/transaction/:id': 'Get fund blocks for transaction',
             },
-            authority: {
-                'PUT /api/authority/property/:id/approve': 'Approve property',
-                'POST /api/authority/sale/:id/approve': 'Approve sale',
-                'POST /api/authority/sale/:id/reject': 'Reject sale',
-                'PUT /api/authority/property/:id/encumbrance': 'Set/clear encumbrance',
-            },
-            court: {
-                'POST /api/court/freeze': 'Freeze property',
-                'POST /api/court/reverse/:freezeOrderId': 'Reverse freeze order',
-                'POST /api/court/force-transfer': 'Force-transfer ownership',
-            },
-            recovery: {
-                'POST /api/recovery/request': 'Request wallet recovery',
-                'GET /api/recovery/pending': 'Get pending recoveries (authority)',
-                'PUT /api/recovery/:id/verify': 'Verify identity (authority)',
-                'PUT /api/recovery/:id/complete': 'Complete recovery (authority)',
-                'PUT /api/recovery/:id/reject': 'Reject recovery (authority)',
-            },
-            audit: {
-                'GET /api/audit': 'Query audit logs (authority/court)',
+            admin: {
+                'PUT /api/admin/property/:id/approve': 'Approve property (authority)',
+                'POST /api/admin/sale/:id/approve': 'Approve sale (authority)',
+                'POST /api/admin/sale/:id/reject': 'Reject sale (authority)',
+                'PUT /api/admin/property/:id/encumbrance': 'Set/clear encumbrance (authority)',
+                'POST /api/admin/property/freeze': 'Freeze property (court)',
+                'POST /api/admin/property/reverse-freeze/:freezeOrderId': 'Reverse freeze order (court)',
+                'POST /api/admin/property/force-transfer': 'Force-transfer ownership (court)',
+                'PUT /api/admin/kyc/:id/approve': 'Approve KYC (authority)',
+                'PUT /api/admin/kyc/:id/reject': 'Reject KYC (authority)',
+                'GET /api/admin/recovery/pending': 'Get pending wallet recoveries',
+                'PUT /api/admin/recovery/:id/verify': 'Verify identity for recovery',
+                'PUT /api/admin/recovery/:id/complete': 'Complete wallet recovery',
+                'PUT /api/admin/recovery/:id/reject': 'Reject wallet recovery',
+                'PUT /api/admin/bank/fund-block/:id/confirm': 'Confirm fund block (bank_admin)',
+                'PUT /api/admin/bank/fund-block/:id/release': 'Release funds (bank_admin)',
+                'GET /api/admin/audit': 'Query audit logs (authority/court/admin)',
             },
         },
     });
