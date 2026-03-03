@@ -3,6 +3,7 @@
  */
 
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const env = require('../config/env');
 const { verifySignature } = require('../config/blockchain');
 const { SIGN_MESSAGE_TEMPLATE } = require('../config/constants');
@@ -82,6 +83,56 @@ const verifyAndAuthenticate = async (walletAddress, signature) => {
 };
 
 /**
+ * Verify email and password and issue JWT tokens for fallback auth.
+ */
+const loginWithPassword = async (email, password) => {
+    const user = await User.findByEmailForLogin(email);
+    if (!user) {
+        throw new AppError('Invalid email or password.', 401);
+    }
+
+    if (!user.isActive) {
+        throw new AppError('Account deactivated. Contact support.', 403);
+    }
+
+    // Support legacy users who only have wallet address but no password set yet
+    if (!user.password) {
+        throw new AppError('No password set for this account. Please login with wallet.', 401);
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+        throw new AppError('Invalid email or password.', 401);
+    }
+
+    // Issue JWT
+    const accessToken = jwt.sign(
+        { id: user.id, walletAddress: user.walletAddress, role: user.role, email: user.email },
+        env.JWT.secret,
+        { expiresIn: env.JWT.expiresIn }
+    );
+
+    const refreshToken = jwt.sign(
+        { id: user.id, walletAddress: user.walletAddress },
+        env.JWT.refreshSecret,
+        { expiresIn: env.JWT.refreshExpiresIn }
+    );
+
+    return {
+        accessToken,
+        refreshToken,
+        user: {
+            id: user.id,
+            walletAddress: user.walletAddress,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            kycStatus: user.kycStatus,
+        },
+    };
+};
+
+/**
  * Refresh an expired access token using a valid refresh token.
  */
 const refreshAccessToken = async (refreshToken) => {
@@ -105,4 +156,4 @@ const refreshAccessToken = async (refreshToken) => {
     }
 };
 
-module.exports = { getOrCreateNonce, verifyAndAuthenticate, refreshAccessToken };
+module.exports = { getOrCreateNonce, verifyAndAuthenticate, loginWithPassword, refreshAccessToken };

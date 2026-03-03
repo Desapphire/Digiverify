@@ -5,8 +5,7 @@
 
 // ── User Roles ──────────────────────────────────────────
 const ROLES = Object.freeze({
-    BUYER: 'buyer',
-    SELLER: 'seller',
+    USER: 'user', // Formerly buyer/seller
     AUTHORITY: 'authority',
     COURT: 'court',
     BANK_ADMIN: 'bank_admin',

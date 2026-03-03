@@ -3,6 +3,7 @@
  */
 
 const { pool } = require('../config/db');
+const crypto = require('crypto');
 
 const mapUser = (row) => {
     if (!row) return null;
@@ -48,13 +49,14 @@ const findByRole = async (role) => {
 };
 
 const create = async ({
-    walletAddress, name, email, phone, governmentIdHash, role, authNonce,
+    walletAddress, name, email, password, phone, governmentIdHash, role, authNonce,
 }) => {
+    const id = crypto.randomUUID();
     const result = await pool.query(
-        `INSERT INTO users (wallet_address, name, email, phone, government_id_hash, role, auth_nonce)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO users (id, wallet_address, name, email, password, phone, government_id_hash, role, auth_nonce)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      RETURNING *`,
-        [walletAddress, name, email, phone || null, governmentIdHash || null, role || 'buyer', authNonce || null]
+        [id, walletAddress, name, email, password || null, phone || null, governmentIdHash || null, role || 'user', authNonce || null]
     );
     return mapUser(result.rows[0]);
 };
@@ -64,6 +66,16 @@ const updateNonce = async (walletAddress, nonce) => {
         `UPDATE users SET auth_nonce = $1, updated_at = NOW()
      WHERE LOWER(wallet_address) = LOWER($2) RETURNING *`,
         [nonce, walletAddress]
+    );
+    return mapUser(result.rows[0]);
+};
+
+// Update nonce by user ID (used when wallet address is not yet set)
+const updateNonceById = async (userId, nonce) => {
+    const result = await pool.query(
+        `UPDATE users SET auth_nonce = $1, updated_at = NOW()
+     WHERE id = $2 RETURNING *`,
+        [nonce, userId]
     );
     return mapUser(result.rows[0]);
 };
@@ -103,13 +115,20 @@ const deactivate = async (id) => {
     return mapUser(result.rows[0]);
 };
 
+const findByEmailForLogin = async (email) => {
+    const result = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1', [email]);
+    return result.rows[0] ? { ...mapUser(result.rows[0]), password: result.rows[0].password } : null;
+};
+
 module.exports = {
     findByWallet,
     findById,
     findByEmail,
+    findByEmailForLogin,
     findByRole,
     create,
     updateNonce,
+    updateNonceById,
     updateKycStatus,
     updateWallet,
     updateFaceVerified,

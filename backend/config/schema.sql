@@ -40,16 +40,16 @@ END $$;
 -- 1. USERS
 -- ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS users (
-    id                  TEXT PRIMARY KEY,
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     wallet_address      VARCHAR(42) UNIQUE,
     name                VARCHAR(128) NOT NULL,
     email               VARCHAR(255) NOT NULL UNIQUE,
     phone               VARCHAR(20),
     government_id_hash  VARCHAR(256),             -- AES-encrypted government ID
     password            TEXT,                     -- Legacy; nullable for wallet-only users
-    role                VARCHAR(20) NOT NULL DEFAULT 'buyer'
+    role                VARCHAR(20) NOT NULL DEFAULT 'user'
                             CHECK (role IN (
-                                'buyer','seller','authority','court',
+                                'user','authority','court',
                                 'bank_admin','super_admin'
                             )),
     auth_nonce          VARCHAR(64),              -- Current nonce for wallet signing
@@ -66,6 +66,7 @@ CREATE INDEX IF NOT EXISTS idx_users_wallet     ON users (wallet_address);
 CREATE INDEX IF NOT EXISTS idx_users_role       ON users (role);
 CREATE INDEX IF NOT EXISTS idx_users_email      ON users (email);
 CREATE INDEX IF NOT EXISTS idx_users_kyc_status ON users (kyc_status);
+CREATE INDEX IF NOT EXISTS idx_users_wallet_lower ON users (LOWER(wallet_address));
 
 -- ────────────────────────────────────────────────────────────
 -- 2. DOCUMENTS (legacy — backward compatibility)
@@ -79,10 +80,10 @@ CREATE TABLE IF NOT EXISTS documents (
     content_type    TEXT NOT NULL,
     file_size       BIGINT NOT NULL,
     file_path       TEXT NOT NULL,
-    owner_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    owner_id        UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     status          TEXT NOT NULL DEFAULT 'pending'
                         CHECK (status IN ('pending','verified','rejected')),
-    verified_by     TEXT REFERENCES users(id) ON DELETE SET NULL,
+    verified_by     UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -128,7 +129,7 @@ CREATE TABLE IF NOT EXISTS property_documents (
     document_type   VARCHAR(60) NOT NULL,
     ipfs_hash       VARCHAR(128) NOT NULL,
     description     TEXT,
-    uploaded_by     TEXT NOT NULL,
+    uploaded_by     UUID NOT NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_pd_property FOREIGN KEY (property_id) REFERENCES properties (id),
@@ -207,7 +208,7 @@ CREATE TABLE IF NOT EXISTS fund_blocks (
     bank_confirm_ts     TIMESTAMPTZ,
     status              VARCHAR(20) NOT NULL DEFAULT 'pending'
                             CHECK (status IN ('pending','blocked','released','failed')),
-    bank_user_id        TEXT,
+    bank_user_id        UUID,
 
     CONSTRAINT fk_fb_txn   FOREIGN KEY (transaction_id) REFERENCES sale_transactions (id),
     CONSTRAINT fk_fb_buyer FOREIGN KEY (buyer_wallet)   REFERENCES users (wallet_address),
@@ -224,7 +225,7 @@ CREATE INDEX IF NOT EXISTS idx_fb_status ON fund_blocks (status);
 CREATE TABLE IF NOT EXISTS court_freeze_orders (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     property_id         UUID NOT NULL,
-    court_user_id       TEXT NOT NULL,
+    court_user_id       UUID NOT NULL,
     court_order_hash    VARCHAR(128) NOT NULL,
     case_number         VARCHAR(60),
     reason              TEXT,
@@ -244,7 +245,7 @@ CREATE TABLE IF NOT EXISTS court_reversals (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     freeze_order_id         UUID NOT NULL UNIQUE,
     property_id             UUID NOT NULL,
-    court_user_id           TEXT NOT NULL,
+    court_user_id           UUID NOT NULL,
     reversal_order_hash     VARCHAR(128) NOT NULL,
     previous_owner_wallet   VARCHAR(42),
     reason                  TEXT,
@@ -266,7 +267,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     action_type     VARCHAR(60) NOT NULL,
     actor_wallet    VARCHAR(42),
-    actor_user_id   TEXT,
+    actor_user_id   UUID,
     ip_address      INET,
     entity_id       UUID,                         -- Generic: property_id or transaction_id
     entity_type     VARCHAR(30),                  -- 'property', 'sale_transaction', 'user', etc.
@@ -285,12 +286,12 @@ CREATE INDEX IF NOT EXISTS idx_al_created  ON audit_logs (created_at DESC);
 -- ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS wallet_recovery_requests (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id             TEXT NOT NULL,
+    user_id             UUID NOT NULL,
     old_wallet          VARCHAR(42) NOT NULL,
     new_wallet          VARCHAR(42),
     status              VARCHAR(20) NOT NULL DEFAULT 'requested'
                             CHECK (status IN ('requested','identity_verified','completed','rejected')),
-    verified_by         TEXT,                     -- Authority who verified
+    verified_by         UUID,                     -- Authority who verified
     reason              TEXT,
     nft_transfer_tx     VARCHAR(66),              -- On-chain force-transfer tx hash
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
