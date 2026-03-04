@@ -18,6 +18,7 @@ const mapSale = (row) => {
         fundsBlocked: row.funds_blocked,
         smartContractAddr: row.smart_contract_addr,
         txHash: row.tx_hash,
+        onChainId: row.on_chain_id,
         status: row.status,
         expiryAt: row.expiry_at,
         createdAt: row.created_at,
@@ -46,8 +47,9 @@ const findAll = async (limit = 50, offset = 0) => {
     return result.rows.map(mapSale);
 };
 
-const findById = async (id) => {
-    const result = await pool.query('SELECT * FROM sale_transactions WHERE id = $1 LIMIT 1', [id]);
+const findById = async (id, client = null) => {
+    const db = client || pool;
+    const result = await db.query('SELECT * FROM sale_transactions WHERE id = $1 LIMIT 1', [id]);
     return mapSale(result.rows[0]);
 };
 
@@ -154,8 +156,17 @@ const getApprovals = async (transactionId) => {
     return result.rows;
 };
 
+const setOnChainId = async (id, onChainId, client = null) => {
+    const db = client || pool;
+    const result = await db.query(
+        'UPDATE sale_transactions SET on_chain_id = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+        [onChainId, id]
+    );
+    return mapSale(result.rows[0]);
+};
+
 module.exports = {
     create, findById, findAll, findByProperty, findByWallet, findActiveByProperty,
     updateStatus, setBuyerSigned, setSellerSigned, setAuthoritySigned,
-    setFundsBlocked, setTxHash, addApproval, getApprovals,
+    setFundsBlocked, setTxHash, setOnChainId, addApproval, getApprovals,
 };

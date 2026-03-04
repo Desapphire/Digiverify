@@ -4,112 +4,115 @@ pragma solidity ^0.8.28;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 interface ILandNFT {
-    function mintLand(address to, string calldata propertyCode, string calldata metadataURI) external returns (uint256);
-    function ownerOf(uint256 tokenId) external view returns (address);
-    function getTokenByPropertyCode(string calldata propertyCode) external view returns (uint256);
+    function mintProperty(address to, uint256 tokenId, string calldata metadataURI) external;
 }
 
 /**
  * @title LandRegistry
- * @notice On-chain property registry. Registers properties by minting NFTs
- *         and stores document hashes for verification.
+ * @notice Handles government property registration and approval.
  */
 contract LandRegistry is AccessControl {
 
-    bytes32 public constant REGISTRAR_ROLE = keccak256("REGISTRAR_ROLE");
+    bytes32 public constant AUTHORITY_ROLE = keccak256("AUTHORITY_ROLE");
 
     ILandNFT public landNFT;
 
-    struct Property {
+    enum RegistrationStatus { PENDING, APPROVED, REJECTED }
+
+    struct PropertyRecord {
         address owner;
-        uint256 tokenId;
+        string  propertyCode; // Unique ID from Gov
         string  documentHash;
+        bool    isEncumbered;
+        RegistrationStatus status;
+        uint256 tokenId;
         bool    exists;
     }
 
-    // propertyCode → Property
-    mapping(string => Property) public properties;
+    // propertyCode => Records
+    mapping(string => PropertyRecord) public propertyRecords;
+    
+    // Counter for on-chain IDs/TokenIDs
+    uint256 private _propertyCounter;
 
-    event PropertyRegistered(
-        string  propertyCode,
-        address indexed owner,
-        uint256 indexed tokenId
-    );
-
-    event DocumentHashUpdated(
-        string  propertyCode,
-        string  oldHash,
-        string  newHash
-    );
+    event PropertySubmitted(string propertyCode, address indexed owner);
+    event PropertyApproved(string propertyCode, uint256 indexed tokenId);
+    event PropertyRejected(string propertyCode, string reason);
+    event EncumbranceStatusChanged(string propertyCode, bool isEncumbered);
 
     constructor(address _landNFT) {
         require(_landNFT != address(0), "Invalid NFT address");
         landNFT = ILandNFT(_landNFT);
-
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(REGISTRAR_ROLE, msg.sender);
+        _grantRole(AUTHORITY_ROLE, msg.sender);
     }
 
     /**
-     * @notice Register a new property — mints an NFT and stores the document hash.
-     * @param propertyCode Unique property identifier.
-     * @param owner        Wallet address of the property owner.
-     * @param documentHash IPFS hash of the property documents.
+     * @notice Submit a property for registration.
      */
     function registerProperty(
-        string calldata propertyCode,
-        address owner,
-        string calldata documentHash
-    ) external onlyRole(REGISTRAR_ROLE) {
-        require(!properties[propertyCode].exists, "Property already registered");
-        require(owner != address(0), "Invalid owner address");
-
-        // Mint NFT (uses empty string for metadata URI — can be set later)
-        uint256 tokenId = landNFT.mintLand(owner, propertyCode, "");
-
-        properties[propertyCode] = Property({
-            owner: owner,
-            tokenId: tokenId,
-            documentHash: documentHash,
+        string calldata _propertyCode,
+        address _owner,
+        string calldata _documentHash
+    ) external {
+        require(!propertyRecords[_propertyCode].exists, "Property already exists");
+        
+        propertyRecords[_propertyCode] = PropertyRecord({
+            owner: _owner,
+            propertyCode: _propertyCode,
+            documentHash: _documentHash,
+            isEncumbered: false,
+            status: RegistrationStatus.PENDING,
+            tokenId: 0,
             exists: true
         });
 
-        emit PropertyRegistered(propertyCode, owner, tokenId);
+        emit PropertySubmitted(_propertyCode, _owner);
     }
 
     /**
-     * @notice Update the document hash for a property.
+     * @notice Authority approves registration and mints NFT.
      */
-    function updateDocumentHash(
-        string calldata propertyCode,
-        string calldata newHash
-    ) external onlyRole(REGISTRAR_ROLE) {
-        require(properties[propertyCode].exists, "Property not registered");
+    function approveProperty(string calldata _propertyCode, string calldata _metadataURI) external onlyRole(AUTHORITY_ROLE) {
+        PropertyRecord storage p = propertyRecords[_propertyCode];
+        require(p.exists, "Property not found");
+        require(p.status == RegistrationStatus.PENDING, "Not in PENDING state");
 
-        string memory oldHash = properties[propertyCode].documentHash;
-        properties[propertyCode].documentHash = newHash;
+        p.status = RegistrationStatus.APPROVED;
+        _propertyCounter++;
+        p.tokenId = _propertyCounter;
 
-        emit DocumentHashUpdated(propertyCode, oldHash, newHash);
+        // Mint the NFT
+        landNFT.mintProperty(p.owner, p.tokenId, _metadataURI);
+
+        emit PropertyApproved(_propertyCode, p.tokenId);
     }
 
     /**
-     * @notice Get property details.
+     * @notice Authority rejects registration.
      */
-    function getProperty(string calldata propertyCode)
-        external view returns (address owner, uint256 tokenId, string memory documentHash)
-    {
-        require(properties[propertyCode].exists, "Property not registered");
-        Property storage p = properties[propertyCode];
-        return (p.owner, p.tokenId, p.documentHash);
+    function rejectProperty(string calldata _propertyCode, string calldata _reason) external onlyRole(AUTHORITY_ROLE) {
+        PropertyRecord storage p = propertyRecords[_propertyCode];
+        require(p.exists, "Property not found");
+        require(p.status == RegistrationStatus.PENDING, "Not in PENDING state");
+
+        p.status = RegistrationStatus.REJECTED;
+        emit PropertyRejected(_propertyCode, _reason);
     }
 
     /**
-     * @notice Verify the current on-chain owner of a property.
+     * @notice Mark a property as encumbered (prevents sale in SaleContract).
      */
-    function verifyOwner(string calldata propertyCode)
-        external view returns (address)
-    {
-        require(properties[propertyCode].exists, "Property not registered");
-        return landNFT.ownerOf(properties[propertyCode].tokenId);
+    function markEncumbered(string calldata _propertyCode, bool _status) external onlyRole(AUTHORITY_ROLE) {
+        require(propertyRecords[_propertyCode].exists, "Property not found");
+        propertyRecords[_propertyCode].isEncumbered = _status;
+        emit EncumbranceStatusChanged(_propertyCode, _status);
+    }
+
+    /**
+     * @notice Get property record details.
+     */
+    function getPropertyRecord(string calldata _propertyCode) external view returns (PropertyRecord memory) {
+        return propertyRecords[_propertyCode];
     }
 }

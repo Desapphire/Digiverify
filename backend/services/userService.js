@@ -6,6 +6,7 @@ const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const { encrypt } = require('../utils/crypto');
 const { generateNonce } = require('../utils/crypto');
+const contractService = require('../blockchain/contractService');
 const AppError = require('../utils/AppError');
 
 /**
@@ -75,8 +76,13 @@ const submitKyc = async (userId, kycDocumentHash) => {
 const approveKyc = async (userId) => {
     const user = await User.findById(userId);
     if (!user) throw new AppError('User not found.', 404);
+
+    // Blockchain anchoring (Mock/Placeholder for identity contract)
+    console.log(`🔗 Anchoring KYC for user ${userId} (${user.walletAddress}) on-chain...`);
+
     return User.updateKycStatus(userId, 'verified', null);
 };
+
 
 /**
  * Reject KYC (authority/super_admin only).
@@ -115,7 +121,7 @@ const bindFaceId = async (userId, faceIdHash) => {
 /**
  * Update user profile (email, phone).
  */
-const updateProfile = async (userId, { email, phone }) => {
+const updateProfile = async (userId, { email, phone, walletAddress }) => {
     const user = await User.findById(userId);
     if (!user) throw new AppError('User not found.', 404);
 
@@ -127,7 +133,17 @@ const updateProfile = async (userId, { email, phone }) => {
         }
     }
 
+    // If walletAddress is being linked (previously null), check uniqueness
+    if (walletAddress && !user.walletAddress) {
+        const existingWallet = await User.findByWallet(walletAddress);
+        if (existingWallet) {
+            throw new AppError('Wallet address already in use.', 409);
+        }
+        await User.updateWallet(userId, walletAddress);
+    }
+
     return User.updateProfile(userId, { email: email || null, phone: phone || null });
 };
+
 
 module.exports = { register, submitKyc, approveKyc, rejectKyc, getProfile, updateProfile, bindFaceId };

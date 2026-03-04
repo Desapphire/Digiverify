@@ -2,177 +2,179 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
+interface ILandRegistry {
+    function propertyRecords(string calldata _propertyCode) external view returns (
+        address owner,
+        string memory propertyCode,
+        string memory documentHash,
+        bool isEncumbered,
+        uint8 status,
+        uint256 tokenId,
+        bool exists
+    );
+}
 
 /**
  * @title SaleContract
- * @notice Multi-signature sale workflow for land properties.
- *         States: INITIATED → APPROVED → COMPLETED | CANCELLED
- *         Authority must approve before completion.
- *         Completion triggers NFT transfer from seller to buyer.
+ * @notice Multi-signature government-grade land sale workflow.
  */
-contract SaleContract is AccessControl {
+contract SaleContract is AccessControl, ReentrancyGuard {
 
     bytes32 public constant AUTHORITY_ROLE = keccak256("AUTHORITY_ROLE");
+    bytes32 public constant BANK_ROLE      = keccak256("BANK_ROLE");
 
     IERC721 public landNFT;
+    ILandRegistry public landRegistry;
 
-    enum SaleStatus { INITIATED, APPROVED, COMPLETED, CANCELLED }
+    enum SaleStatus { INITIATED, BUYER_SIGNED, FUNDS_BLOCKED, AUTHORITY_APPROVED, COMPLETED, CANCELLED, FROZEN }
 
     struct Sale {
         uint256   tokenId;
+        string    propertyCode;
         address   seller;
         address   buyer;
         uint256   price;
         SaleStatus status;
         bool      sellerSigned;
         bool      buyerSigned;
+        bool      fundsBlocked;
+        bool      authoritySigned;
         uint256   createdAt;
     }
 
     uint256 public saleCount;
     mapping(uint256 => Sale) public sales;
 
-    event SaleInitiated(
-        uint256 indexed saleId,
-        address indexed seller,
-        address indexed buyer,
-        uint256 tokenId,
-        uint256 price
-    );
+    event SaleInitiated(uint256 indexed saleId, string propertyCode, address indexed seller, address indexed buyer);
+    event BuyerSigned(uint256 indexed saleId);
+    event FundsBlocked(uint256 indexed saleId);
+    event AuthorityApproved(uint256 indexed saleId);
+    event SaleCompleted(uint256 indexed saleId);
+    event SaleCancelled(uint256 indexed saleId, string reason);
+    event SaleFrozen(uint256 indexed saleId, string reason);
 
-    event SaleSigned(uint256 indexed saleId, address indexed signer, string role);
-    event SaleApproved(uint256 indexed saleId, address indexed authority);
-    event SaleCompleted(uint256 indexed saleId, uint256 tokenId);
-    event SaleCancelled(uint256 indexed saleId, address indexed cancelledBy);
-
-    constructor(address _landNFT) {
-        require(_landNFT != address(0), "Invalid NFT address");
+    constructor(address _landNFT, address _landRegistry) {
         landNFT = IERC721(_landNFT);
-
+        landRegistry = ILandRegistry(_landRegistry);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(AUTHORITY_ROLE, msg.sender);
+        _grantRole(BANK_ROLE, msg.sender);
     }
 
     /**
-     * @notice Initiate a new sale.
-     * @param tokenId NFT token ID of the property.
-     * @param seller  Current owner wallet.
-     * @param buyer   Buyer wallet.
-     * @param price   Sale price (in wei or smallest unit).
-     * @return saleId The created sale ID.
+     * @notice Initiate a sale. Seller must sign immediately.
      */
     function initiateSale(
-        uint256 tokenId,
-        address seller,
-        address buyer,
-        uint256 price
+        uint256 _tokenId,
+        string calldata _propertyCode,
+        address _buyer,
+        uint256 _price
     ) external returns (uint256) {
-        require(seller != address(0) && buyer != address(0), "Invalid addresses");
-        require(seller != buyer, "Seller and buyer must differ");
-        require(landNFT.ownerOf(tokenId) == seller, "Seller is not the owner");
-        require(price > 0, "Price must be positive");
+        require(landNFT.ownerOf(_tokenId) == msg.sender, "Caller is not the owner");
+        
+        // Check encumbrance
+        (,,,bool isEncumbered,,,) = landRegistry.propertyRecords(_propertyCode);
+        require(!isEncumbered, "Property is encumbered and cannot be sold");
 
         uint256 saleId = ++saleCount;
-
         sales[saleId] = Sale({
-            tokenId: tokenId,
-            seller: seller,
-            buyer: buyer,
-            price: price,
+            tokenId: _tokenId,
+            propertyCode: _propertyCode,
+            seller: msg.sender,
+            buyer: _buyer,
+            price: _price,
             status: SaleStatus.INITIATED,
-            sellerSigned: false,
+            sellerSigned: true,
             buyerSigned: false,
+            fundsBlocked: false,
+            authoritySigned: false,
             createdAt: block.timestamp
         });
 
-        emit SaleInitiated(saleId, seller, buyer, tokenId, price);
+        emit SaleInitiated(saleId, _propertyCode, msg.sender, _buyer);
         return saleId;
     }
 
     /**
-     * @notice Sign a sale (buyer or seller).
+     * @notice Buyer signs the sale.
      */
-    function signSale(uint256 saleId) external {
-        Sale storage s = sales[saleId];
-        require(s.status == SaleStatus.INITIATED, "Sale not in INITIATED state");
+    function buyerSign(uint256 _saleId) external {
+        Sale storage s = sales[_saleId];
+        require(s.status == SaleStatus.INITIATED, "Invalid status");
+        require(msg.sender == s.buyer, "Not the buyer");
 
-        if (msg.sender == s.seller) {
-            require(!s.sellerSigned, "Seller already signed");
-            s.sellerSigned = true;
-            emit SaleSigned(saleId, msg.sender, "seller");
-        } else if (msg.sender == s.buyer) {
-            require(!s.buyerSigned, "Buyer already signed");
-            s.buyerSigned = true;
-            emit SaleSigned(saleId, msg.sender, "buyer");
-        } else {
-            revert("Not a party to this sale");
-        }
+        s.buyerSigned = true;
+        s.status = SaleStatus.BUYER_SIGNED;
+        emit BuyerSigned(_saleId);
     }
 
     /**
-     * @notice Authority approves the sale.
-     *         Both buyer and seller must have signed first.
+     * @notice Bank confirms funds are blocked (ASBA-style).
      */
-    function approveSale(uint256 saleId) external onlyRole(AUTHORITY_ROLE) {
-        Sale storage s = sales[saleId];
-        require(s.status == SaleStatus.INITIATED, "Sale not in INITIATED state");
-        require(s.buyerSigned && s.sellerSigned, "Both parties must sign first");
+    function confirmFundsBlocked(uint256 _saleId) external onlyRole(BANK_ROLE) {
+        Sale storage s = sales[_saleId];
+        require(s.status == SaleStatus.BUYER_SIGNED, "Invalid status");
+        require(s.buyerSigned, "Buyer hasn't signed");
 
-        s.status = SaleStatus.APPROVED;
-        emit SaleApproved(saleId, msg.sender);
+        s.fundsBlocked = true;
+        s.status = SaleStatus.FUNDS_BLOCKED;
+        emit FundsBlocked(_saleId);
     }
 
     /**
-     * @notice Complete the sale — transfers NFT from seller to buyer.
-     * @dev    Seller must have approved this contract to transfer the NFT
-     *         (via landNFT.approve(saleContractAddress, tokenId)).
+     * @notice Authority approves the sale after verification.
      */
-    function completeSale(uint256 saleId) external {
-        Sale storage s = sales[saleId];
-        require(s.status == SaleStatus.APPROVED, "Sale must be APPROVED first");
-        require(
-            msg.sender == s.seller || msg.sender == s.buyer || hasRole(AUTHORITY_ROLE, msg.sender),
-            "Not authorized to complete"
-        );
+    function authorityApprove(uint256 _saleId) external onlyRole(AUTHORITY_ROLE) {
+        Sale storage s = sales[_saleId];
+        require(s.status == SaleStatus.FUNDS_BLOCKED, "Funds must be blocked first");
+
+        s.authoritySigned = true;
+        s.status = SaleStatus.AUTHORITY_APPROVED;
+        emit AuthorityApproved(_saleId);
+    }
+
+    /**
+     * @notice Execute the transfer once all signatures are present.
+     */
+    function executeTransfer(uint256 _saleId) external nonReentrant {
+        Sale storage s = sales[_saleId];
+        require(s.status == SaleStatus.AUTHORITY_APPROVED, "Not approved by authority");
+        require(s.sellerSigned && s.buyerSigned && s.fundsBlocked && s.authoritySigned, "Signatures incomplete");
 
         s.status = SaleStatus.COMPLETED;
 
-        // Transfer NFT from seller to buyer
+        // Perform NFT Transfer
+        // Note: Seller must have approved this contract as an operator for the NFT
         landNFT.transferFrom(s.seller, s.buyer, s.tokenId);
 
-        emit SaleCompleted(saleId, s.tokenId);
+        emit SaleCompleted(_saleId);
     }
 
     /**
-     * @notice Cancel a sale. Only parties or authority can cancel.
+     * @notice Cancel a transaction (Admin/Authority/Seller/Buyer if applicable).
      */
-    function cancelSale(uint256 saleId) external {
-        Sale storage s = sales[saleId];
+    function cancelTransaction(uint256 _saleId, string calldata _reason) external {
+        Sale storage s = sales[_saleId];
+        require(s.status != SaleStatus.COMPLETED, "Already completed");
         require(
-            s.status == SaleStatus.INITIATED || s.status == SaleStatus.APPROVED,
-            "Sale already completed or cancelled"
-        );
-        require(
-            msg.sender == s.seller || msg.sender == s.buyer || hasRole(AUTHORITY_ROLE, msg.sender),
-            "Not authorized to cancel"
+            hasRole(AUTHORITY_ROLE, msg.sender) || 
+            msg.sender == s.seller || 
+            msg.sender == s.buyer, 
+            "Unauthorized"
         );
 
         s.status = SaleStatus.CANCELLED;
-        emit SaleCancelled(saleId, msg.sender);
+        emit SaleCancelled(_saleId, _reason);
     }
 
     /**
-     * @notice Get sale details.
+     * @notice Court or Admin forces a freeze on the transaction.
      */
-    function getSale(uint256 saleId)
-        external view returns (
-            uint256 tokenId, address seller, address buyer,
-            uint256 price, SaleStatus status,
-            bool sellerSigned, bool buyerSigned
-        )
-    {
-        Sale storage s = sales[saleId];
-        return (s.tokenId, s.seller, s.buyer, s.price, s.status, s.sellerSigned, s.buyerSigned);
+    function freezeTransaction(uint256 _saleId, string calldata _reason) external onlyRole(AUTHORITY_ROLE) {
+        sales[_saleId].status = SaleStatus.FROZEN;
+        emit SaleFrozen(_saleId, _reason);
     }
 }

@@ -23,6 +23,7 @@ const KYC_STATUS = Object.freeze({
 
 // ── Property Statuses ───────────────────────────────────
 const PROPERTY_STATUS = Object.freeze({
+    PENDING: 'pending',
     ACTIVE: 'active',
     FROZEN: 'frozen',
     UNDER_DISPUTE: 'under_dispute',

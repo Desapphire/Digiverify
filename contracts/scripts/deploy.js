@@ -1,15 +1,5 @@
 /**
- * Deployment Script — Deploys all 3 contracts to Avalanche Fuji.
- *
- * 1. LandNFT        → ERC-721 for land tokens
- * 2. LandRegistry   → Property registrar (gets MINTER_ROLE on LandNFT)
- * 3. SaleContract   → Multi-sig sale workflow (needs NFT approval for transfers)
- *
- * After deployment, grants:
- *   - MINTER_ROLE on LandNFT → LandRegistry
- *   - ADMIN_ROLE  on LandNFT → deployer (for force-transfers)
- *
- * Run: npx hardhat run scripts/deploy.js --network fuji
+ * Deployment Script — Deploys all 4 Government-Grade contracts to Avalanche Fuji.
  */
 
 const { ethers } = require("hardhat");
@@ -40,21 +30,38 @@ async function main() {
     // ── 3. Deploy SaleContract ─────────────────────────────
     console.log("\n3️⃣  Deploying SaleContract...");
     const SaleContract = await ethers.getContractFactory("SaleContract");
-    const saleContract = await SaleContract.deploy(landNFTAddress);
+    const saleContract = await SaleContract.deploy(landNFTAddress, landRegistryAddress);
     await saleContract.waitForDeployment();
     const saleContractAddress = await saleContract.getAddress();
     console.log("   ✅ SaleContract deployed at:", saleContractAddress);
 
-    // ── 4. Grant roles ─────────────────────────────────────
-    console.log("\n4️⃣  Granting roles...");
+    // ── 4. Deploy CourtOverride ────────────────────────────
+    console.log("\n4️⃣  Deploying CourtOverride...");
+    const CourtOverride = await ethers.getContractFactory("CourtOverride");
+    const courtOverride = await CourtOverride.deploy(landNFTAddress, saleContractAddress);
+    await courtOverride.waitForDeployment();
+    const courtOverrideAddress = await courtOverride.getAddress();
+    console.log("   ✅ CourtOverride deployed at:", courtOverrideAddress);
 
-    // Grant MINTER_ROLE to LandRegistry so it can mint NFTs
+    // ── 5. Grant roles ─────────────────────────────────────
+    console.log("\n5️⃣  Granting roles...");
+
+    // LandNFT Roles
     const MINTER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MINTER_ROLE"));
-    const tx1 = await landNFT.grantRole(MINTER_ROLE, landRegistryAddress);
-    await tx1.wait();
-    console.log("   ✅ MINTER_ROLE granted to LandRegistry");
+    const COURT_ROLE = ethers.keccak256(ethers.toUtf8Bytes("COURT_ROLE"));
 
-    // ── 5. Save deployment info ────────────────────────────
+    await (await landNFT.grantRole(MINTER_ROLE, landRegistryAddress)).wait();
+    console.log("   ✅ MINTER_ROLE of LandNFT granted to LandRegistry");
+
+    await (await landNFT.grantRole(COURT_ROLE, courtOverrideAddress)).wait();
+    console.log("   ✅ COURT_ROLE of LandNFT granted to CourtOverride");
+
+    // SaleContract Roles
+    const AUTHORITY_ROLE = ethers.keccak256(ethers.toUtf8Bytes("AUTHORITY_ROLE"));
+    await (await saleContract.grantRole(AUTHORITY_ROLE, courtOverrideAddress)).wait();
+    console.log("   ✅ AUTHORITY_ROLE of SaleContract granted to CourtOverride");
+
+    // ── 6. Save deployment info ────────────────────────────
     const deployment = {
         network: "Avalanche Fuji C-Chain (Testnet)",
         chainId: 43113,
@@ -64,47 +71,37 @@ async function main() {
             LandNFT: landNFTAddress,
             LandRegistry: landRegistryAddress,
             SaleContract: saleContractAddress,
+            CourtOverride: courtOverrideAddress
         },
     };
 
-    // Save to deployments file
     const deploymentsPath = path.join(__dirname, "..", "deployments.json");
     fs.writeFileSync(deploymentsPath, JSON.stringify(deployment, null, 2));
     console.log("\n📄 Deployment info saved to deployments.json");
 
-    // ── 6. Copy ABIs to backend ────────────────────────────
+    // ── 7. Copy ABIs to backend ────────────────────────────
     const backendAbisDir = path.join(__dirname, "..", "..", "backend", "blockchain", "abis");
     if (fs.existsSync(backendAbisDir)) {
-        const contracts = ["LandNFT", "LandRegistry", "SaleContract"];
+        const contracts = ["LandNFT", "LandRegistry", "SaleContract", "CourtOverride"];
         for (const name of contracts) {
-            const artifact = JSON.parse(
-                fs.readFileSync(
-                    path.join(__dirname, "..", "artifacts", "contracts", `${name}.sol`, `${name}.json`),
-                    "utf8"
-                )
-            );
-            fs.writeFileSync(
-                path.join(backendAbisDir, `${name}.json`),
-                JSON.stringify(artifact.abi, null, 2)
-            );
+            const artifactPath = path.join(__dirname, "..", "artifacts", "contracts", `${name}.sol`, `${name}.json`);
+            if (fs.existsSync(artifactPath)) {
+                const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));
+                fs.writeFileSync(path.join(backendAbisDir, `${name}.json`), JSON.stringify(artifact.abi, null, 2));
+            }
         }
         console.log("📋 ABIs copied to backend/blockchain/abis/");
     }
 
-    // ── Summary ────────────────────────────────────────────
+    // summary
     console.log("\n" + "═".repeat(60));
-    console.log("  DEPLOYMENT COMPLETE");
+    console.log("  GOVERNMENT-GRADE DEPLOYMENT COMPLETE");
     console.log("═".repeat(60));
     console.log(`  LandNFT       : ${landNFTAddress}`);
     console.log(`  LandRegistry  : ${landRegistryAddress}`);
     console.log(`  SaleContract  : ${saleContractAddress}`);
+    console.log(`  CourtOverride : ${courtOverrideAddress}`);
     console.log("═".repeat(60));
-    console.log("\n📝 Update your backend/.env with:");
-    console.log(`  LAND_NFT_ADDRESS=${landNFTAddress}`);
-    console.log(`  LAND_REGISTRY_ADDRESS=${landRegistryAddress}`);
-    console.log(`  SALE_CONTRACT_ADDRESS=${saleContractAddress}`);
-    console.log(`  SIGNER_PRIVATE_KEY=${process.env.DEPLOYER_PRIVATE_KEY}`);
-    console.log("");
 }
 
 main()

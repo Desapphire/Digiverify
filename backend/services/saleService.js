@@ -7,6 +7,8 @@ const Property = require('../models/Property');
 const User = require('../models/User');
 const { withTransaction } = require('../config/db');
 const { SALE_STATUS, SALE_STATE_TRANSITIONS, SALE_COMPLETION_REQUIREMENTS } = require('../config/constants');
+const contractService = require('../blockchain/contractService');
+const { ethers } = require('ethers');
 const AppError = require('../utils/AppError');
 
 // ── State Machine ───────────────────────────────────────
@@ -59,7 +61,35 @@ const initiateSale = async ({ propertyId, buyerWallet, salePrice }, sellerWallet
     const activeSale = await SaleTransaction.findActiveByProperty(propertyId);
     if (activeSale) throw new AppError('An active sale already exists for this property.', 409);
 
-    return SaleTransaction.create({ propertyId, buyerWallet, sellerWallet, salePrice });
+    const transaction = await SaleTransaction.create({ propertyId, buyerWallet, sellerWallet, salePrice });
+
+    // The initiator (seller) is considered signed by default
+    await SaleTransaction.setSellerSigned(transaction.id);
+
+    let txHash = null;
+    // ── Blockchain: Register sale on-chain ──────────────────
+    if (property.nftTokenId) {
+        try {
+            console.log(`🔗 Initiating on-chain sale for NFT ${property.nftTokenId}...`);
+            const result = await contractService.registerOnChainSale(
+                property.nftTokenId,
+                property.propertyCode,
+                buyerWallet,
+                ethers.parseUnits(salePrice.toString(), 'ether')
+            );
+
+            txHash = result.txHash;
+            if (result.saleId) {
+                await SaleTransaction.setOnChainId(transaction.id, result.saleId);
+                await SaleTransaction.setTxHash(transaction.id, txHash);
+                console.log(`✅ On-chain sale registered: ID ${result.saleId}, Tx: ${txHash}`);
+            }
+        } catch (err) {
+            console.error('⚠️ On-chain registration failed:', err.message);
+        }
+    }
+
+    return { transaction, txHash };
 };
 
 /**
@@ -78,7 +108,7 @@ const signSale = async (saleId, signerWallet, signerRole, signatureHash) => {
     }
 
     return withTransaction(async (client) => {
-        // Record approval
+        // Record approval in DB
         await SaleTransaction.addApproval({
             transactionId: saleId,
             signerWallet,
@@ -86,20 +116,34 @@ const signSale = async (saleId, signerWallet, signerRole, signatureHash) => {
             signatureHash,
         }, client);
 
-        // Set signed flag
+        let txHash = null;
+        // set signed flag in DB
         if (signerRole === 'buyer') {
             await SaleTransaction.setBuyerSigned(saleId, client);
+
+            // ── Blockchain: Buyer sign on-chain ──────────────
+            if (sale.onChainId) {
+                try {
+                    const result = await contractService.buyerSignOnChain(sale.onChainId);
+                    txHash = result.hash;
+                    console.log(`✅ Buyer signed on-chain for SaleID: ${sale.onChainId}, Tx: ${txHash}`);
+                } catch (err) {
+                    console.error('⚠️ On-chain buyer sign failed:', err.message);
+                }
+            }
         } else if (signerRole === 'seller') {
             await SaleTransaction.setSellerSigned(saleId, client);
+            // On-chain seller sign happened during initiateSale
         }
 
         // If buyer just signed, transition to BUYER_SIGNED
         if (signerRole === 'buyer' && sale.status === SALE_STATUS.INITIATED) {
             validateTransition(sale.status, SALE_STATUS.BUYER_SIGNED);
-            return SaleTransaction.updateStatus(saleId, SALE_STATUS.BUYER_SIGNED, client);
+            await SaleTransaction.updateStatus(saleId, SALE_STATUS.BUYER_SIGNED, client);
         }
 
-        return SaleTransaction.findById(saleId);
+        const updatedSale = await SaleTransaction.findById(saleId, client);
+        return { sale: updatedSale, txHash };
     });
 };
 
@@ -137,22 +181,31 @@ const completeSale = async (saleId) => {
     if (!sale) throw new AppError('Sale transaction not found.', 404);
 
     if (!canComplete(sale)) {
-        throw new AppError(
-            'Cannot complete sale. Missing pre-conditions: ' +
-            `buyerSigned=${sale.buyerSigned}, sellerSigned=${sale.sellerSigned}, ` +
-            `authoritySigned=${sale.authoritySigned}, fundsBlocked=${sale.fundsBlocked}`,
-            400
-        );
+        throw new AppError('Cannot complete sale. Missing signatures or funds block.', 400);
     }
 
     validateTransition(sale.status, SALE_STATUS.COMPLETED);
 
     return withTransaction(async (client) => {
-        // Transfer property ownership
+        // 1. Blockchain: Execute Final Transfer
+        let txHash = null;
+        try {
+            if (sale.onChainId) {
+                console.log(`🔗 Executing on-chain execution for SaleID ${sale.onChainId}...`);
+                const result = await contractService.completeOnChainSale(sale.onChainId);
+                txHash = result.txHash;
+                console.log(`✅ On-chain sale completed. Tx: ${txHash}`);
+            }
+        } catch (err) {
+            console.error('⚠️ On-chain execution failed:', err.message);
+        }
+
+        // 2. Transfer property ownership in DB
         await Property.updateOwner(sale.propertyId, sale.buyerWallet, client);
 
-        // Mark sale completed
-        return SaleTransaction.updateStatus(saleId, SALE_STATUS.COMPLETED, client);
+        // 3. Mark sale completed in DB
+        const updatedSale = await SaleTransaction.updateStatus(saleId, SALE_STATUS.COMPLETED, client);
+        return { sale: updatedSale, txHash };
     });
 };
 
