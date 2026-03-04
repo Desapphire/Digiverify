@@ -32,7 +32,7 @@ const requestFundBlock = catchAsync(async (req, res) => {
  * PUT /api/bank/fund-block/:id/confirm
  */
 const confirmFundBlock = catchAsync(async (req, res) => {
-    const fundBlock = await bankService.confirmFundBlock(
+    const { confirmed, txHash } = await bankService.confirmFundBlock(
         req.params.id,
         req.body.bankReferenceId,
         req.user.id
@@ -41,7 +41,7 @@ const confirmFundBlock = catchAsync(async (req, res) => {
     await auditService.log({
         actionType: AUDIT_ACTIONS.FUND_BLOCK_CONFIRMED,
         req,
-        entityId: fundBlock.id,
+        entityId: confirmed.id,
         entityType: 'fund_block',
         metadata: { bankReferenceId: req.body.bankReferenceId },
     });
@@ -49,7 +49,8 @@ const confirmFundBlock = catchAsync(async (req, res) => {
     return res.status(200).json({
         success: true,
         message: 'Fund block confirmed.',
-        data: fundBlock,
+        data: confirmed,
+        blockchainTxHash: txHash
     });
 });
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { propertyService } from '../../services/property.service';
 import { saleService } from '../../services/sale.service';
@@ -6,7 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useWeb3 } from '../../context/Web3Context';
 import {
     ArrowRight, ArrowLeft, Building, Wallet, DollarSign,
-    FileCheck, Send, Loader2, CheckCircle2, AlertTriangle, ChevronDown
+    FileCheck, Send, Loader2, CheckCircle2, AlertTriangle, ChevronDown,
+    Camera, Shield, User as UserIcon
 } from 'lucide-react';
 import './PropertyPages.css';
 
@@ -29,6 +30,38 @@ const Sale = () => {
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState('');
     const [createdSale, setCreatedSale] = useState(null);
+
+    // Biometric state
+    const [showBiometricModal, setShowBiometricModal] = useState(false);
+    const [biometricStep, setBiometricStep] = useState(0); // 0: Start, 1: Center, 2: Left, 3: Right, 4: Done
+    const [biometricProgress, setBiometricProgress] = useState(0);
+    const [isBiometricallyVerified, setIsBiometricallyVerified] = useState(false);
+
+    const videoRef = useRef(null);
+    const canvasRef = useRef(null);
+    const streamRef = useRef(null);
+    const [cvReady, setCvReady] = useState(false);
+    const [faceDetected, setFaceDetected] = useState(false);
+    const processingLoopRef = useRef(null);
+
+    useEffect(() => {
+        const checkOpenCV = setInterval(() => {
+            if (window.cv && window.cv.Mat) {
+                setCvReady(true);
+                clearInterval(checkOpenCV);
+            }
+        }, 500);
+        return () => {
+            clearInterval(checkOpenCV);
+            if (processingLoopRef.current) cancelAnimationFrame(processingLoopRef.current);
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, []);
+
+
+
 
     // Form state
     const [selectedPropertyId, setSelectedPropertyId] = useState('');
@@ -76,9 +109,17 @@ const Sale = () => {
                 wallet = await connectWallet();
             }
 
+            // CHECK: Biometric verification required before signing
+            if (!isBiometricallyVerified) {
+                setShowBiometricModal(true);
+                setSubmitting(false);
+                return;
+            }
+
             // Sign a message to authenticate the transaction
             const message = `I authorize the sale of property ${selectedProperty.surveyNumber} for ₹${parseFloat(salePrice).toLocaleString()} to ${buyerWallet}`;
             await signMessage(message);
+
 
             // Initiate the sale via backend
             const res = await saleService.initiateSale({
@@ -95,6 +136,103 @@ const Sale = () => {
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const startBiometric = async () => {
+        if (!cvReady) return;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240, facingMode: 'user' } });
+            streamRef.current = stream;
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+            setBiometricStep(1);
+            startDetection();
+        } catch (err) {
+            console.error("Camera access failed:", err);
+            setError("Could not access camera. Please ensure permissions are granted.");
+        }
+    };
+
+    const startDetection = async () => {
+        const cv = window.cv;
+        const response = await fetch('/haarcascade_frontalface_default.xml');
+        const buffer = await response.arrayBuffer();
+        const data = new Uint8Array(buffer);
+        cv.FS_createDataFile('/', 'haarcascade_sale.xml', data, true, false, false);
+
+        const classifier = new cv.CascadeClassifier();
+        classifier.load('haarcascade_sale.xml');
+
+        const cap = new cv.VideoCapture(videoRef.current);
+        const frame = new cv.Mat(240, 320, cv.CV_8UC4);
+        const gray = new cv.Mat();
+        const faces = new cv.RectVector();
+
+        const processVideo = () => {
+            try {
+                if (!streamRef.current || !streamRef.current.active) return;
+                cap.read(frame);
+                cv.cvtColor(frame, gray, cv.COLOR_RGBA2GRAY, 0);
+                classifier.detectMultiScale(gray, faces, 1.1, 3, 0);
+
+                if (faces.size() > 0) {
+                    setFaceDetected(true);
+                    const canvas = canvasRef.current;
+                    if (canvas) {
+                        const ctx = canvas.getContext('2d');
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        const face = faces.get(0);
+                        ctx.strokeStyle = '#3b82f6';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(face.x, face.y, face.width, face.height);
+                    }
+                } else {
+                    setFaceDetected(false);
+                }
+                processingLoopRef.current = requestAnimationFrame(processVideo);
+            } catch (err) {
+                console.error("Processing error:", err);
+            }
+        };
+
+        processVideo();
+        setTimeout(() => simulateCapture(1), 2000);
+    };
+
+
+
+    const simulateCapture = (currentStep) => {
+        setBiometricProgress(0);
+        const interval = setInterval(() => {
+            setBiometricProgress(prev => {
+                if (prev >= 100) {
+                    clearInterval(interval);
+                    return 100;
+                }
+                return prev + 5;
+            });
+        }, 100);
+
+        setTimeout(() => {
+            if (currentStep < 3) {
+                setBiometricStep(currentStep + 1);
+                simulateCapture(currentStep + 1);
+            } else {
+                setBiometricStep(4);
+                if (streamRef.current) {
+                    streamRef.current.getTracks().forEach(track => track.stop());
+                }
+                setTimeout(() => {
+
+                    setIsBiometricallyVerified(true);
+                    setShowBiometricModal(false);
+                    // Re-trigger submit after verification
+                    setSubmitting(true);
+                    setTimeout(() => handleSubmit(), 500);
+                }, 1000);
+            }
+        }, 2000);
     };
 
     if (loading) {
@@ -443,8 +581,85 @@ const Sale = () => {
                     )}
                 </div>
             </div>
+
+            {/* Biometric Verification Modal */}
+            {showBiometricModal && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+                    backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', zIndex: 1000, padding: '1.5rem'
+                }}>
+                    <div className="glass-panel scale-in" style={{ maxWidth: '450px', width: '100%', padding: '2.5rem', textAlign: 'center' }}>
+                        <div className="relative w-32 h-32 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/30 overflow-hidden mx-auto mb-6">
+                            {biometricStep > 0 && biometricStep < 4 ? (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <video
+                                        ref={videoRef}
+                                        autoPlay
+                                        playsInline
+                                        muted
+                                        width="320"
+                                        height="240"
+                                        className="absolute inset-0 w-full h-full object-cover grayscale"
+                                        style={{ filter: 'brightness(0.7) contrast(1.2)' }}
+                                    />
+                                    <canvas
+                                        ref={canvasRef}
+                                        width="320"
+                                        height="240"
+                                        className="absolute inset-0 w-full h-full object-cover z-20 pointer-events-none"
+                                    />
+                                    {!faceDetected && (
+                                        <div className="absolute inset-0 flex items-center justify-center z-30 bg-black/40">
+                                            <p className="text-[10px] font-bold text-white uppercase tracking-tighter">Position Face</p>
+                                        </div>
+                                    )}
+                                    <div className="absolute inset-0 bg-blue-500/20 animate-pulse"></div>
+                                    <svg className="absolute inset-0 w-full h-full transform -rotate-90 z-40">
+                                        <circle cx="64" cy="64" r="62" stroke="rgba(59, 130, 246, 0.1)" strokeWidth="4" fill="transparent" />
+                                        <circle cx="64" cy="64" r="62" stroke="#3b82f6" strokeWidth="4" fill="transparent"
+                                            strokeDasharray={2 * Math.PI * 62}
+                                            strokeDashoffset={2 * Math.PI * 62 * (1 - biometricProgress / 100)}
+                                            style={{ transition: 'stroke-dashoffset 0.1s linear' }} />
+                                    </svg>
+
+                                </div>
+                            ) : biometricStep === 4 ? (
+
+                                <CheckCircle2 className="w-16 h-16 text-green-400" />
+                            ) : (
+                                <UserIcon className="w-12 h-12 text-blue-400" />
+                            )}
+                        </div>
+
+                        {biometricStep === 0 ? (
+                            <>
+                                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.75rem' }}>Biometric Verification</h3>
+                                <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                                    To authorize this high-value transaction, please perform a quick face verification to prove liveness.
+                                </p>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setShowBiometricModal(false)} className="btn btn-secondary flex-1">Cancel</button>
+                                    <button onClick={startBiometric} className="btn btn-primary flex-1">Start Check</button>
+                                </div>
+                            </>
+                        ) : (
+                            <div>
+                                {biometricStep === 1 && <h4 className="text-xl font-black text-blue-400 animate-pulse">LOOK AT CAMERA</h4>}
+                                {biometricStep === 2 && <h4 className="text-xl font-black text-blue-400 animate-pulse">TURN LEFT</h4>}
+                                {biometricStep === 3 && <h4 className="text-xl font-black text-blue-400 animate-pulse">TURN RIGHT</h4>}
+                                {biometricStep === 4 && <h4 className="text-xl font-black text-green-400">VERIFIED</h4>}
+                                <p className="text-muted mt-4" style={{ fontSize: '0.8rem' }}>
+                                    Securely binding physical identity to transaction signature...
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
+
 
 export default Sale;

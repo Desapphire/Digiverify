@@ -15,7 +15,7 @@ const { ROLES } = require('../config/constants');
 router.post(
     '/fund-block',
     authenticate,
-    authorize(ROLES.BUYER),
+    authorize(ROLES.USER),
     validate(requestFundBlockSchema),
     requestFundBlock
 );
@@ -23,7 +23,7 @@ router.post(
 router.get(
     '/fund-block/transaction/:transactionId',
     authenticate,
-    authorize(ROLES.BUYER, ROLES.SELLER, ROLES.BANK_ADMIN, ROLES.AUTHORITY, ROLES.SUPER_ADMIN),
+    authorize(ROLES.USER, ROLES.BANK_ADMIN, ROLES.AUTHORITY, ROLES.SUPER_ADMIN),
     getFundBlocks
 );
 

@@ -27,6 +27,9 @@ DO $$ BEGIN
   -- properties table migrations
   ALTER TABLE properties ADD COLUMN IF NOT EXISTS nft_token_id VARCHAR(66);
 
+  -- sale_transactions table migrations
+  ALTER TABLE sale_transactions ADD COLUMN IF NOT EXISTS on_chain_id VARCHAR(66);
+
   -- audit_logs table migrations
   ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_id UUID;
   ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_type VARCHAR(30);
@@ -105,8 +108,8 @@ CREATE TABLE IF NOT EXISTS properties (
     owner_wallet        VARCHAR(42) NOT NULL,
     nft_token_id        VARCHAR(66),              -- On-chain NFT token ID
     encumbrance_status  BOOLEAN NOT NULL DEFAULT FALSE,
-    status              VARCHAR(20) NOT NULL DEFAULT 'active'
-                            CHECK (status IN ('active','frozen','under_dispute')),
+    status              VARCHAR(20) NOT NULL DEFAULT 'pending'
+                            CHECK (status IN ('pending','active','frozen','under_dispute')),
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 

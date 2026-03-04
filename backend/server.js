@@ -199,12 +199,14 @@ const startServer = async () => {
 
         // Handle uncaught exceptions
         process.on('uncaughtException', (err) => {
-            console.error('❌ Uncaught Exception:', err);
+            console.error('\n❌ CRITICAL ERROR (Uncaught Exception):');
+            console.error(err.stack);
             shutdown('uncaughtException');
         });
 
-        process.on('unhandledRejection', (err) => {
-            console.error('❌ Unhandled Rejection:', err);
+        process.on('unhandledRejection', (reason, promise) => {
+            console.error('\n❌ CRITICAL ERROR (Unhandled Rejection):');
+            console.error(reason);
             shutdown('unhandledRejection');
         });
 

@@ -11,7 +11,7 @@ const catchAsync = require('../utils/catchAsync');
  * PUT /api/authority/property/:id/approve
  */
 const approveProperty = catchAsync(async (req, res) => {
-    const property = await authorityService.approveProperty(req.params.id);
+    const { property, txHash } = await authorityService.approveProperty(req.params.id);
 
     await auditService.log({
         actionType: AUDIT_ACTIONS.PROPERTY_APPROVED,
@@ -24,6 +24,7 @@ const approveProperty = catchAsync(async (req, res) => {
         success: true,
         message: 'Property approved.',
         data: property,
+        blockchainTxHash: txHash
     });
 });
 
@@ -31,7 +32,7 @@ const approveProperty = catchAsync(async (req, res) => {
  * POST /api/authority/sale/:id/approve
  */
 const approveSale = catchAsync(async (req, res) => {
-    const sale = await authorityService.approveSaleTransaction(
+    const { sale, txHash } = await authorityService.approveSaleTransaction(
         req.params.id,
         req.user.walletAddress,
         req.body.signatureHash
@@ -48,6 +49,7 @@ const approveSale = catchAsync(async (req, res) => {
         success: true,
         message: 'Sale approved by authority.',
         data: sale,
+        blockchainTxHash: txHash
     });
 });
 

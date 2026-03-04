@@ -2,10 +2,11 @@
   "network": "Avalanche Fuji C-Chain (Testnet)",
   "chainId": 43113,
   "deployer": "0xf19384D7e862253b3454f4DB200464390b296062",
-  "deployedAt": "2026-03-02T12:31:34.735Z",
+  "deployedAt": "2026-03-04T08:28:56.360Z",
   "contracts": {
-    "LandNFT": "0x6E8953f0288820bDB77CA89eaAF6c54Ff1250300",
-    "LandRegistry": "0x712a073f1849456b13c983195a62fc79D50F52B8",
-    "SaleContract": "0x4bC7B4A62b7a97c40Bf4F028EbF043Fb0AbB7999"
+    "LandNFT": "0xE94d65289Cc088f597C077938A6D7Fc0974196fe",
+    "LandRegistry": "0x9c063B90A9ee3649BA992E2eB6105329bF4556a7",
+    "SaleContract": "0xd8fb2Fab4b789334069039c26957E235c5d94B66",
+    "CourtOverride": "0x4dc533BBf8a059bD7c4F539568bAc99E7AFD9519"
   }
 }
