@@ -1,134 +1,325 @@
-import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { adminService } from '../../services/admin.service';
 import {
-    Activity, ArrowDownLeft, ArrowUpRight, CheckCircle2, XCircle,
-    Zap, ShieldAlert, Fingerprint, Banknote, ShieldCheck
+    Activity, CheckCircle2, XCircle, Loader2,
+    RefreshCcw, Search, Wallet, ArrowRight,
+    ChevronDown, ChevronUp, ShieldCheck, Clock,
+    Ban, Landmark, Hash, FileCheck
 } from 'lucide-react';
 
-const PremiumSaleApproval = () => {
-    const { id } = useParams();
+const SaleApproval = () => {
     const navigate = useNavigate();
+    const [sales, setSales] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState(null);
+    const [filter, setFilter] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [expandedSale, setExpandedSale] = useState(null);
+
+    const fetchSales = async () => {
+        setLoading(true);
+        try {
+            const res = await adminService.listSales();
+            setSales(res.data?.data || []);
+        } catch (err) {
+            console.error('Failed to fetch sales:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { fetchSales(); }, []);
+
+    const handleApprove = async (saleId) => {
+        setActionLoading(saleId);
+        try {
+            await adminService.approveSale(saleId);
+            fetchSales();
+        } catch (err) {
+            alert(err.response?.data?.message || 'Approval failed');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleReject = async (saleId) => {
+        if (!window.confirm('Are you sure you want to reject this sale transaction?')) return;
+        setActionLoading(saleId);
+        try {
+            await adminService.rejectSale(saleId);
+            fetchSales();
+        } catch (err) {
+            alert(err.response?.data?.message || 'Rejection failed');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleComplete = async (saleId) => {
+        if (!window.confirm('Complete this sale? This will transfer ownership on-chain.')) return;
+        setActionLoading(saleId);
+        try {
+            await adminService.completeSale(saleId);
+            fetchSales();
+        } catch (err) {
+            alert(err.response?.data?.message || 'Completion failed');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const shortenWallet = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '—';
+    const shortenId = (id) => id ? id.slice(0, 8) : '—';
+
+    const statusStyle = (status) => {
+        switch (status) {
+            case 'completed': return { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: '#22c55e' };
+            case 'cancelled': case 'expired': return { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#ef4444' };
+            case 'authority_approved': return { bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.2)', text: '#3b82f6' };
+            case 'funds_blocked': return { bg: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.2)', text: '#a78bfa' };
+            default: return { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.2)', text: '#eab308' };
+        }
+    };
+
+    const filteredSales = sales.filter(s => {
+        // Status filter
+        if (filter === 'pending') {
+            if (s.status === 'completed' || s.status === 'cancelled' || s.status === 'expired') return false;
+        } else if (filter === 'completed') {
+            if (s.status !== 'completed') return false;
+        } else if (filter === 'rejected') {
+            if (s.status !== 'cancelled') return false;
+        }
+        // Text search
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+            (s.id || '').toLowerCase().includes(q) ||
+            (s.sellerWallet || '').toLowerCase().includes(q) ||
+            (s.buyerWallet || '').toLowerCase().includes(q) ||
+            (s.propertyId || '').toLowerCase().includes(q)
+        );
+    });
+
+    const FILTERS = [
+        { key: '', label: 'All' },
+        { key: 'pending', label: 'Active/Pending' },
+        { key: 'completed', label: 'Completed' },
+        { key: 'rejected', label: 'Cancelled' },
+    ];
+
+    const CheckItem = ({ checked, label, sub }) => (
+        <div className="flex items-center gap-3" style={{ padding: '0.6rem 0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.04)' }}>
+            {checked
+                ? <CheckCircle2 size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
+                : <Clock size={16} style={{ color: 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
+            }
+            <div>
+                <p style={{ fontSize: '0.82rem', fontWeight: 600, color: checked ? 'white' : 'rgba(255,255,255,0.4)' }}>{label}</p>
+                {sub && <p style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)' }}>{sub}</p>}
+            </div>
+        </div>
+    );
 
     return (
-        <div className="dashboard-container w-full min-h-screen relative" style={{ background: '#090514' }}>
-            {/* Background Effects */}
-            <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-purple-900/10 rounded-full blur-[120px]"></div>
-                <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] bg-indigo-900/10 rounded-full blur-[120px]"></div>
+        <div className="dashboard-container">
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div>
+                    <h1 className="dashboard-title">
+                        Sale Transaction <span className="text-gradient">Approval</span>
+                    </h1>
+                    <p className="text-muted mt-2" style={{ fontSize: '0.9rem' }}>
+                        Review, approve, or reject property sale transactions.
+                    </p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => navigate('/authority')} className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>← Back</button>
+                    <button onClick={fetchSales} className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}><RefreshCcw size={14} /> Refresh</button>
+                </div>
             </div>
 
-            <div className="relative z-10 container-lg">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
-                    <div>
-                        <div className="flex items-center gap-3 mb-1">
-                            <div className="w-8 h-8 rounded bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
-                                <Zap size={16} className="text-purple-400" />
-                            </div>
-                            <h1 className="text-2xl font-bold tracking-tight text-white">
-                                Transaction <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-500">Validation System</span>
-                            </h1>
-                        </div>
-                        <p className="text-white/40 text-sm flex items-center gap-2">
-                            <span className="font-mono text-xs px-2 py-0.5 rounded bg-black/40 border border-white/10">{id || 'TXN-9028A-F8'}</span>
-                            Awaiting Authority Clearance
-                        </p>
-                    </div>
-                    <button onClick={() => navigate(-1)} className="px-4 py-2 rounded border border-white/10 text-white/60 hover:text-white hover:bg-white/5 transition-colors text-sm font-medium">
-                        Return
-                    </button>
+            {/* Filters + Search */}
+            <div className="glass-panel p-4 mb-6" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    {FILTERS.map(f => (
+                        <button key={f.key} onClick={() => setFilter(f.key)} style={{
+                            padding: '0.4rem 1rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 700,
+                            border: filter === f.key ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(255,255,255,0.05)',
+                            background: filter === f.key ? 'rgba(220,38,38,0.12)' : 'rgba(0,0,0,0.2)',
+                            color: filter === f.key ? '#fca5a5' : 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                        }}>{f.label}</button>
+                    ))}
                 </div>
+                <div style={{ position: 'relative', minWidth: 220 }}>
+                    <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+                    <input type="text" placeholder="Search by ID, wallet, property..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                        className="input-premium" style={{ paddingLeft: 34, fontSize: '0.82rem', padding: '0.5rem 0.75rem 0.5rem 34px' }} />
+                </div>
+            </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left Column - Verifications */}
-                    <div className="lg:col-span-1 space-y-6">
-                        <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-indigo-500"></div>
+            {/* Count */}
+            <div style={{ marginBottom: '1rem', fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)' }}>
+                {loading ? 'Loading...' : `${filteredSales.length} transaction${filteredSales.length !== 1 ? 's' : ''} found`}
+            </div>
 
-                            <h3 className="text-sm font-bold text-white/80 uppercase tracking-widest mb-6 flex items-center gap-2">
-                                <ShieldCheck size={16} className="text-purple-400" /> Critical Checks
-                            </h3>
+            {/* Sale List */}
+            {loading ? (
+                <div className="glass-panel p-8 flex items-center justify-center">
+                    <Loader2 size={32} className="animate-spin" style={{ color: '#ef4444' }} />
+                </div>
+            ) : filteredSales.length === 0 ? (
+                <div className="glass-panel p-8 flex flex-col items-center justify-center" style={{ opacity: 0.5 }}>
+                    <Activity size={48} style={{ marginBottom: '1rem', color: 'rgba(255,255,255,0.3)' }} />
+                    <p style={{ color: 'rgba(255,255,255,0.4)' }}>No sale transactions match the current filter.</p>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {filteredSales.map(tx => {
+                        const sc = statusStyle(tx.status);
+                        const isExpanded = expandedSale === tx.id;
+                        const isActing = actionLoading === tx.id;
+                        const canApprove = tx.fundsBlocked && !tx.authoritySigned && tx.status !== 'completed' && tx.status !== 'cancelled';
+                        const canComplete = tx.authoritySigned && tx.buyerSigned && tx.sellerSigned && tx.fundsBlocked && tx.status !== 'completed' && tx.status !== 'cancelled';
+                        const canReject = tx.status !== 'completed' && tx.status !== 'cancelled';
 
-                            <div className="space-y-4">
-                                {[
-                                    { label: 'Asset Active Status', val: true },
-                                    { label: 'Seller Ownership Verified', val: true },
-                                    { label: 'Zero Encumbrance Scan', val: true },
-                                    { label: 'Fiat Escrow Confirmed', val: true }
-                                ].map((chk, i) => (
-                                    <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
-                                        <span className="text-sm font-medium text-white/60">{chk.label}</span>
-                                        <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
-                                            <CheckCircle2 size={12} className="text-emerald-400" />
+                        return (
+                            <div key={tx.id} className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
+                                {/* Main Row */}
+                                <div onClick={() => setExpandedSale(isExpanded ? null : tx.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', cursor: 'pointer' }}>
+                                    <div className="flex items-center gap-4">
+                                        <div style={{
+                                            width: 44, height: 44, borderRadius: '12px',
+                                            background: sc.bg, border: `1px solid ${sc.border}`,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            color: sc.text, flexShrink: 0,
+                                        }}>
+                                            <Activity size={20} />
+                                        </div>
+                                        <div>
+                                            <p style={{ fontWeight: 700, color: 'white', fontSize: '0.92rem' }}>
+                                                Sale #{shortenId(tx.id)}
+                                                <span style={{ fontWeight: 600, color: '#a78bfa', marginLeft: 10, fontSize: '0.88rem' }}>
+                                                    ₹{tx.salePrice?.toLocaleString()}
+                                                </span>
+                                            </p>
+                                            <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
+                                                <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
+                                                    {shortenWallet(tx.sellerWallet)}
+                                                </span>
+                                                <ArrowRight size={11} style={{ color: 'rgba(255,255,255,0.2)' }} />
+                                                <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
+                                                    {shortenWallet(tx.buyerWallet)}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                ))}
+
+                                    <div className="flex items-center gap-3">
+                                        {/* Signing indicators */}
+                                        <div className="flex items-center gap-1">
+                                            <span title="Buyer Signed" style={{ width: 8, height: 8, borderRadius: '50%', background: tx.buyerSigned ? '#22c55e' : 'rgba(255,255,255,0.1)', display: 'inline-block' }}></span>
+                                            <span title="Seller Signed" style={{ width: 8, height: 8, borderRadius: '50%', background: tx.sellerSigned ? '#22c55e' : 'rgba(255,255,255,0.1)', display: 'inline-block' }}></span>
+                                            <span title="Authority Signed" style={{ width: 8, height: 8, borderRadius: '50%', background: tx.authoritySigned ? '#ef4444' : 'rgba(255,255,255,0.1)', display: 'inline-block' }}></span>
+                                            <span title="Funds Blocked" style={{ width: 8, height: 8, borderRadius: '50%', background: tx.fundsBlocked ? '#a78bfa' : 'rgba(255,255,255,0.1)', display: 'inline-block' }}></span>
+                                        </div>
+
+                                        {/* Status Badge */}
+                                        <span style={{
+                                            fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase',
+                                            letterSpacing: '0.04em', padding: '3px 10px', borderRadius: '9999px',
+                                            background: sc.bg, border: `1px solid ${sc.border}`, color: sc.text,
+                                        }}>
+                                            {tx.status?.replace(/_/g, ' ') || 'pending'}
+                                        </span>
+
+                                        {/* Actions */}
+                                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                            {canApprove && (
+                                                <button onClick={() => handleApprove(tx.id)} disabled={isActing} style={{
+                                                    padding: '0.35rem 0.7rem', borderRadius: '0.5rem', fontSize: '0.7rem', fontWeight: 700,
+                                                    background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)',
+                                                    display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', opacity: isActing ? 0.5 : 1,
+                                                }}>
+                                                    {isActing ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />} Approve
+                                                </button>
+                                            )}
+                                            {canComplete && (
+                                                <button onClick={() => handleComplete(tx.id)} disabled={isActing} style={{
+                                                    padding: '0.35rem 0.7rem', borderRadius: '0.5rem', fontSize: '0.7rem', fontWeight: 700,
+                                                    background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)',
+                                                    display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', opacity: isActing ? 0.5 : 1,
+                                                }}>
+                                                    <FileCheck size={12} /> Complete
+                                                </button>
+                                            )}
+                                            {canReject && (
+                                                <button onClick={() => handleReject(tx.id)} disabled={isActing} className="btn btn-danger" style={{
+                                                    padding: '0.35rem 0.7rem', fontSize: '0.7rem', opacity: isActing ? 0.5 : 1,
+                                                }}>
+                                                    <XCircle size={12} /> Reject
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {isExpanded ? <ChevronUp size={16} style={{ color: 'rgba(255,255,255,0.3)' }} /> : <ChevronDown size={16} style={{ color: 'rgba(255,255,255,0.3)' }} />}
+                                    </div>
+                                </div>
+
+                                {/* Expanded */}
+                                {isExpanded && (
+                                    <div style={{ padding: '0 1.25rem 1.25rem', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '1rem' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                            {/* Details */}
+                                            <div>
+                                                <h4 style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(255,255,255,0.3)', marginBottom: '0.75rem' }}>Transaction Details</h4>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                                    <DetailField label="Transaction ID" value={tx.id} mono />
+                                                    <DetailField label="Property ID" value={shortenId(tx.propertyId)} mono />
+                                                    <DetailField label="Sale Price" value={`₹${tx.salePrice?.toLocaleString()}`} />
+                                                    <DetailField label="Status" value={tx.status?.replace(/_/g, ' ').toUpperCase()} />
+                                                    <DetailField label="Seller Wallet" value={tx.sellerWallet || '—'} mono />
+                                                    <DetailField label="Buyer Wallet" value={tx.buyerWallet || '—'} mono />
+                                                    {tx.txHash && <DetailField label="Tx Hash" value={tx.txHash} mono />}
+                                                    <DetailField label="Created" value={tx.createdAt ? new Date(tx.createdAt).toLocaleString() : '—'} />
+                                                    {tx.expiryAt && <DetailField label="Expires" value={new Date(tx.expiryAt).toLocaleString()} />}
+                                                </div>
+                                            </div>
+
+                                            {/* Checklist */}
+                                            <div>
+                                                <h4 style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(255,255,255,0.3)', marginBottom: '0.75rem' }}>Completion Checklist</h4>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                    <CheckItem checked={tx.buyerSigned} label="Buyer Signed" sub="Digital signature from buyer" />
+                                                    <CheckItem checked={tx.sellerSigned} label="Seller Signed" sub="Digital signature from seller" />
+                                                    <CheckItem checked={tx.fundsBlocked} label="Funds Blocked (ASBA)" sub="Bank confirmed fund reservation" />
+                                                    <CheckItem checked={tx.authoritySigned} label="Authority Approved" sub="Government authority verification" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    </div>
-
-                    {/* Right Column - Data & Actions */}
-                    <div className="lg:col-span-2 space-y-6">
-                        <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
-                            <h3 className="text-sm font-bold text-white/80 uppercase tracking-widest mb-6 border-b border-white/5 pb-4">
-                                Contract Matrix
-                            </h3>
-
-                            <div className="grid grid-cols-2 gap-8 mb-8">
-                                <div>
-                                    <p className="text-xs text-white/40 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                        <ArrowUpRight size={14} className="text-purple-400" /> Seller Identity
-                                    </p>
-                                    <div className="font-mono text-sm text-white/80 p-3 bg-black/40 border border-white/5 rounded-lg break-all">
-                                        0x71C...976F
-                                    </div>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-white/40 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                        <ArrowDownLeft size={14} className="text-indigo-400" /> Buyer Identity
-                                    </p>
-                                    <div className="font-mono text-sm text-white/80 p-3 bg-black/40 border border-white/5 rounded-lg break-all">
-                                        0xA32...104B
-                                    </div>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-white/40 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                        <Fingerprint size={14} className="text-white/40" /> Property Asset
-                                    </p>
-                                    <div className="font-mono text-sm text-white/80">
-                                        PRP-299-XCV
-                                    </div>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-emerald-400/60 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                        <Banknote size={14} className="text-emerald-400" /> Escrow Value
-                                    </p>
-                                    <div className="text-2xl font-bold text-emerald-400">
-                                        ₹ 4,500,000
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex items-center gap-4 pt-6 border-t border-white/5">
-                                <button className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold py-3 px-6 rounded-lg shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all flex items-center justify-center gap-2">
-                                    <CheckCircle2 size={18} /> Authorize Transfer
-                                </button>
-
-                                <button className="px-6 py-3 rounded-lg bg-orange-500/10 text-orange-400 font-bold border border-orange-500/20 hover:bg-orange-500/20 transition-all flex items-center gap-2">
-                                    <ShieldAlert size={18} /> Freeze
-                                </button>
-
-                                <button className="px-6 py-3 rounded-lg bg-red-500/10 text-red-400 font-bold border border-red-500/20 hover:bg-red-500/20 transition-all flex items-center gap-2">
-                                    <XCircle size={18} /> Reject
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                        );
+                    })}
                 </div>
+            )}
+
+            {/* Footer */}
+            <div className="mt-8 flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.72rem', fontWeight: 600 }}>
+                <ShieldCheck size={14} style={{ color: '#ef4444' }} />
+                All sale approvals are cryptographically signed and logged on-chain.
             </div>
         </div>
     );
 };
 
-export default PremiumSaleApproval;
+const DetailField = ({ label, value, mono = false }) => (
+    <div>
+        <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)', marginBottom: 3 }}>{label}</p>
+        <p style={{ fontSize: '0.8rem', fontWeight: 500, color: 'rgba(255,255,255,0.75)', fontFamily: mono ? 'monospace' : 'inherit', wordBreak: 'break-all' }}>{value}</p>
+    </div>
+);
+
+export default SaleApproval;
