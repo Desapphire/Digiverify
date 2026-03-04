@@ -1,122 +1,332 @@
-import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ShieldCheck, MapPin, FileText, CheckCircle2, XCircle, AlertTriangle, RefreshCcw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { adminService } from '../../services/admin.service';
+import {
+    Building2, CheckCircle2, XCircle, Loader2,
+    RefreshCcw, Search, MapPin, Ruler, Hash, Wallet,
+    ChevronDown, ChevronUp, AlertTriangle, ShieldCheck, Clock
+} from 'lucide-react';
 
 const PropertyVerification = () => {
-    const { id } = useParams();
     const navigate = useNavigate();
+    const [properties, setProperties] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState(null);
+    const [filter, setFilter] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [expandedProp, setExpandedProp] = useState(null);
 
-    // Mock Functions for actions
-    const handleApprove = () => {
-        console.log(`Approving & Minting NFT for property ${id}`);
-        // Logic: Call LandRegistry contract -> Mint NFT to seller
-        // Status -> ACTIVE
+    const fetchProperties = async () => {
+        setLoading(true);
+        try {
+            const res = await adminService.listProperties(filter || undefined);
+            setProperties(res.data?.data || []);
+        } catch (err) {
+            console.error('Failed to fetch properties:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleReject = () => {
-        console.log(`Rejecting property ${id}`);
+    useEffect(() => {
+        fetchProperties();
+    }, [filter]);
+
+    const handleApprove = async (propId) => {
+        setActionLoading(propId);
+        try {
+            await adminService.approveProperty(propId);
+            fetchProperties();
+        } catch (err) {
+            alert(err.response?.data?.message || 'Approval failed');
+        } finally {
+            setActionLoading(null);
+        }
     };
 
-    const handleMarkEncumbered = () => {
-        console.log(`Marking property ${id} as encumbered`);
+    const handleSetEncumbrance = async (propId) => {
+        if (!window.confirm('Mark this property as encumbered?')) return;
+        setActionLoading(propId);
+        try {
+            await adminService.setEncumbrance(propId, true);
+            fetchProperties();
+        } catch (err) {
+            alert(err.response?.data?.message || 'Failed to set encumbrance');
+        } finally {
+            setActionLoading(null);
+        }
     };
 
-    const handleRequestCorrection = () => {
-        console.log(`Requesting correction for property ${id}`);
+    const shortenWallet = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '—';
+
+    const filteredProps = properties.filter(p => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+            (p.propertyCode || '').toLowerCase().includes(q) ||
+            (p.surveyNumber || '').toLowerCase().includes(q) ||
+            (p.district || '').toLowerCase().includes(q) ||
+            (p.state || '').toLowerCase().includes(q) ||
+            (p.ownerWallet || '').toLowerCase().includes(q)
+        );
+    });
+
+    const statusStyle = (status) => {
+        switch (status) {
+            case 'active': return { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: '#22c55e' };
+            case 'frozen': return { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#ef4444' };
+            case 'pending': return { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.2)', text: '#eab308' };
+            case 'transferred': return { bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.2)', text: '#3b82f6' };
+            default: return { bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.1)', text: 'rgba(255,255,255,0.5)' };
+        }
     };
+
+    const FILTERS = [
+        { key: '', label: 'All' },
+        { key: 'pending', label: 'Pending' },
+        { key: 'active', label: 'Active' },
+        { key: 'frozen', label: 'Frozen' },
+    ];
 
     return (
         <div className="dashboard-container">
-            <div className="dashboard-header mb-6">
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div>
-                    <h1 className="dashboard-title text-2xl font-bold">
+                    <h1 className="dashboard-title">
                         Property <span className="text-gradient">Verification</span>
                     </h1>
-                    <p className="text-muted text-sm mt-1">Reviewing Property Registration ID: {id}</p>
+                    <p className="text-muted mt-2" style={{ fontSize: '0.9rem' }}>
+                        Review property registrations, approve, and manage encumbrances.
+                    </p>
                 </div>
-                <button className="btn btn-secondary text-sm" onClick={() => navigate(-1)}>
-                    Back
-                </button>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => navigate('/authority')} className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>
+                        ← Back
+                    </button>
+                    <button onClick={fetchProperties} className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>
+                        <RefreshCcw size={14} /> Refresh
+                    </button>
+                </div>
             </div>
 
-            <div className="glass-panel p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-                    {/* Details Section */}
-                    <div>
-                        <h3 className="text-lg font-bold text-white mb-4 border-b border-white/10 pb-2">Registration Details</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <p className="text-xs text-muted uppercase tracking-wider mb-1">Seller Name</p>
-                                <p className="text-white font-medium">[Mock Seller Name]</p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-muted uppercase tracking-wider mb-1">Wallet Address</p>
-                                <p className="font-mono text-sm text-primary-glow">0x[Mock...Wallet]</p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-muted uppercase tracking-wider mb-1 flex items-center gap-1"><MapPin size={12} /> Survey Details</p>
-                                <p className="text-white font-medium">[Mock District, Survey No]</p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-muted uppercase tracking-wider mb-1">Geo Coordinates</p>
-                                <p className="font-mono text-sm text-white/80">[Lat: 18.5204, Lng: 73.8567]</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Documents & Declarations */}
-                    <div>
-                        <h3 className="text-lg font-bold text-white mb-4 border-b border-white/10 pb-2">Documents & Declarations</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <p className="text-xs text-muted uppercase tracking-wider mb-2 flex items-center gap-1"><FileText size={12} /> Title Deed (IPFS Link)</p>
-                                <div className="p-3 bg-black/30 rounded border border-white/10 flex items-center justify-between">
-                                    <span className="text-sm font-mono text-muted truncate max-w-[200px]">ipfs://[CID_HASH_MOCK]</span>
-                                    <button className="text-primary-glow text-xs font-bold hover:underline">View File</button>
-                                </div>
-                            </div>
-                            <div>
-                                <p className="text-xs text-muted uppercase tracking-wider mb-2 flex items-center gap-1"><ShieldCheck size={12} /> Encumbrance Declaration</p>
-                                <div className="p-3 bg-black/30 rounded border border-white/10">
-                                    <p className="text-sm text-white/80 italic">"I hereby declare this property is free from any legal disputes or financial encumbrances."</p>
-                                    <p className="text-xs text-muted mt-2 text-right">- Digitally Signed</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
+            {/* Filters + Search */}
+            <div className="glass-panel p-4 mb-6" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    {FILTERS.map(f => (
+                        <button
+                            key={f.key}
+                            onClick={() => setFilter(f.key)}
+                            style={{
+                                padding: '0.4rem 1rem', borderRadius: '0.5rem',
+                                fontSize: '0.78rem', fontWeight: 700,
+                                border: filter === f.key ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(255,255,255,0.05)',
+                                background: filter === f.key ? 'rgba(220,38,38,0.12)' : 'rgba(0,0,0,0.2)',
+                                color: filter === f.key ? '#fca5a5' : 'rgba(255,255,255,0.4)',
+                                cursor: 'pointer', transition: 'all 0.2s',
+                            }}
+                        >
+                            {f.label}
+                        </button>
+                    ))}
                 </div>
-
-                {/* Actions Section */}
-                <div className="mt-8 pt-6 border-t border-white/10 flex flex-wrap gap-4">
-                    <button onClick={handleApprove} className="btn btn-success px-6 py-2 shadow-glow-primary flex items-center gap-2">
-                        <CheckCircle2 size={16} /> Approve & Mint NFT
-                    </button>
-
-                    <button onClick={handleMarkEncumbered} className="btn btn-warning px-6 py-2 flex items-center gap-2">
-                        <AlertTriangle size={16} /> Mark Encumbered
-                    </button>
-
-                    <button onClick={handleRequestCorrection} className="btn btn-secondary px-6 py-2 flex items-center gap-2">
-                        <RefreshCcw size={16} /> Request Correction
-                    </button>
-
-                    <div className="flex-1"></div>
-
-                    <button onClick={handleReject} className="btn btn-danger px-6 py-2 flex items-center gap-2">
-                        <XCircle size={16} /> Reject
-                    </button>
+                <div style={{ position: 'relative', minWidth: 220 }}>
+                    <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+                    <input
+                        type="text"
+                        placeholder="Search code, survey, district..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="input-premium"
+                        style={{ paddingLeft: 34, fontSize: '0.82rem', padding: '0.5rem 0.75rem 0.5rem 34px' }}
+                    />
                 </div>
-
             </div>
 
-            <div className="mt-6 flex items-center gap-2 text-muted text-xs font-medium px-2">
-                <ShieldCheck size={14} className="text-primary-glow" />
-                Validation confirms matching coordinates and clear deed history.
+            {/* Count */}
+            <div style={{ marginBottom: '1rem', fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)' }}>
+                {loading ? 'Loading...' : `${filteredProps.length} propert${filteredProps.length !== 1 ? 'ies' : 'y'} found`}
+            </div>
+
+            {/* Property List */}
+            {loading ? (
+                <div className="glass-panel p-8 flex items-center justify-center">
+                    <Loader2 size={32} className="animate-spin" style={{ color: '#ef4444' }} />
+                </div>
+            ) : filteredProps.length === 0 ? (
+                <div className="glass-panel p-8 flex flex-col items-center justify-center" style={{ opacity: 0.5 }}>
+                    <Building2 size={48} style={{ marginBottom: '1rem', color: 'rgba(255,255,255,0.3)' }} />
+                    <p style={{ color: 'rgba(255,255,255,0.4)' }}>No properties match the current filter.</p>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {filteredProps.map(p => {
+                        const sc = statusStyle(p.status);
+                        const isExpanded = expandedProp === p.id;
+                        const isActing = actionLoading === p.id;
+
+                        return (
+                            <div key={p.id} className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
+                                {/* Main Row */}
+                                <div
+                                    onClick={() => setExpandedProp(isExpanded ? null : p.id)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        padding: '1rem 1.25rem', cursor: 'pointer',
+                                    }}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        {/* Icon */}
+                                        <div style={{
+                                            width: 44, height: 44, borderRadius: '12px',
+                                            background: `${sc.bg}`, border: `1px solid ${sc.border}`,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            color: sc.text, flexShrink: 0,
+                                        }}>
+                                            <Building2 size={20} />
+                                        </div>
+
+                                        <div>
+                                            <p style={{ fontWeight: 700, color: 'white', fontSize: '0.92rem' }}>
+                                                {p.propertyCode || 'No Code'}
+                                                <span style={{ fontWeight: 400, color: 'rgba(255,255,255,0.4)', marginLeft: 8, fontSize: '0.8rem' }}>
+                                                    Survey: {p.surveyNumber || '—'}
+                                                </span>
+                                            </p>
+                                            <div className="flex items-center gap-4" style={{ marginTop: 4 }}>
+                                                <span className="flex items-center gap-1" style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)' }}>
+                                                    <MapPin size={11} /> {p.district || '—'}, {p.state || '—'}
+                                                </span>
+                                                {p.areaSqft && (
+                                                    <span className="flex items-center gap-1" style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>
+                                                        <Ruler size={11} /> {p.areaSqft} sqft
+                                                    </span>
+                                                )}
+                                                <span className="flex items-center gap-1" style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>
+                                                    <Wallet size={11} /> {shortenWallet(p.ownerWallet)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-4">
+                                        {/* Status */}
+                                        <span style={{
+                                            fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase',
+                                            letterSpacing: '0.05em', padding: '3px 10px', borderRadius: '9999px',
+                                            background: sc.bg, border: `1px solid ${sc.border}`, color: sc.text,
+                                        }}>
+                                            {p.status || 'unknown'}
+                                        </span>
+
+                                        {p.encumbranceStatus && (
+                                            <span style={{
+                                                fontSize: '0.65rem', fontWeight: 800, padding: '3px 8px',
+                                                borderRadius: '9999px', background: 'rgba(239,68,68,0.1)',
+                                                border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444',
+                                            }}>
+                                                <AlertTriangle size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />
+                                                ENCUMBERED
+                                            </span>
+                                        )}
+
+                                        {/* Actions */}
+                                        {p.status === 'pending' && (
+                                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                    onClick={() => handleApprove(p.id)}
+                                                    disabled={isActing}
+                                                    style={{
+                                                        padding: '0.35rem 0.75rem', borderRadius: '0.5rem',
+                                                        fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
+                                                        background: 'rgba(34,197,94,0.1)', color: '#22c55e',
+                                                        border: '1px solid rgba(34,197,94,0.2)',
+                                                        display: 'flex', alignItems: 'center', gap: 4,
+                                                        opacity: isActing ? 0.5 : 1,
+                                                    }}
+                                                >
+                                                    {isActing ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                                                    Approve & Mint
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {p.status === 'active' && !p.encumbranceStatus && (
+                                            <div onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                    onClick={() => handleSetEncumbrance(p.id)}
+                                                    disabled={isActing}
+                                                    style={{
+                                                        padding: '0.35rem 0.75rem', borderRadius: '0.5rem',
+                                                        fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
+                                                        background: 'rgba(234,179,8,0.1)', color: '#eab308',
+                                                        border: '1px solid rgba(234,179,8,0.2)',
+                                                        display: 'flex', alignItems: 'center', gap: 4,
+                                                        opacity: isActing ? 0.5 : 1,
+                                                    }}
+                                                >
+                                                    <AlertTriangle size={13} /> Encumber
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {isExpanded ? <ChevronUp size={16} style={{ color: 'rgba(255,255,255,0.3)' }} /> : <ChevronDown size={16} style={{ color: 'rgba(255,255,255,0.3)' }} />}
+                                    </div>
+                                </div>
+
+                                {/* Expanded Details */}
+                                {isExpanded && (
+                                    <div style={{
+                                        padding: '0 1.25rem 1.25rem', borderTop: '1px solid rgba(255,255,255,0.04)',
+                                        paddingTop: '1rem',
+                                    }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                            <DetailField label="Property ID" value={p.id} mono />
+                                            <DetailField label="Property Code" value={p.propertyCode || '—'} />
+                                            <DetailField label="Survey Number" value={p.surveyNumber || '—'} />
+                                            <DetailField label="Address" value={p.addressLine || '—'} />
+                                            <DetailField label="District" value={p.district || '—'} />
+                                            <DetailField label="State" value={p.state || '—'} />
+                                            <DetailField label="Area (Sqft)" value={p.areaSqft || '—'} />
+                                            <DetailField label="Owner Wallet" value={p.ownerWallet || '—'} mono />
+                                            <DetailField label="NFT Token ID" value={p.nftTokenId || 'Not minted'} mono />
+                                            <DetailField label="Document Hash" value={p.documentHash || 'None'} mono />
+                                            <DetailField label="Encumbrance" value={p.encumbranceStatus ? 'Yes' : 'Clear'} />
+                                            <DetailField label="Status" value={p.status || '—'} />
+                                            {p.geoLat && <DetailField label="Coordinates" value={`${p.geoLat}, ${p.geoLng}`} />}
+                                            <DetailField label="Registered" value={p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'} />
+                                            <DetailField label="Last Updated" value={p.updatedAt ? new Date(p.updatedAt).toLocaleString() : '—'} />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Footer */}
+            <div className="mt-8 flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.72rem', fontWeight: 600, padding: '0 0.5rem' }}>
+                <ShieldCheck size={14} style={{ color: '#ef4444' }} />
+                Property verification confirmed via on-chain survey registry.
             </div>
         </div>
     );
 };
+
+const DetailField = ({ label, value, mono = false }) => (
+    <div>
+        <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>
+            {label}
+        </p>
+        <p style={{
+            fontSize: '0.82rem', fontWeight: 500, color: 'rgba(255,255,255,0.75)',
+            fontFamily: mono ? 'monospace' : 'inherit',
+            wordBreak: 'break-all',
+        }}>
+            {value}
+        </p>
+    </div>
+);
 
 export default PropertyVerification;

@@ -1,6 +1,13 @@
 import api from './api';
 
 export const adminService = {
+    // ── Dashboard Data ─────────────────────────────────────────
+    listUsers: (kycStatus) => api.get('/admin/users', { params: { kycStatus } }),
+    listProperties: (status) => api.get('/admin/properties', { params: { status } }),
+    listSales: () => api.get('/admin/sales'),
+    getPendingFundBlocks: () => api.get('/admin/fund-blocks/pending'),
+    lookupWallet: (address) => api.get(`/admin/wallet/${address}`),
+
     // ── Admin & Authority Governance ───────────────────────────
 
     // KYC
@@ -27,7 +34,7 @@ export const adminService = {
     rejectRecovery: (recoveryId) => api.put(`/admin/recovery/${recoveryId}/reject`),
 
     // System Audit
-    getAuditLogs: () => api.get('/admin/audit'),
+    getAuditLogs: (params) => api.get('/admin/audit', { params }),
 
     // Bank Actions
     confirmFundBlock: (blockId, bankReferenceId) => api.put(`/admin/bank/fund-block/${blockId}/confirm`, { bankReferenceId }),

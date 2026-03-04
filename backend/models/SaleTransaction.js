@@ -38,6 +38,14 @@ const create = async (data, client = null) => {
     return mapSale(result.rows[0]);
 };
 
+const findAll = async (limit = 50, offset = 0) => {
+    const result = await pool.query(
+        'SELECT * FROM sale_transactions ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+        [limit, offset]
+    );
+    return result.rows.map(mapSale);
+};
+
 const findById = async (id) => {
     const result = await pool.query('SELECT * FROM sale_transactions WHERE id = $1 LIMIT 1', [id]);
     return mapSale(result.rows[0]);
@@ -147,7 +155,7 @@ const getApprovals = async (transactionId) => {
 };
 
 module.exports = {
-    create, findById, findByProperty, findByWallet, findActiveByProperty,
+    create, findById, findAll, findByProperty, findByWallet, findActiveByProperty,
     updateStatus, setBuyerSigned, setSellerSigned, setAuthoritySigned,
     setFundsBlocked, setTxHash, addApproval, getApprovals,
 };

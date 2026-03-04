@@ -14,7 +14,6 @@ import {
     LogOut,
     ChevronRight,
     Search,
-    Search,
     ChevronLeft,
     Menu,
     Shield,
