@@ -1,0 +1,113 @@
+/**
+ * Court Service — Judicial actions on properties and transactions.
+ */
+
+const { pool } = require('../config/db');
+const { withTransaction } = require('../config/db');
+const Property = require('../models/Property');
+const SaleTransaction = require('../models/SaleTransaction');
+const saleService = require('./saleService');
+const AppError = require('../utils/AppError');
+
+/**
+ * Freeze a property by court order.
+ */
+const freezeProperty = async ({ propertyId, courtOrderHash, caseNumber, reason }, courtUserId) => {
+    const property = await Property.findById(propertyId);
+    if (!property) throw new AppError('Property not found.', 404);
+
+    return withTransaction(async (client) => {
+        // Insert freeze order
+        const result = await client.query(
+            `INSERT INTO court_freeze_orders (property_id, court_user_id, court_order_hash, case_number, reason)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+            [propertyId, courtUserId, courtOrderHash, caseNumber || null, reason || null]
+        );
+
+        // Update property status
+        await Property.updateStatus(propertyId, 'frozen', client);
+
+        // Freeze any active sale
+        const activeSale = await SaleTransaction.findActiveByProperty(propertyId);
+        if (activeSale) {
+            try {
+                await saleService.freezeSale(activeSale.id);
+            } catch (e) {
+                // Sale might already be in a terminal state
+            }
+        }
+
+        return result.rows[0];
+    });
+};
+
+/**
+ * Reverse a court freeze.
+ */
+const reverseFreezeOrder = async (freezeOrderId, { reversalOrderHash, reason }, courtUserId) => {
+    // Get the freeze order
+    const freezeResult = await pool.query(
+        'SELECT * FROM court_freeze_orders WHERE id = $1 LIMIT 1',
+        [freezeOrderId]
+    );
+    const freezeOrder = freezeResult.rows[0];
+    if (!freezeOrder) throw new AppError('Freeze order not found.', 404);
+    if (!freezeOrder.is_active) throw new AppError('This freeze order is already reversed.', 400);
+
+    return withTransaction(async (client) => {
+        // Deactivate freeze order
+        await client.query(
+            'UPDATE court_freeze_orders SET is_active = FALSE WHERE id = $1',
+            [freezeOrderId]
+        );
+
+        // Get current property owner
+        const property = await Property.findById(freezeOrder.property_id);
+
+        // Insert reversal record
+        const result = await client.query(
+            `INSERT INTO court_reversals
+       (freeze_order_id, property_id, court_user_id, reversal_order_hash, previous_owner_wallet, reason)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+            [freezeOrderId, freezeOrder.property_id, courtUserId, reversalOrderHash,
+                property?.ownerWallet || null, reason || null]
+        );
+
+        // Check if any other active freeze orders exist for this property
+        const otherFreezes = await client.query(
+            'SELECT COUNT(*)::int AS count FROM court_freeze_orders WHERE property_id = $1 AND is_active = TRUE',
+            [freezeOrder.property_id]
+        );
+
+        // If no more active freezes, unfreeze the property
+        if (otherFreezes.rows[0].count === 0) {
+            await Property.updateStatus(freezeOrder.property_id, 'active', client);
+        }
+
+        return result.rows[0];
+    });
+};
+
+/**
+ * Force-transfer property ownership (court override).
+ */
+const forceTransfer = async ({ propertyId, newOwnerWallet, courtOrderHash, reason }, courtUserId) => {
+    const property = await Property.findById(propertyId);
+    if (!property) throw new AppError('Property not found.', 404);
+
+    return withTransaction(async (client) => {
+        // Transfer ownership
+        await Property.updateOwner(propertyId, newOwnerWallet, client);
+
+        // Log court order
+        await client.query(
+            `INSERT INTO court_freeze_orders (property_id, court_user_id, court_order_hash, reason, is_active)
+       VALUES ($1,$2,$3,$4, FALSE)`,
+            [propertyId, courtUserId, courtOrderHash, `FORCE_TRANSFER: ${reason || 'Court ordered'}`]
+        );
+
+        return Property.findById(propertyId);
+    });
+};
+
+module.exports = { freezeProperty, reverseFreezeOrder, forceTransfer };

@@ -1,0 +1,450 @@
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { propertyService } from '../../services/property.service';
+import { saleService } from '../../services/sale.service';
+import { useAuth } from '../../context/AuthContext';
+import { useWeb3 } from '../../context/Web3Context';
+import {
+    ArrowRight, ArrowLeft, Building, Wallet, DollarSign,
+    FileCheck, Send, Loader2, CheckCircle2, AlertTriangle, ChevronDown
+} from 'lucide-react';
+import './PropertyPages.css';
+
+const STEPS = [
+    { label: 'Select Property', icon: Building },
+    { label: 'Sale Details', icon: DollarSign },
+    { label: 'Review', icon: FileCheck },
+    { label: 'Sign & Submit', icon: Send },
+];
+
+const Sale = () => {
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const { account, connectWallet, signMessage } = useWeb3();
+
+    const [step, setStep] = useState(0);
+    const [properties, setProperties] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const [success, setSuccess] = useState(false);
+    const [error, setError] = useState('');
+    const [createdSale, setCreatedSale] = useState(null);
+
+    // Form state
+    const [selectedPropertyId, setSelectedPropertyId] = useState('');
+    const [salePrice, setSalePrice] = useState('');
+    const [buyerWallet, setBuyerWallet] = useState('');
+
+    // Load owned active properties
+    useEffect(() => {
+        const fetchProperties = async () => {
+            try {
+                setLoading(true);
+                const res = await propertyService.getMyProperties();
+                const verifiedProperties = (res.data?.data || []).filter(p => p.status === 'active' || p.status === 'verified');
+                setProperties(verifiedProperties);
+            } catch (err) {
+                console.error('Failed to load properties', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        if (user) fetchProperties();
+    }, [user]);
+
+    const selectedProperty = properties.find(p => p.id === selectedPropertyId);
+    const sellerWallet = account || user?.walletAddress;
+
+    const canProceed = () => {
+        switch (step) {
+            case 0: return !!selectedPropertyId;
+            case 1: return !!salePrice && parseFloat(salePrice) > 0 && !!buyerWallet && buyerWallet.startsWith('0x') && buyerWallet.length === 42;
+            case 2: return true;
+            case 3: return true;
+            default: return false;
+        }
+    };
+
+    const handleSubmit = async () => {
+        try {
+            setSubmitting(true);
+            setError('');
+
+            // Ensure wallet is connected
+            let wallet = account;
+            if (!wallet) {
+                wallet = await connectWallet();
+            }
+
+            // Sign a message to authenticate the transaction
+            const message = `I authorize the sale of property ${selectedProperty.surveyNumber} for ₹${parseFloat(salePrice).toLocaleString()} to ${buyerWallet}`;
+            await signMessage(message);
+
+            // Initiate the sale via backend
+            const res = await saleService.initiateSale({
+                propertyId: selectedPropertyId,
+                buyerWallet: buyerWallet,
+                salePrice: parseFloat(salePrice),
+            });
+
+            setCreatedSale(res.data?.data);
+            setSuccess(true);
+        } catch (err) {
+            console.error('Sale initiation failed', err);
+            setError(err.response?.data?.message || err.message || 'Failed to initiate sale.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="dashboard-container" style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse-glow">
+                    <Loader2 style={{ width: '3rem', height: '3rem', color: 'hsl(255,85%,65%)' }} className="animate-spin" />
+                    <p className="text-muted" style={{ fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: '0.875rem' }}>Loading Properties...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (success) {
+        return (
+            <div className="dashboard-container container-sm">
+                <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
+                    <div className="scale-in" style={{ marginBottom: '1.5rem' }}>
+                        <div style={{
+                            width: '80px', height: '80px', borderRadius: '50%', margin: '0 auto',
+                            background: 'rgba(34,197,94,0.1)', border: '2px solid hsl(142,71%,45%)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            <CheckCircle2 size={40} style={{ color: 'hsl(142,71%,45%)' }} />
+                        </div>
+                    </div>
+                    <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.75rem' }}>
+                        Sale <span className="text-gradient">Initiated!</span>
+                    </h2>
+                    <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                        The sale transaction has been created. The buyer will need to review and sign the agreement.
+                    </p>
+                    {createdSale && (
+                        <div style={{
+                            background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '1rem',
+                            marginBottom: '1.5rem', fontFamily: 'monospace', fontSize: '0.8rem',
+                            color: 'hsl(var(--color-text-secondary))'
+                        }}>
+                            Transaction ID: {createdSale.id}
+                        </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                        <button className="btn btn-secondary" onClick={() => navigate('/transactions')}>
+                            View Transactions
+                        </button>
+                        <button className="btn btn-primary" onClick={() => { setSuccess(false); setStep(0); setSelectedPropertyId(''); setSalePrice(''); setBuyerWallet(''); }}>
+                            New Sale
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="dashboard-container container-md">
+            {/* Header */}
+            <div className="page-header">
+                <h1 style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.03em', marginBottom: '0.5rem' }}>
+                    Initiate <span className="text-gradient">Sale</span>
+                </h1>
+                <p className="text-muted" style={{ fontSize: '0.95rem' }}>
+                    Transfer property ownership through a secure multi-signature process
+                </p>
+            </div>
+
+            {/* Stepper */}
+            <div className="stepper">
+                {STEPS.map((s, i) => {
+                    const Icon = s.icon;
+                    return (
+                        <div key={i} className={`stepper-step ${i === step ? 'active' : ''} ${i < step ? 'completed' : ''}`}>
+                            <div className="stepper-circle">
+                                {i < step ? <CheckCircle2 size={16} /> : <Icon size={16} />}
+                            </div>
+                            <span className="stepper-label">{s.label}</span>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Step Content */}
+            <div className="glass-panel" style={{ padding: '2rem' }}>
+                {/* Step 0: Select Property */}
+                {step === 0 && (
+                    <div>
+                        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                            Select Property to Sell
+                        </h3>
+                        <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+                            Choose from your verified properties. Only properties with 'Active' status can be sold.
+                        </p>
+
+                        {properties.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '2rem' }}>
+                                <Building size={48} style={{ opacity: 0.2, marginBottom: '1rem', color: 'hsl(255,85%,65%)' }} />
+                                <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>No eligible properties</p>
+                                <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>
+                                    You need at least one active property to initiate a sale.
+                                </p>
+                                <button className="btn btn-primary" onClick={() => navigate('/register-property')}>
+                                    Register Property
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="form-column">
+                                {properties.map(prop => (
+                                    <div
+                                        key={prop.id}
+                                        onClick={() => setSelectedPropertyId(prop.id)}
+                                        className={`property-select-card ${selectedPropertyId === prop.id ? 'selected' : 'unselected'}`}
+                                    >
+                                        <div>
+                                            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                {prop.surveyNumber}
+                                                <CheckCircle2 size={14} style={{ color: 'hsl(142,71%,45%)' }} />
+                                            </h4>
+                                            <p className="text-muted" style={{ fontSize: '0.8rem' }}>
+                                                {prop.district}{prop.state ? `, ${prop.state}` : ''} • {prop.areaSqft ? `${prop.areaSqft.toLocaleString()} sq.ft` : 'N/A'}
+                                            </p>
+                                            <p style={{ fontSize: '0.7rem', fontFamily: 'monospace', color: 'hsl(220,15%,50%)', marginTop: '0.25rem' }}>
+                                                {prop.propertyCode}
+                                            </p>
+                                        </div>
+                                        <div style={{
+                                            width: '24px', height: '24px', borderRadius: '50%',
+                                            border: selectedPropertyId === prop.id ? '2px solid hsl(255,85%,65%)' : '2px solid rgba(255,255,255,0.15)',
+                                            background: selectedPropertyId === prop.id ? 'hsl(255,85%,65%)' : 'transparent',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            transition: 'all 0.2s ease',
+                                        }}>
+                                            {selectedPropertyId === prop.id && <CheckCircle2 size={14} style={{ color: 'white' }} />}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Step 1: Sale Details */}
+                {step === 1 && (
+                    <div>
+                        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                            Sale Details
+                        </h3>
+                        <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+                            Enter the sale price and the buyer's wallet address
+                        </p>
+
+                        <div className="form-column">
+                            <div className="form-group">
+                                <label className="form-label" style={{ color: 'hsl(var(--color-text-secondary))' }}>
+                                    <DollarSign size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.25rem' }} />
+                                    Sale Price (INR)
+                                </label>
+                                <input
+                                    className="input-premium"
+                                    type="number"
+                                    placeholder="e.g. 5000000"
+                                    value={salePrice}
+                                    onChange={(e) => setSalePrice(e.target.value)}
+                                    min="1"
+                                    style={{ fontSize: '1.1rem', fontWeight: 600 }}
+                                />
+                                {salePrice && parseFloat(salePrice) > 0 && (
+                                    <p style={{ fontSize: '0.75rem', color: 'hsl(var(--color-text-muted))', marginTop: '0.35rem', fontFamily: 'monospace' }}>
+                                        ₹ {parseFloat(salePrice).toLocaleString('en-IN')}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" style={{ color: 'hsl(var(--color-text-secondary))' }}>
+                                    <Wallet size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.25rem' }} />
+                                    Buyer Wallet Address
+                                </label>
+                                <input
+                                    className="input-premium"
+                                    type="text"
+                                    placeholder="0x..."
+                                    value={buyerWallet}
+                                    onChange={(e) => setBuyerWallet(e.target.value)}
+                                    style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}
+                                />
+                                {buyerWallet && (!buyerWallet.startsWith('0x') || buyerWallet.length !== 42) && (
+                                    <p style={{ fontSize: '0.75rem', color: 'hsl(var(--color-danger))', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                        <AlertTriangle size={12} /> Invalid Ethereum address format
+                                    </p>
+                                )}
+                                {buyerWallet && buyerWallet.toLowerCase() === sellerWallet?.toLowerCase() && (
+                                    <p style={{ fontSize: '0.75rem', color: 'hsl(var(--color-danger))', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                        <AlertTriangle size={12} /> Buyer cannot be the same as seller
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Step 2: Review Agreement */}
+                {step === 2 && (
+                    <div>
+                        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                            Review Agreement
+                        </h3>
+                        <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+                            Verify all details before signing the transaction
+                        </p>
+
+                        <div className="form-column" style={{ gap: '1rem' }}>
+                            {/* Property Details */}
+                            <div className="info-box">
+                                <h4 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '0.75rem' }}>
+                                    Property
+                                </h4>
+                                <p style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.25rem' }}>{selectedProperty?.surveyNumber}</p>
+                                <p className="text-muted" style={{ fontSize: '0.8rem' }}>
+                                    {selectedProperty?.district}{selectedProperty?.state ? `, ${selectedProperty.state}` : ''}
+                                    {selectedProperty?.areaSqft ? ` • ${selectedProperty.areaSqft.toLocaleString()} sq.ft` : ''}
+                                </p>
+                                <p style={{ fontSize: '0.7rem', fontFamily: 'monospace', color: 'hsl(220,15%,50%)', marginTop: '0.35rem' }}>
+                                    {selectedProperty?.propertyCode}
+                                </p>
+                            </div>
+
+                            {/* Sale Details */}
+                            <div className="info-box-grid">
+                                <div className="info-box" style={{ padding: '1.25rem' }}>
+                                    <h4 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '0.5rem' }}>
+                                        Sale Price
+                                    </h4>
+                                    <p style={{ fontSize: '1.5rem', fontWeight: 800 }} className="text-gradient">
+                                        ₹{parseFloat(salePrice).toLocaleString('en-IN')}
+                                    </p>
+                                </div>
+                                <div className="info-box" style={{ padding: '1.25rem' }}>
+                                    <h4 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '0.5rem' }}>
+                                        Currency
+                                    </h4>
+                                    <p style={{ fontSize: '1.5rem', fontWeight: 800 }}>INR</p>
+                                </div>
+                            </div>
+
+                            {/* Wallet Addresses */}
+                            <div className="info-box-grid">
+                                <div className="info-box" style={{ padding: '1.25rem' }}>
+                                    <h4 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '0.5rem' }}>
+                                        Seller (You)
+                                    </h4>
+                                    <p style={{ fontSize: '0.75rem', fontFamily: 'monospace', wordBreak: 'break-all', color: 'hsl(var(--color-text-secondary))' }}>
+                                        {sellerWallet || 'Wallet not connected'}
+                                    </p>
+                                </div>
+                                <div className="info-box" style={{ padding: '1.25rem' }}>
+                                    <h4 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '0.5rem' }}>
+                                        Buyer
+                                    </h4>
+                                    <p style={{ fontSize: '0.75rem', fontFamily: 'monospace', wordBreak: 'break-all', color: 'hsl(var(--color-text-secondary))' }}>
+                                        {buyerWallet}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Agreement Notice */}
+                            <div style={{
+                                background: 'rgba(234,179,8,0.05)', border: '1px solid rgba(234,179,8,0.15)',
+                                borderRadius: '12px', padding: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start'
+                            }}>
+                                <AlertTriangle size={18} style={{ color: 'hsl(38,92%,50%)', flexShrink: 0, marginTop: '2px' }} />
+                                <div>
+                                    <p style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Important</p>
+                                    <p className="text-muted" style={{ fontSize: '0.8rem', lineHeight: 1.5 }}>
+                                        By proceeding, you authorize the creation of a sale agreement. The buyer must also sign, block funds,
+                                        and the transaction must be approved by the registered authority before ownership transfers.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Step 3: Sign & Submit */}
+                {step === 3 && (
+                    <div style={{ textAlign: 'center', padding: '1rem' }}>
+                        <div style={{
+                            width: '72px', height: '72px', borderRadius: '50%', margin: '0 auto 1.5rem',
+                            background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(168,85,247,0.1))',
+                            border: '2px solid rgba(139,92,246,0.3)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            <Send size={28} style={{ color: 'hsl(255,85%,65%)' }} />
+                        </div>
+                        <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                            Sign & Submit Transaction
+                        </h3>
+                        <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '2rem', maxWidth: '400px', margin: '0 auto 2rem' }}>
+                            Your wallet will prompt you to sign a message confirming this sale. No gas fees will be charged.
+                        </p>
+
+                        {error && (
+                            <div style={{
+                                background: 'rgba(225,29,72,0.1)', border: '1px solid rgba(225,29,72,0.2)',
+                                borderRadius: '12px', padding: '1rem', marginBottom: '1.5rem',
+                                display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center',
+                                color: 'hsl(var(--color-danger))', fontSize: '0.85rem'
+                            }}>
+                                <AlertTriangle size={16} /> {error}
+                            </div>
+                        )}
+
+                        <button
+                            className="btn btn-primary btn-glow"
+                            disabled={submitting}
+                            onClick={handleSubmit}
+                            style={{ padding: '0.875rem 2.5rem', fontSize: '1rem' }}
+                        >
+                            {submitting ? (
+                                <><Loader2 size={18} className="animate-spin" /> Signing...</>
+                            ) : (
+                                <><Wallet size={18} /> Sign with Wallet</>
+                            )}
+                        </button>
+                    </div>
+                )}
+
+                {/* Navigation Buttons */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <button
+                        className="btn btn-ghost"
+                        onClick={() => setStep(Math.max(0, step - 1))}
+                        disabled={step === 0}
+                        style={{ fontSize: '0.875rem' }}
+                    >
+                        <ArrowLeft size={16} /> Back
+                    </button>
+                    {step < 3 && (
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => setStep(step + 1)}
+                            disabled={!canProceed()}
+                            style={{ fontSize: '0.875rem' }}
+                        >
+                            Continue <ArrowRight size={16} />
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default Sale;

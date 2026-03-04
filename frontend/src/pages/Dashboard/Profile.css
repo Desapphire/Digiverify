@@ -1,0 +1,313 @@
+/* ── Profile Dashboard - Ultra Premium Web3 Aesthetic ── */
+
+.profile-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem;
+    padding-top: 1.5rem;
+    animation: fade-in 0.6s ease-out;
+}
+
+/* ── Header Section ── */
+.profile-header {
+    margin-bottom: 2.5rem;
+    position: relative;
+}
+
+.profile-header::after {
+    content: '';
+    position: absolute;
+    bottom: -1rem;
+    left: 0;
+    width: 60px;
+    height: 4px;
+    background: linear-gradient(90deg, hsl(255, 85%, 65%), transparent);
+    border-radius: 4px;
+}
+
+.profile-title {
+    font-size: 2.75rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    margin-bottom: 0.5rem;
+    line-height: 1.1;
+}
+
+.profile-subtitle {
+    font-size: 1rem;
+    color: hsl(220, 15%, 60%);
+}
+
+/* ── Main Layout ── */
+.profile-grid-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* ── Common Panel Styling ── */
+.profile-panel {
+    padding: 2.25rem;
+    background: rgba(20, 15, 30, 0.4);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at top right, rgba(139, 92, 246, 0.05), transparent 70%);
+    pointer-events: none;
+}
+
+.profile-panel:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+}
+
+.panel-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.75rem;
+}
+
+.section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    letter-spacing: -0.01em;
+}
+
+.section-title svg {
+    filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.5));
+}
+
+/* ── Personal Details Grid ── */
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+}
+
+.detail-card {
+    background: rgba(10, 8, 20, 0.5);
+    padding: 1.25rem;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.detail-card:hover {
+    background: rgba(30, 20, 50, 0.4);
+    border-color: rgba(139, 92, 246, 0.2);
+    transform: translateY(-2px);
+}
+
+.detail-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    margin-bottom: 0.5rem;
+    color: hsl(280, 80%, 60%);
+}
+
+.detail-value {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: hsl(210, 40%, 98%);
+}
+
+/* ── KYC Status Section ── */
+.kyc-cards-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+.kyc-card {
+    padding: 1.75rem;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    border: 1px solid;
+    transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.kyc-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.kyc-icon-wrapper {
+    padding: 0.85rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+}
+
+/* Progress bar pulse effect */
+.kyc-progress-track {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    height: 6px;
+    border-radius: 9999px;
+    margin-top: 0.85rem;
+    overflow: hidden;
+    position: relative;
+}
+
+/* ── Forms and Inputs Area ── */
+.contact-info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.contact-row {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    background: rgba(10, 8, 20, 0.5);
+    padding: 1.25rem 1.5rem;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.contact-row:hover {
+    background: rgba(30, 20, 50, 0.3);
+    border-color: rgba(139, 92, 246, 0.15);
+}
+
+.contact-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: hsl(220, 15%, 60%);
+    margin-bottom: 0.25rem;
+}
+
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: hsl(220, 15%, 60%);
+    display: block;
+    margin-bottom: 0.6rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+/* messages */
+.alert-message {
+    margin-top: 1.25rem;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    animation: fade-in 0.3s ease-out;
+}
+
+/* ── Recovery Section ── */
+.recovery-form-box {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    background: rgba(10, 8, 20, 0.5);
+    padding: 1.75rem;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ── Wallet Display Items ── */
+.wallet-display-box {
+    background: rgba(15, 10, 25, 0.6);
+    padding: 1.5rem;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 1.5rem;
+}
+
+.wallet-address-code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: hsl(255, 85%, 65%);
+    background: rgba(139, 92, 246, 0.08);
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    letter-spacing: 0.02em;
+    word-break: break-all;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.connected-wallet-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.8rem 1.25rem;
+    border-radius: 12px;
+    font-family: monospace;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+/* ── Footer Info ── */
+.profile-footer {
+    padding: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: linear-gradient(90deg, rgba(20, 15, 30, 0.6) 0%, rgba(30, 20, 50, 0.4) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.15);
+    border-radius: 20px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
