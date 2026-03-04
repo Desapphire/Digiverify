@@ -1,188 +1,121 @@
-const bcrypt = require("bcrypt");
-const User = require("../models/User");
+/**
+ * Auth Controller — Nonce generation, signature verification, JWT, and Phase 1 Registration.
+ */
 
-// Register
-const register = async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
+const authService = require('../services/authService');
+const User = require('../models/User');
+const { generateNonce } = require('../utils/nonceGenerator');
+const { verifySignature } = require('../utils/verifySignature');
+const catchAsync = require('../utils/catchAsync');
 
-    // Bug #6 — Basic input validation
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide name, email, and password.",
-      });
-    }
-
-    if (name.trim().length < 2) {
-      return res.status(400).json({
-        success: false,
-        message: "Name must be at least 2 characters.",
-      });
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide a valid email address.",
-      });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: "Password must be at least 6 characters.",
-      });
-    }
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "User with this email already exists.",
-      });
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Bug #3 — Always register as 'owner'; admin/verifier cannot self-register
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      role: "owner",
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: "User registered successfully.",
-      data: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-    });
-  } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error during registration.",
-      error: err.message,
-    });
-  }
-};
-
-// Login
-const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide email and password.",
-      });
-    }
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password.",
-      });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password.",
-      });
-    }
-
-    req.session.user = {
-      id: user._id,
-      role: user.role,
-      email: user.email,
-    };
-
+/**
+ * GET /api/auth/nonce/:walletAddress
+ * Legacy / standard login nonce.
+ */
+const getNonce = catchAsync(async (req, res) => {
+    const { walletAddress } = req.params;
+    const data = await authService.getOrCreateNonce(walletAddress);
     return res.status(200).json({
-      success: true,
-      message: "Login successful.",
-      data: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-    });
-  } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error during login.",
-      error: err.message,
-    });
-  }
-};
-
-// Logout
-const logout = (req, res) => {
-  try {
-    req.session.destroy((err) => {
-      if (err) {
-        return res.status(500).json({
-          success: false,
-          message: "Error logging out.",
-        });
-      }
-      res.clearCookie("connect.sid");
-      return res.status(200).json({
         success: true,
-        message: "Logged out successfully.",
-      });
+        data,
     });
-  } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error during logout.",
-      error: err.message,
-    });
-  }
-};
+});
 
-// Get current user
-const getCurrentUser = async (req, res) => {
-  try {
-    const user = await User.findById(req.session.user.id);
+/**
+ * POST /api/auth/verify
+ * Legacy / standard login signature verification.
+ */
+const verifySignatureController = catchAsync(async (req, res) => {
+    const { walletAddress, signature } = req.body;
+    const data = await authService.verifyAndAuthenticate(walletAddress, signature);
+    return res.status(200).json({
+        success: true,
+        message: 'Authentication successful.',
+        data,
+    });
+});
+
+/**
+ * POST /api/auth/login-password
+ * Legacy / standard email/password login.
+ */
+const loginWithPassword = catchAsync(async (req, res) => {
+    const { email, password } = req.body;
+    const data = await authService.loginWithPassword(email, password);
+    return res.status(200).json({
+        success: true,
+        message: 'Login successful.',
+        data,
+    });
+});
+
+/**
+ * POST /api/auth/refresh
+ */
+const refreshToken = catchAsync(async (req, res) => {
+    const { refreshToken: token } = req.body;
+    const data = await authService.refreshAccessToken(token);
+    return res.status(200).json({
+        success: true,
+        data,
+    });
+});
+
+/**
+ * GET /api/auth/me
+ */
+const getMe = catchAsync(async (req, res) => {
+    const user = await User.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found.",
-      });
+        return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    return res.status(200).json({
+        success: true,
+        data: user,
+    });
+});
+
+// ── Phase 1 Registration Flow ────────────────────────────
+
+/**
+ * POST /api/auth/request-nonce
+ * Unified registration flow nonce request.
+ */
+const requestNonceRegistration = catchAsync(async (req, res) => {
+    const { walletAddress } = req.body;
+    const nonce = generateNonce();
+    // In a real production app, we might store this in Redis or a temp table
+    // For now, we'll return it and expect it back in the verify step.
+    return res.status(200).json({
+        success: true,
+        nonce
+    });
+});
+
+/**
+ * POST /api/auth/verify-signature
+ * Unified registration flow signature verification.
+ */
+const verifySignatureRegistration = catchAsync(async (req, res) => {
+    const { walletAddress, signature, nonce } = req.body;
+    const recoveredAddress = verifySignature(nonce, signature);
+
+    if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+        return res.status(400).json({ success: false, message: 'Invalid signature' });
     }
 
-    const userData = {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      createdAt: user.createdAt,
-    };
-
     return res.status(200).json({
-      success: true,
-      message: "Current user fetched.",
-      data: userData,
+        success: true,
+        message: 'Signature verified'
     });
-  } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error fetching user.",
-      error: err.message,
-    });
-  }
-};
+});
 
-module.exports = { register, login, logout, getCurrentUser };
+module.exports = {
+    getNonce,
+    verifySignature: verifySignatureController,
+    loginWithPassword,
+    refreshToken,
+    getMe,
+    requestNonce: requestNonceRegistration,
+    verifySignatureRegistration,
+};
