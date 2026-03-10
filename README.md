@@ -1,6 +1,6 @@
 # Digiverify (Squrify)
 
-![Digiverify Hero Banner](assets/hero_banner.png)
+![Digiverify Hero Banner](/assets/hero_banner.png)   
 
 **The Future of Trustless Land Registry & Verification**
 
@@ -10,7 +10,7 @@ Digiverify is a comprehensive, blockchain-powered platform designed for the secu
 
 ## 🖥️ Dashboard Overview
 
-![Admin Dashboard](assets/dashboard.png)
+![Admin Dashboard](/assets/dashboard.png)  
 
 Our centralized admin dashboard provides real-time insights into the entire ecosystem, including registered properties, confirmed transactions, and active smart contracts.
 
@@ -28,7 +28,7 @@ Our centralized admin dashboard provides real-time insights into the entire ecos
 
 ## 📄 Property Verification & Details
 
-![Property Details](assets/property_details.png)
+![Property Details](/assets/property_details.png)
 
 Each property is linked to a detailed verification page showing geo-coordinates, verified IPFS-backed documents (Title Deed, Survey Report, Tax Certificate), and ownership history.
 
@@ -36,7 +36,7 @@ Each property is linked to a detailed verification page showing geo-coordinates,
 
 ## 🔗 Multi-Signature Transaction Flow
 
-![Multi-sig Flow](assets/sale_workflow.png)
+![Multi-sig Flow](/assets/sale_workflow.png)
 
 Transactions follow a strict on-chain multi-sig protocol requiring Buyer, Seller, and Authority signatures, integrated directly with MetaMask for secure execution.
 
