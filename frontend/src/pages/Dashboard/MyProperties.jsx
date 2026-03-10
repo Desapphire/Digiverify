@@ -4,7 +4,7 @@ import { propertyService } from '../../services/property.service';
 import { useAuth } from '../../context/AuthContext';
 import {
     Building, MapPin, CheckCircle2, Shield, AlertTriangle,
-    Lock, Eye, ArrowUpRight, PlusCircle, Search, Loader2
+    Lock, Eye, ArrowUpRight, PlusCircle, Search, Loader2, ExternalLink
 } from 'lucide-react';
 import './PropertyPages.css';
 
@@ -186,9 +186,16 @@ const MyProperties = () => {
                                             </p>
                                         )}
                                         {prop.nftTokenId && (
-                                            <p className="meta-item" style={{ color: 'hsl(255,85%,65%)', fontFamily: 'monospace' }}>
-                                                NFT #{prop.nftTokenId}
-                                            </p>
+                                            <a 
+                                                href={`https://testnet.snowtrace.io/nft/0xE94d65289Cc088f597C077938A6D7Fc0974196fe/${prop.nftTokenId}`}
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="meta-item hover-glow"
+                                                style={{ color: 'hsl(255,85%,65%)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '0.2rem', textDecoration: 'none' }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                NFT #{prop.nftTokenId} <ExternalLink size={10} />
+                                            </a>
                                         )}
                                     </div>
                                     <p style={{ fontSize: '0.7rem', color: 'hsl(220,15%,60%)', fontFamily: 'monospace' }}>

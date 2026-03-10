@@ -184,7 +184,15 @@ const PropertyDetails = () => {
                                 {property.nftTokenId && (
                                     <div>
                                         <p className="info-label">NFT Token ID</p>
-                                        <p className="info-value-mono" style={{ color: 'hsl(280,80%,60%)' }}>#{property.nftTokenId}</p>
+                                        <a 
+                                            href={`https://testnet.snowtrace.io/nft/0xE94d65289Cc088f597C077938A6D7Fc0974196fe/${property.nftTokenId}`}
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="info-value-mono hover-glow"
+                                            style={{ color: 'hsl(280,80%,60%)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none' }}
+                                        >
+                                            #{property.nftTokenId} <ExternalLink size={10} />
+                                        </a>
                                     </div>
                                 )}
                                 <div>
@@ -390,9 +398,15 @@ const PropertyDetails = () => {
                                                 <span className="badge badge-neutral" style={{ fontSize: '0.55rem' }}>{isSeller ? 'SOLD' : 'BOUGHT'}</span>
                                                 <span className={`badge ${tsc.badgeClass}`} style={{ fontSize: '0.55rem' }}>{tx.status?.toUpperCase()}</span>
                                                 {tx.txHash && (
-                                                    <span style={{ fontFamily: 'monospace', fontSize: '0.65rem', color: 'hsl(220,15%,60%)' }}>
-                                                        TX: {tx.txHash.slice(0, 10)}...
-                                                    </span>
+                                                    <a 
+                                                        href={`https://testnet.snowtrace.io/tx/${tx.txHash}`}
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="hover-glow"
+                                                        style={{ fontFamily: 'monospace', fontSize: '0.65rem', color: 'hsl(220,15%,60%)', display: 'flex', alignItems: 'center', gap: '0.2rem', textDecoration: 'none' }}
+                                                    >
+                                                        TX: {tx.txHash.slice(0, 10)}... <ExternalLink size={10} />
+                                                    </a>
                                                 )}
                                             </div>
                                             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.75rem', color: 'hsl(220,15%,60%)' }}>

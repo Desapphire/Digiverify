@@ -3,6 +3,7 @@
  */
 
 const Property = require('../models/Property');
+const contractService = require('../blockchain/contractService');
 const AppError = require('../utils/AppError');
 
 /**
@@ -12,19 +13,15 @@ const registerProperty = async (data, ownerWallet) => {
     const property = await Property.create({ ...data, ownerWallet });
 
     let txHash = null;
-    try {
-        console.log(`🔗 Registering property ${property.propertyCode} on-chain...`);
-        const result = await contractService.registerPropertyOnChain(
-            property.propertyCode,
-            ownerWallet,
-            data.documentHash || 'QmDefaultHash'
-        );
-        txHash = result.txHash;
-        if (txHash) {
-            console.log(`✅ Property registered on-chain. Tx: ${txHash}`);
-        }
-    } catch (err) {
-        console.error('⚠️ On-chain registration failed:', err.message);
+    console.log(`🔗 Registering property ${property.propertyCode} on-chain...`);
+    const result = await contractService.registerPropertyOnChain(
+        property.propertyCode,
+        ownerWallet,
+        data.documentHash || 'QmDefaultHash'
+    );
+    txHash = result.txHash;
+    if (txHash) {
+        console.log(`✅ Property registered on-chain. Tx: ${txHash}`);
     }
 
     return { property, txHash };

@@ -7,7 +7,7 @@ import { useWeb3 } from '../../context/Web3Context';
 import {
     Loader2, CheckCircle2, AlertTriangle, Wallet, DollarSign,
     Building, MapPin, ArrowRight, XCircle, Shield, Clock,
-    FileCheck, Landmark, Send, Camera, User as UserIcon
+    FileCheck, Landmark, Send, Camera, User as UserIcon, ExternalLink
 } from 'lucide-react';
 import './PropertyPages.css';
 
@@ -25,6 +25,8 @@ const PurchaseReview = () => {
     const [signing, setSigning] = useState(false);
     const [error, setError] = useState('');
     const [signSuccess, setSignSuccess] = useState(false);
+    const [completing, setCompleting] = useState(false);
+    const [completeSuccess, setCompleteSuccess] = useState(false);
 
     // Biometric state
     const [showBiometricModal, setShowBiometricModal] = useState(false);
@@ -88,7 +90,7 @@ const PurchaseReview = () => {
         fetchSale();
     }, [id]);
 
-    const handleSign = async () => {
+    const handleSign = async (forcedBiometric = false) => {
         try {
             setSigning(true);
             setError('');
@@ -99,7 +101,7 @@ const PurchaseReview = () => {
             }
 
             // CHECK: Biometric verification required before signing
-            if (!isBiometricallyVerified) {
+            if (!isBiometricallyVerified && !forcedBiometric) {
                 setShowBiometricModal(true);
                 setSigning(false);
                 return;
@@ -120,6 +122,27 @@ const PurchaseReview = () => {
             setError(err.response?.data?.message || err.message || 'Failed to sign transaction.');
         } finally {
             setSigning(false);
+        }
+    };
+
+    const handleComplete = async () => {
+        try {
+            setCompleting(true);
+            setError('');
+            await saleService.completeSale(sale.id);
+            setCompleteSuccess(true);
+            
+            // Refresh sale data
+            const updated = await saleService.getSaleById(id);
+            setSale(updated.data?.data);
+            
+            // Redirect after success
+            setTimeout(() => navigate('/transactions'), 3000);
+        } catch (err) {
+            console.error('Completion failed', err);
+            setError(err.response?.data?.message || 'Failed to complete transaction.');
+        } finally {
+            setCompleting(false);
         }
     };
 
@@ -219,13 +242,12 @@ const PurchaseReview = () => {
                     streamRef.current.getTracks().forEach(track => track.stop());
                 }
                 setTimeout(() => {
-
                     setIsBiometricallyVerified(true);
                     setShowBiometricModal(false);
-                    // Re-trigger sign after verification
+                    // Re-trigger sign after verification, passing true to bypass state closure check
                     setSigning(true);
-                    setTimeout(() => handleSign(), 500);
-                }, 1000);
+                    setTimeout(() => handleSign(true), 500);
+                }, 1500); // Slightly longer delay to show "PASSED"
             }
         }, 2000);
     };
@@ -459,6 +481,42 @@ const PurchaseReview = () => {
                         </div>
                     )}
 
+                    {/* Finalize Sale CTA (buyer/seller, authority_approved status) */}
+                    {sale.status === 'authority_approved' && (
+                        <div className="glass-panel-elevated" style={{ padding: '1.5rem', textAlign: 'center', border: '2px solid hsla(142,71%,45%,0.3)' }}>
+                            <div style={{
+                                width: '56px', height: '56px', borderRadius: '50%', margin: '0 auto 1rem',
+                                background: 'rgba(34,197,94,0.1)', border: '2px solid hsl(142,71%,45%)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                <CheckCircle2 size={24} style={{ color: 'hsl(142,71%,45%)' }} />
+                            </div>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>Ready to Finalize</h3>
+                            <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '1.25rem' }}>
+                                The authority has approved this sale. {isBuyer ? 'Finalize to complete ownership transfer.' : 'The buyer can now finalize the transfer.'}
+                            </p>
+                            {isBuyer && !completeSuccess && (
+                                <button
+                                    className="btn btn-primary btn-glow w-full"
+                                    disabled={completing}
+                                    onClick={handleComplete}
+                                    style={{ padding: '0.75rem', fontSize: '0.9rem', background: 'hsl(142,71%,45%)', borderColor: 'hsl(142,71%,45%)' }}
+                                >
+                                    {completing ? (
+                                        <><Loader2 size={16} className="animate-spin" /> Finalizing...</>
+                                    ) : (
+                                        <><CheckCircle2 size={16} /> Finalize Purchase</>
+                                    )}
+                                </button>
+                            )}
+                            {completeSuccess && (
+                                <div className="text-success" style={{ fontWeight: 700, fontSize: '0.9rem' }}>
+                                    Ownership Transferred Successfully!
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Signatures Status */}
                     <div className="glass-panel" style={{ padding: '1.5rem' }}>
                         <h3 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '1rem' }}>
@@ -501,14 +559,115 @@ const PurchaseReview = () => {
                                     <p className="text-muted" style={{ fontSize: '0.75rem' }}>{formatDate(sale.updatedAt)}</p>
                                 </div>
                             )}
-                            {sale.expiryAt && (
-                                <div className="timeline-item">
-                                    <p style={{ fontSize: '0.85rem', fontWeight: 600 }}>Expiry Date</p>
-                                    <p className="text-muted" style={{ fontSize: '0.75rem' }}>{formatDate(sale.expiryAt)}</p>
+                        </div>
+                    </div>
+
+                    {/* Detailed Transaction Info */}
+                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                        <h3 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <Shield size={13} /> Blockchain & Multi-Sig
+                        </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <div>
+                                <p style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', marginBottom: '0.15rem' }}>Property NFT</p>
+                                <p style={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                                    {sale.nftTokenId ? (
+                                        <a 
+                                            href={`https://testnet.snowtrace.io/nft/0xE94d65289Cc088f597C077938A6D7Fc0974196fe/${sale.nftTokenId}`}
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="explorer-link"
+                                            style={{ color: 'hsl(255,85%,65%)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                                        >
+                                            Token #{sale.nftTokenId} <ExternalLink size={10} />
+                                        </a>
+                                    ) : 'No NFT Minted'}
+                                </p>
+                            </div>
+                            <div>
+                                <p style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', marginBottom: '0.15rem' }}>On-Chain Sale Index</p>
+                                <p style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: 'hsl(var(--color-text-secondary))' }}>
+                                    {sale.onChainId ? (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <span style={{ fontWeight: 800, color: 'hsl(255,85%,65%)' }}>#{sale.onChainId}</span>
+                                            <a
+                                                href={`https://testnet.snowtrace.io/address/0xD8Ad46876774659fBD40026e7887532A6f375005#readContract`} 
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="explorer-link"
+                                                style={{ color: 'hsl(220,15%,60%)', fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}
+                                            >
+                                                Verify on Contract <ExternalLink size={10} />
+                                            </a>
+                                        </div>
+                                    ) : 'Not registered on-chain yet'}
+                                </p>
+                            </div>
+                            {sale.txHash && (
+                                <div>
+                                    <p style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', marginBottom: '0.15rem' }}>Initiation Tx Hash</p>
+                                    <a 
+                                        href={`https://testnet.snowtrace.io/tx/${sale.txHash}`}
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="explorer-link"
+                                        style={{ fontSize: '0.7rem', fontFamily: 'monospace', wordBreak: 'break-all', color: 'hsl(255,85%,65%)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                                    >
+                                        {sale.txHash} <ExternalLink size={10} />
+                                    </a>
+                                </div>
+                            )}
+                            {sale.approvals && sale.approvals.length > 0 && (
+                                <div>
+                                    <p style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Signatures</p>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        {sale.approvals.map((app, i) => (
+                                            <div key={i} style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+                                                    <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase' }}>{app.signer_role}</span>
+                                                    <span style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))' }}>{shortenWallet(app.signer_wallet)}</span>
+                                                </div>
+                                                <p style={{ fontSize: '0.55rem', fontFamily: 'monospace', wordBreak: 'break-all', opacity: 0.6 }}>
+                                                    {app.signature_hash}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
                         </div>
                     </div>
+
+                    {/* Fund Blocking Info */}
+                    {sale.fundBlocks && sale.fundBlocks.length > 0 && (
+                        <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                            <h3 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <Landmark size={13} /> Bank Fund Blocking
+                            </h3>
+                            {sale.fundBlocks.map((fb, i) => (
+                                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                        <div>
+                                            <p style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', marginBottom: '0.15rem' }}>Amount</p>
+                                            <p style={{ fontSize: '0.85rem', fontWeight: 700 }}>₹{fb.blockAmount?.toLocaleString('en-IN')}</p>
+                                        </div>
+                                        <div>
+                                            <p style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', marginBottom: '0.15rem' }}>Status</p>
+                                            <span className={`badge ${fb.status === 'blocked' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.55rem' }}>
+                                                {fb.status?.toUpperCase()}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {fb.bankReferenceId && (
+                                        <div>
+                                            <p style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', marginBottom: '0.15rem' }}>Bank Reference</p>
+                                            <p style={{ fontSize: '0.8rem', fontFamily: 'monospace', fontWeight: 600 }}>{fb.bankReferenceId}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 
