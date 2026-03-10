@@ -36,7 +36,7 @@ Each property is linked to a detailed verification page showing geo-coordinates,
 
 ## 🔗 Multi-Signature Transaction Flow
 
-![Multi-sig Flow](/assets/sale_workflow.png)
+![Multi-sig Flow](/assets/sale_signature.png)
 
 Transactions follow a strict on-chain multi-sig protocol requiring Buyer, Seller, and Authority signatures, integrated directly with MetaMask for secure execution.
 
