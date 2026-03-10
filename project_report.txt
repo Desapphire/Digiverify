@@ -1,0 +1,93 @@
+﻿# Project Report: Digiverify (Squrify)
+
+## 1. Introduction
+**Digiverify** (also known as Squrify) is a modern, blockchain-based land registry and digital verification platform. It solves the critical issues of property fraud, lack of transparency, and cumbersome manual processes in real estate transactions. By leveraging Ethereum smart contracts, IPFS for decentralized document storage, and a robust role-based access control system, Digiverify ensures that every property record is immutable, verifiable, and legally compliant.
+
+## 2. Technology Stack
+
+### Backend
+- **Node.js & Express**: High-performance API framework for handling business logic and system integration.
+- **PostgreSQL**: Relational database for structured data management (Users, Properties, Audit Logs).
+- **Ethers.js**: Library for interacting with Ethereum blockchain and smart contracts.
+- **Multer & IPFS**: Secure file processing and decentralized storage for legal documents.
+- **Bcrypt**: Industrial-strength password hashing for secure authentication.
+
+### Frontend
+- **React.js**: Modern UI library for building a responsive and interactive user experience.
+- **React Router**: Client-side routing for seamless navigation.
+- **Axios**: Efficient HTTP client for communicating with the backend API.
+- **Web3 Integration**: Facilitates direct wallet interactions (MetaMask) for on-chain signatures.
+
+### Blockchain & Smart Contracts
+- **Solidity**: Language for writing secure and efficient smart contracts.
+- **ERC-721 (NFTs)**: Represents property ownership as unique, non-fungible tokens.
+- **Land Registry Contract**: The central ledger for managing property-to-wallet associations.
+- **Sale Workflow Contract**: A multi-signature escrow-style contract that governs the sale process.
+
+## 3. System Architecture & Role-Based Access Control (RBAC)
+The system is designed with a hierarchical role structure to mirror the real-world real estate ecosystem:
+
+1.  **User (Owner/Buyer)**: Can register properties, initiate sales, sign transactions, and manage their own portfolio.
+2.  **Authority (Land Registry)**: Responsible for verifying property documents and giving final approval for ownership transfers.
+3.  **Bank Admin**: Manages the "ASBA-style" fund blocking mechanism to ensure financial security before a sale.
+4.  **Court (Legal)**: Has the power to "freeze" properties under dispute or reverse fraudulent transactions via override contracts.
+5.  **Super Admin**: Oversees system configuration, user management, and high-level health monitoring.
+
+## 4. Database Design (Overview)
+The database schema is optimized for speed and integrity:
+- **`users`**: Stores wallet addresses, KYC status, roles, and encrypted government IDs.
+- **`properties`**: Links physical assets to digital NFT tokens. Includes survey numbers and geo-spatial data.
+- **`sale_transactions`**: A state-machine table tracking the progress of property sales (Initiated â†’ Signed â†’ Funds Blocked â†’ Approved â†’ Completed).
+- **`fund_blocks`**: Records bank-side holds on buyer funds, ensuring the seller is protected.
+- **`audit_logs`**: An immutable, append-only table recording every significant action in the system for transparency.
+
+## 5. Core Business Workflows
+
+### 5.1 Property Registration
+Users upload property details (Survey Number, Area, Location) along with scanned legal documents. The documents are hashed and stored on IPFS. Once verified by an **Authority**, an NFT is minted on the blockchain, cementing digital ownership.
+
+### 5.2 Secure Sale Workflow (Multi-Sig)
+Property sales follow a strict multi-party approval process:
+1.  **Initiation**: Seller creates a sale offer for a specific buyer and price.
+2.  **Buyer Signature**: Buyer accepts the offer and signs with their private key.
+3.  **Fund Blocking**: The bank places a hold on the required amount in the buyer's account.
+4.  **Authority Approval**: A registry official reviews the transaction and grants final "Seal of Approval".
+5.  **Execution**: The smart contract automatically transfers the NFT from seller to buyer once all conditions are met.
+
+### 5.3 Legal Oversight: Freeze & Reversal
+In case of legal disputes, the **Court** role can issue "Freeze Orders" which prevent any transfer of the property. If a transaction is found to be illegal, the court can "Reverse" it on-chain, restoring the property to its rightful owner.
+
+## 6. Technical Specifications
+
+### 6.1 Database Schema (Key Tables)
+| Table | Description | Primary Key | Key Columns |
+| :--- | :--- | :--- | :--- |
+| `users` | User profiles and roles | `id` (UUID) | `wallet_address`, `role`, `kyc_status` |
+| `properties` | Registered land assets | `id` (UUID) | `property_code`, `owner_wallet`, `nft_token_id` |
+| `sale_transactions` | Workflow state tracker | `id` (UUID) | `status`, `sale_price`, `tx_hash` |
+| `fund_blocks` | ASBA-style bank holds | `id` (UUID) | `block_amount`, `bank_confirmed` |
+| `audit_logs` | Immutable activity log | `id` (UUID) | `action_type`, `actor_wallet`, `tx_hash` |
+
+### 6.2 Key API Endpoints
+- **Authentication**: `POST /api/auth/login` (Wallet signing), `GET /api/auth/me`
+- **Properties**: `POST /api/properties` (Register), `GET /api/properties/:id`, `POST /api/properties/:id/documents`
+- **Sales**: `POST /api/sales/initiate`, `POST /api/sales/:id/sign`, `POST /api/sales/:id/complete`
+- **Bank**: `POST /api/bank/block-funds`, `POST /api/bank/confirm-block`
+- **Court**: `POST /api/court/freeze-property`, `POST /api/court/reverse-transaction`
+
+### 6.3 Smart Contract Functions
+- `registerLand(address owner, string metadataURI)`: Mints a new NFT for a property.
+- `initiateSale(uint256 tokenId, address buyer, uint256 price)`: Starts an on-chain escrow.
+- `confirmFunds(uint256 saleId)`: Triggered by bank-authorized accounts.
+- `executeTransfer(uint256 saleId)`: Finalizes the NFT transfer.
+- `courtOverride(uint256 tokenId, address newOwner)`: Admin override for legal cases.
+
+## 7. Security Features
+- **Blockchain Immutability**: No historical record can be altered once recorded on-chain.
+- **IPFS Document Security**: Documents are referenced by their cryptographic hash (CID), preventing tampering.
+- **KYC & Face Verification**: Ensures that only verified individuals can hold or transfer property.
+- **Audit Trails**: Every login, upload, and signature is logged with IP address and metadata.
+- **Wallet Recovery**: A secure mechanism allows authorities to transfer NFTs to a new wallet if a user loses their private keys, provided their identity is verified.
+
+## 8. Conclusion
+Digiverify represents a paradigm shift in land administration. By combining the speed of modern web technologies with the uncompromising security of blockchain, it creates a "Trustless" environment where users can transact with confidence. It is a future-ready solution for digital governance and asset management.
