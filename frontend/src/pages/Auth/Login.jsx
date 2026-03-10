@@ -41,7 +41,7 @@ const Login = () => {
 
     return (
         <div className="flex items-center justify-center p-6 h-full w-full">
-            <div className="glass-panel w-full max-w-md p-8 md:p-10 relative z-10 animate-pulse-glow" style={{ animationIterationCount: 1 }}>
+            <div className="glass-panel w-full max-w-md p-8 md:p-10 relative z-10 animate-pulse-glow" style={{ animationIterationCount: 0 }}>
                 <div className="flex flex-col items-center mb-8 text-center">
                     <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-6 shadow-glow-primary animate-float">
                         <Shield className="text-white w-8 h-8" />

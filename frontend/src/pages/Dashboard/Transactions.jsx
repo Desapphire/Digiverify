@@ -47,7 +47,7 @@ const getNextAction = (sale, walletAddress) => {
         case 'funds_blocked':
             return { label: 'Awaiting Authority', path: null, variant: 'btn-secondary' };
         case 'authority_approved':
-            return { label: 'Ready to Complete', path: null, variant: 'btn-primary' };
+            return { label: 'Complete Purchase', path: `/sale/${sale.id}/review`, variant: 'btn-primary' };
         case 'completed':
             return { label: 'View Details', path: `/sale/${sale.id}/review`, variant: 'btn-ghost' };
         case 'cancelled':
@@ -273,10 +273,22 @@ const Transactions = () => {
                                         </div>
 
                                         {/* Details grid */}
-                                        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                                        <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                                             <div>
                                                 <p style={{ fontSize: '0.65rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.15rem' }}>Sale Price</p>
                                                 <p style={{ fontSize: '0.95rem', fontWeight: 700 }}>₹{sale.salePrice?.toLocaleString('en-IN')}</p>
+                                            </div>
+                                            <div>
+                                                <p style={{ fontSize: '0.65rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.15rem' }}>Property Code</p>
+                                                <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'hsl(var(--color-text-secondary))' }}>
+                                                    {sale.propertyCode || '—'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p style={{ fontSize: '0.65rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.15rem' }}>Location</p>
+                                                <p style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                                                    {sale.district || '—'}{sale.state ? `, ${sale.state}` : ''}
+                                                </p>
                                             </div>
                                             <div>
                                                 <p style={{ fontSize: '0.65rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.15rem' }}>
@@ -284,12 +296,6 @@ const Transactions = () => {
                                                 </p>
                                                 <p style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'hsl(var(--color-text-secondary))' }}>
                                                     {isSeller ? shortenWallet(sale.buyerWallet) : shortenWallet(sale.sellerWallet)}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p style={{ fontSize: '0.65rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.15rem' }}>Property ID</p>
-                                                <p style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'hsl(var(--color-text-secondary))' }}>
-                                                    {sale.propertyId}
                                                 </p>
                                             </div>
                                         </div>

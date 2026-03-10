@@ -5,6 +5,7 @@
 const SaleTransaction = require('../models/SaleTransaction');
 const Property = require('../models/Property');
 const User = require('../models/User');
+const FundBlock = require('../models/FundBlock');
 const { withTransaction } = require('../config/db');
 const { SALE_STATUS, SALE_STATE_TRANSITIONS, SALE_COMPLETION_REQUIREMENTS } = require('../config/constants');
 const contractService = require('../blockchain/contractService');
@@ -189,15 +190,11 @@ const completeSale = async (saleId) => {
     return withTransaction(async (client) => {
         // 1. Blockchain: Execute Final Transfer
         let txHash = null;
-        try {
-            if (sale.onChainId) {
-                console.log(`🔗 Executing on-chain execution for SaleID ${sale.onChainId}...`);
-                const result = await contractService.completeOnChainSale(sale.onChainId);
-                txHash = result.txHash;
-                console.log(`✅ On-chain sale completed. Tx: ${txHash}`);
-            }
-        } catch (err) {
-            console.error('⚠️ On-chain execution failed:', err.message);
+        if (sale.onChainId) {
+            console.log(`🔗 Executing on-chain execution for SaleID ${sale.onChainId}...`);
+            const result = await contractService.completeOnChainSale(sale.onChainId);
+            txHash = result.txHash;
+            console.log(`✅ On-chain sale completed. Tx: ${txHash}`);
         }
 
         // 2. Transfer property ownership in DB
@@ -246,7 +243,8 @@ const getSaleDetails = async (saleId) => {
     const sale = await SaleTransaction.findById(saleId);
     if (!sale) throw new AppError('Sale transaction not found.', 404);
     const approvals = await SaleTransaction.getApprovals(saleId);
-    return { ...sale, approvals };
+    const fundBlocks = await FundBlock.findByTransaction(saleId);
+    return { ...sale, approvals, fundBlocks };
 };
 
 module.exports = {

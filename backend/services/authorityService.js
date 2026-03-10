@@ -25,20 +25,16 @@ const approveProperty = async (propertyId) => {
 
     // 2. Approve Property on-chain (mints NFT)
     let txHash = null;
-    try {
-        const metadataURI = `https://digiverify.gov/api/properties/${propertyId}`;
-        const result = await contractService.approvePropertyOnChain(
-            property.propertyCode,
-            metadataURI
-        );
-        txHash = result.txHash;
+    const metadataURI = `https://localhost:5000/api/properties/${propertyId}`;
+    const result = await contractService.approvePropertyOnChain(
+        property.propertyCode,
+        metadataURI
+    );
+    txHash = result.txHash;
 
-        if (result.tokenId) {
-            await Property.setNftTokenId(propertyId, result.tokenId);
-            console.log(`✅ NFT Minted for property ${propertyId}: TokenID ${result.tokenId}, Tx: ${txHash}`);
-        }
-    } catch (err) {
-        console.error(`⚠️ Blockchain approval failed for property ${propertyId}:`, err.message);
+    if (result.tokenId) {
+        await Property.setNftTokenId(propertyId, result.tokenId);
+        console.log(`✅ NFT Minted for property ${propertyId}: TokenID ${result.tokenId}, Tx: ${txHash}`);
     }
 
     return { property: updatedProperty, txHash };
@@ -54,13 +50,9 @@ const approveSaleTransaction = async (saleId, authorityWallet, signatureHash) =>
     // 1. Sign on-chain by Authority
     let txHash = null;
     if (sale.onChainId) {
-        try {
-            const result = await contractService.authorityApproveOnChain(sale.onChainId);
-            txHash = result.hash;
-            console.log(`✅ On-chain sale approval successful for SaleID: ${sale.onChainId}, Tx: ${txHash}`);
-        } catch (err) {
-            console.error(`⚠️ On-chain sale approval failed:`, err.message);
-        }
+        const result = await contractService.authorityApproveOnChain(sale.onChainId);
+        txHash = result.hash;
+        console.log(`✅ On-chain sale approval successful for SaleID: ${sale.onChainId}, Tx: ${txHash}`);
     }
 
     const updatedSale = await saleService.approveSale(saleId, authorityWallet, signatureHash);

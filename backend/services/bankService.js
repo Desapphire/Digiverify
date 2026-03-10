@@ -51,10 +51,12 @@ const confirmFundBlock = async (fundBlockId, bankReferenceId, bankUserId) => {
         await SaleTransaction.setFundsBlocked(fundBlock.transactionId, client);
 
         // ── Blockchain: Confirm funds blocked on-chain (BANK_ROLE) ──
+        let txHash = null;
         if (sale.onChainId) {
             try {
-                await contractService.confirmFundsBlockedOnChain(sale.onChainId);
-                console.log(`✅ Funds confirmed on-chain for SaleID: ${sale.onChainId}`);
+                const receipt = await contractService.confirmFundsBlockedOnChain(sale.onChainId);
+                txHash = receipt.hash;
+                console.log(`✅ Funds confirmed on-chain for SaleID: ${sale.onChainId}, Tx: ${txHash}`);
             } catch (err) {
                 console.error('⚠️ On-chain fund confirmation failed:', err.message);
             }
