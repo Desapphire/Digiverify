@@ -23,9 +23,11 @@ const KYC_STATUS = Object.freeze({
 
 // ── Property Statuses ───────────────────────────────────
 const PROPERTY_STATUS = Object.freeze({
+    PENDING: 'pending',
     ACTIVE: 'active',
     FROZEN: 'frozen',
     UNDER_DISPUTE: 'under_dispute',
+    REJECTED: 'rejected',
 });
 
 // ── Sale Transaction Statuses ───────────────────────────
@@ -113,6 +115,7 @@ const AUDIT_ACTIONS = Object.freeze({
     // Property
     PROPERTY_REGISTERED: 'PROPERTY_REGISTERED',
     PROPERTY_APPROVED: 'PROPERTY_APPROVED',
+    PROPERTY_REJECTED: 'PROPERTY_REJECTED',
     PROPERTY_UPDATED: 'PROPERTY_UPDATED',
     PROPERTY_FROZEN: 'PROPERTY_FROZEN',
     PROPERTY_UNFROZEN: 'PROPERTY_UNFROZEN',

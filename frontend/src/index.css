@@ -798,15 +798,15 @@ h6 {
 /* ── Transaction Timeline ─────────────────────────────── */
 .timeline {
   position: relative;
-  padding-left: 2rem;
+  padding-left: 2.25rem;
 }
 
 .timeline::before {
   content: '';
   position: absolute;
-  left: 7px;
-  top: 4px;
-  bottom: 4px;
+  left: 11px;
+  top: 8px;
+  bottom: 0px;
   width: 2px;
   background: linear-gradient(180deg, hsl(255, 85%, 65%), rgba(255, 255, 255, 0.05));
   border-radius: 2px;
@@ -824,13 +824,14 @@ h6 {
 .timeline-item::before {
   content: '';
   position: absolute;
-  left: -1.625rem;
-  top: 6px;
-  width: 10px;
-  height: 10px;
+  left: -2.25rem;
+  top: 5px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.15);
+  margin-left: 6px;
 }
 
 .timeline-item.active::before {

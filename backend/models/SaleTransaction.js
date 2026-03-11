@@ -18,10 +18,17 @@ const mapSale = (row) => {
         fundsBlocked: row.funds_blocked,
         smartContractAddr: row.smart_contract_addr,
         txHash: row.tx_hash,
+        onChainId: row.on_chain_id,
         status: row.status,
         expiryAt: row.expiry_at,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+        // Joined Property Fields
+        propertyCode: row.property_code,
+        surveyNumber: row.survey_number,
+        district: row.district,
+        state: row.state,
+        nftTokenId: row.nft_token_id,
     };
 };
 
@@ -40,20 +47,33 @@ const create = async (data, client = null) => {
 
 const findAll = async (limit = 50, offset = 0) => {
     const result = await pool.query(
-        'SELECT * FROM sale_transactions ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+        `SELECT st.*, p.property_code, p.survey_number, p.district, p.state, p.nft_token_id 
+         FROM sale_transactions st
+         LEFT JOIN properties p ON st.property_id = p.id
+         ORDER BY st.created_at DESC LIMIT $1 OFFSET $2`,
         [limit, offset]
     );
     return result.rows.map(mapSale);
 };
 
-const findById = async (id) => {
-    const result = await pool.query('SELECT * FROM sale_transactions WHERE id = $1 LIMIT 1', [id]);
+const findById = async (id, client = null) => {
+    const db = client || pool;
+    const result = await db.query(
+        `SELECT st.*, p.property_code, p.survey_number, p.district, p.state, p.nft_token_id 
+         FROM sale_transactions st
+         LEFT JOIN properties p ON st.property_id = p.id
+         WHERE st.id = $1 LIMIT 1`,
+        [id]
+    );
     return mapSale(result.rows[0]);
 };
 
 const findByProperty = async (propertyId) => {
     const result = await pool.query(
-        'SELECT * FROM sale_transactions WHERE property_id = $1 ORDER BY created_at DESC',
+        `SELECT st.*, p.property_code, p.survey_number, p.district, p.state, p.nft_token_id 
+         FROM sale_transactions st
+         LEFT JOIN properties p ON st.property_id = p.id
+         WHERE st.property_id = $1 ORDER BY st.created_at DESC`,
         [propertyId]
     );
     return result.rows.map(mapSale);
@@ -61,9 +81,11 @@ const findByProperty = async (propertyId) => {
 
 const findByWallet = async (walletAddress) => {
     const result = await pool.query(
-        `SELECT * FROM sale_transactions
-     WHERE LOWER(buyer_wallet) = LOWER($1) OR LOWER(seller_wallet) = LOWER($1)
-     ORDER BY created_at DESC`,
+        `SELECT st.*, p.property_code, p.survey_number, p.district, p.state, p.nft_token_id 
+         FROM sale_transactions st
+         LEFT JOIN properties p ON st.property_id = p.id
+         WHERE LOWER(st.buyer_wallet) = LOWER($1) OR LOWER(st.seller_wallet) = LOWER($1)
+         ORDER BY st.created_at DESC`,
         [walletAddress]
     );
     return result.rows.map(mapSale);
@@ -154,8 +176,17 @@ const getApprovals = async (transactionId) => {
     return result.rows;
 };
 
+const setOnChainId = async (id, onChainId, client = null) => {
+    const db = client || pool;
+    const result = await db.query(
+        'UPDATE sale_transactions SET on_chain_id = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+        [onChainId, id]
+    );
+    return mapSale(result.rows[0]);
+};
+
 module.exports = {
     create, findById, findAll, findByProperty, findByWallet, findActiveByProperty,
     updateStatus, setBuyerSigned, setSellerSigned, setAuthoritySigned,
-    setFundsBlocked, setTxHash, addApproval, getApprovals,
+    setFundsBlocked, setTxHash, setOnChainId, addApproval, getApprovals,
 };

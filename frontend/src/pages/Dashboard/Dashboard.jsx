@@ -52,6 +52,26 @@ const DashboardHome = () => {
         }
     };
 
+    const handleLinkWallet = async () => {
+        if (!account) return;
+        setLoading(true); // Reuse loading state for simplicity or add a specific one
+        try {
+            const { userService } = await import('../../services/user.service');
+            const res = await userService.updateProfile({ walletAddress: account });
+            if (res.data?.data) {
+                // We'd ideally need a way to refresh the 'user' in AuthContext
+                // But since AuthContext usually polls or can be manually refreshed
+                // For now, let's just show a success alert or refresh page
+                window.location.reload();
+            }
+        } catch (err) {
+            setWalletError(err.response?.data?.message || 'Failed to link wallet.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
     // Derived stats
     const activeSales = sales.filter(s => s.sellerWallet?.toLowerCase() === user?.walletAddress?.toLowerCase() && s.status !== 'completed' && s.status !== 'cancelled');
     const activePurchases = sales.filter(s => s.buyerWallet?.toLowerCase() === user?.walletAddress?.toLowerCase() && s.status !== 'completed' && s.status !== 'cancelled');
@@ -70,6 +90,13 @@ const DashboardHome = () => {
             notifications.push({ id: `${sale.id}-pending`, type: 'warning', icon: Clock, text: `Sale awaiting signatures — ${sale.propertyId?.slice(0, 8)}...`, time: sale.createdAt });
         }
     });
+
+    properties.forEach(prop => {
+        if (prop.status === 'rejected') {
+            notifications.push({ id: `${prop.id}-rejected`, type: 'danger', icon: XCircle, text: `Property registration rejected — Survey #${prop.surveyNumber}`, time: prop.updatedAt || prop.createdAt });
+        }
+    });
+
     if (user?.kycStatus === 'pending') {
         notifications.push({ id: 'kyc-pending', type: 'warning', icon: AlertTriangle, text: 'KYC verification is pending review', time: user.updatedAt });
     }
@@ -129,14 +156,22 @@ const DashboardHome = () => {
                         <span className="wallet-pill">
                             <Wallet size={14} style={{ color: 'hsl(255,85%,65%)' }} />
                             {account ? (
-                                <span style={{
-                                    fontWeight: 600, letterSpacing: '0.02em',
-                                    color: account.toLowerCase() === user?.walletAddress?.toLowerCase()
-                                        ? 'hsl(142,71%,45%)' : 'hsl(348,83%,47%)',
-                                }}>
-                                    {account.slice(0, 6)}...{account.slice(-4)}
-                                    {account.toLowerCase() !== user?.walletAddress?.toLowerCase() && ' (Mismatch)'}
-                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span style={{
+                                        fontWeight: 600, letterSpacing: '0.02em',
+                                        color: (user?.walletAddress && account.toLowerCase() === user.walletAddress.toLowerCase())
+                                            ? 'hsl(142,71%,45%)' : user?.walletAddress ? 'hsl(348,83%,47%)' : 'hsl(255,85%,65%)',
+                                    }}>
+                                        {account.slice(0, 6)}...{account.slice(-4)}
+                                        {user?.walletAddress && account.toLowerCase() !== user.walletAddress.toLowerCase() && ' (Mismatch)'}
+                                        {!user?.walletAddress && ' (Unlinked)'}
+                                    </span>
+                                    {!user?.walletAddress && (
+                                        <button onClick={handleLinkWallet} className="btn-success" style={{ fontSize: '0.6rem', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 800 }}>
+                                            LINK
+                                        </button>
+                                    )}
+                                </div>
                             ) : (
                                 <button
                                     onClick={handleConnectWallet}
@@ -147,6 +182,7 @@ const DashboardHome = () => {
                                 </button>
                             )}
                         </span>
+
                     </div>
                     {walletError && (
                         <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'hsl(348,83%,47%)', marginTop: '0.5rem' }}>{walletError}</p>
@@ -228,8 +264,8 @@ const DashboardHome = () => {
                                             </p>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
-                                            <span className={`badge ${(prop.status === 'active' || prop.status === 'verified') ? 'badge-success' : 'badge-warning-glow'}`} style={{ fontSize: '0.65rem' }}>
-                                                {prop.status}
+                                            <span className={`badge ${(prop.status === 'active' || prop.status === 'verified') ? 'badge-success' : (prop.status === 'rejected') ? 'badge-danger' : 'badge-warning-glow'}`} style={{ fontSize: '0.65rem' }}>
+                                                {prop.status?.toUpperCase()}
                                             </span>
                                         </div>
                                     </div>

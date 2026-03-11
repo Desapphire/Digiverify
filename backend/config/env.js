@@ -39,6 +39,7 @@ const env = {
             landNFT: process.env.LAND_NFT_ADDRESS || '',
             landRegistry: process.env.LAND_REGISTRY_ADDRESS || '',
             saleContract: process.env.SALE_CONTRACT_ADDRESS || '',
+            courtOverride: process.env.COURT_OVERRIDE_ADDRESS || '',
         },
     },
 

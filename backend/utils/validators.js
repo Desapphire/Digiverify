@@ -52,8 +52,10 @@ const updateProfileSchema = z.object({
     body: z.object({
         email: z.string().email().optional(),
         phone: z.string().min(7).max(20).optional(),
+        walletAddress: walletAddress.optional(),
     }),
 });
+
 
 const loginPasswordSchema = z.object({
     body: z.object({

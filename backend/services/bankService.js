@@ -7,6 +7,7 @@ const SaleTransaction = require('../models/SaleTransaction');
 const { withTransaction } = require('../config/db');
 const { SALE_STATUS } = require('../config/constants');
 const saleService = require('./saleService');
+const contractService = require('../blockchain/contractService');
 const AppError = require('../utils/AppError');
 
 /**
@@ -49,12 +50,24 @@ const confirmFundBlock = async (fundBlockId, bankReferenceId, bankUserId) => {
         const sale = await SaleTransaction.findById(fundBlock.transactionId);
         await SaleTransaction.setFundsBlocked(fundBlock.transactionId, client);
 
+        // ── Blockchain: Confirm funds blocked on-chain (BANK_ROLE) ──
+        let txHash = null;
+        if (sale.onChainId) {
+            try {
+                const receipt = await contractService.confirmFundsBlockedOnChain(sale.onChainId);
+                txHash = receipt.hash;
+                console.log(`✅ Funds confirmed on-chain for SaleID: ${sale.onChainId}, Tx: ${txHash}`);
+            } catch (err) {
+                console.error('⚠️ On-chain fund confirmation failed:', err.message);
+            }
+        }
+
         if (sale.status === SALE_STATUS.BUYER_SIGNED) {
             saleService.validateTransition(sale.status, SALE_STATUS.FUNDS_BLOCKED);
             await SaleTransaction.updateStatus(fundBlock.transactionId, SALE_STATUS.FUNDS_BLOCKED, client);
         }
 
-        return confirmed;
+        return { confirmed, txHash };
     });
 };
 

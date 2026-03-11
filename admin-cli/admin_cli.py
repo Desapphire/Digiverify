@@ -351,6 +351,11 @@ def property_list(status, district, state, limit):
                 "frozen": "red",
                 "under_dispute": "yellow",
             }.get(p.get("status", ""), "white")
+            
+            owner_wallet = p.get("ownerWallet", "") or "—"
+            if len(owner_wallet) > 20:
+                owner_wallet = f"{owner_wallet[:10]}...{owner_wallet[-8:]}"
+
             table.add_row(
                 str(i),
                 str(p.get("id", "")),
@@ -359,7 +364,7 @@ def property_list(status, district, state, limit):
                 p.get("district", "—"),
                 p.get("state", "—"),
                 f"[{status_style}]{p.get('status', '—')}[/{status_style}]",
-                p.get("ownerWallet", "—") or "—",
+                owner_wallet,
             )
         console.print(table)
 

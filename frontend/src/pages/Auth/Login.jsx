@@ -15,22 +15,13 @@ const Login = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const handleLogin = async (e) => {
+    const handlePasswordLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
 
         try {
-            if (loginMethod === 'wallet') {
-                if (!account || !signer) {
-                    throw new Error('Please connect your MetaMask wallet first.');
-                }
-                const message = `Sign this message to authenticate with Squrify Land Registry.`;
-                const signature = await signMessage(message);
-                await loginWithWallet(account, signature);
-            } else {
-                await login(email, password);
-            }
+            await login(email, password);
             navigate('/dashboard');
         } catch (err) {
             setError(err.response?.data?.message || err.message || 'Login failed.');
@@ -39,9 +30,37 @@ const Login = () => {
         }
     };
 
+    const handleDirectWalletLogin = async () => {
+        setLoading(true);
+        setError('');
+        
+        try {
+            // First ensure we have a wallet connection
+            let userAccount = account;
+            if (!userAccount) {
+                userAccount = await connectWallet();
+            }
+            if (!userAccount) throw new Error("Wallet connection failed or was rejected.");
+
+            // Immediately ask to sign the authentication message
+            const message = `Sign this message to authenticate with Squrify Land Registry.`;
+            const signature = await signMessage(message);
+            
+            // Execute the backend login
+            await loginWithWallet(userAccount, signature);
+            navigate('/dashboard');
+
+        } catch (err) {
+            console.error("Wallet login error:", err);
+            setError(err.response?.data?.message || err.message || 'Wallet login failed or was rejected.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="flex items-center justify-center p-6 h-full w-full">
-            <div className="glass-panel w-full max-w-md p-8 md:p-10 relative z-10 animate-pulse-glow" style={{ animationIterationCount: 1 }}>
+            <div className="glass-panel w-full max-w-md p-8 md:p-10 relative z-10 animate-pulse-glow" style={{ animationIterationCount: 0 }}>
                 <div className="flex flex-col items-center mb-8 text-center">
                     <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-6 shadow-glow-primary animate-float">
                         <Shield className="text-white w-8 h-8" />
@@ -52,44 +71,47 @@ const Login = () => {
                     <p className="text-muted text-sm font-medium">Digital Verification System</p>
                 </div>
 
-                <div className="flex p-1 bg-black/30 rounded-2xl border border-subtle mb-8">
+                <div className="flex p-1 bg-black/40 rounded-2xl border border-subtle mb-8 overflow-hidden">
                     <button
                         type="button"
                         onClick={() => { setLoginMethod('password'); setError(''); }}
-                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all uppercase tracking-widest ${loginMethod === 'password' ? 'bg-white/10 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all uppercase tracking-widest ${loginMethod === 'password' ? 'bg-primary-base text-white shadow-lg' : 'text-muted hover:text-white hover:bg-white/5'}`}
                     >
                         Credentials
                     </button>
                     <button
                         type="button"
                         onClick={() => { setLoginMethod('wallet'); setError(''); }}
-                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all uppercase tracking-widest ${loginMethod === 'wallet' ? 'bg-white/10 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all uppercase tracking-widest ${loginMethod === 'wallet' ? 'bg-primary-base text-white shadow-lg' : 'text-muted hover:text-white hover:bg-white/5'}`}
                     >
                         Web3 Wallet
                     </button>
                 </div>
 
-                <form onSubmit={handleLogin} className="flex flex-col gap-6">
+                <form onSubmit={handlePasswordLogin} className="flex flex-col gap-6">
                     {loginMethod === 'wallet' ? (
-                        <div className="flex flex-col gap-6">
-                            {!account ? (
-                                <button
-                                    type="button"
-                                    onClick={connectWallet}
-                                    disabled={loading || isConnecting}
-                                    className="btn btn-primary w-full py-4 text-base"
-                                >
-                                    <Wallet size={20} />
-                                    {isConnecting ? 'Connecting...' : 'Connect MetaMask'}
-                                </button>
-                            ) : (
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-xs font-bold text-muted uppercase tracking-widest ml-1">Connected Address</label>
-                                    <div className="input-premium font-mono text-xs text-blue-400 truncate opacity-80 select-none">
-                                        {account}
-                                    </div>
-                                </div>
-                            )}
+                        <div className="flex flex-col gap-6 items-center py-6">
+                            <div className="w-16 h-16 bg-orange-500/10 rounded-full flex items-center justify-center mb-2 border border-orange-500/20">
+                                <Wallet className="w-8 h-8 text-orange-400" />
+                            </div>
+                            <div className="text-center mb-2">
+                                <h3 className="font-bold text-lg mb-1">Web3 Authentication</h3>
+                                <p className="text-muted text-sm px-4">Connect your wallet and sign a message to securely access your account instantly.</p>
+                            </div>
+                            
+                            <button
+                                type="button"
+                                onClick={handleDirectWalletLogin}
+                                disabled={loading || isConnecting}
+                                className="btn w-full flex items-center justify-center gap-3 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 shadow-glow-primary transition-all active:scale-[0.98]"
+                            >
+                                {loading || isConnecting ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+                                    <>
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" className="w-6 h-6 mr-1" />
+                                        Continue with MetaMask
+                                    </>
+                                )}
+                            </button>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-5">
@@ -100,7 +122,7 @@ const Login = () => {
                                     <input
                                         type="email"
                                         className="input-premium pl-12"
-                                        placeholder="john@example.com"
+                                        placeholder="kartik.bhavar24@vit.edu"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         required
@@ -121,6 +143,19 @@ const Login = () => {
                                     />
                                 </div>
                             </div>
+                            
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="btn w-full flex items-center justify-center gap-3 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 mt-2"
+                            >
+                                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+                                    <>
+                                        Access Dashboard
+                                        <ArrowRight size={20} />
+                                    </>
+                                )}
+                            </button>
                         </div>
                     )}
 
@@ -129,19 +164,6 @@ const Login = () => {
                             {error}
                         </div>
                     )}
-
-                    <button
-                        type="submit"
-                        disabled={loading || (loginMethod === 'wallet' && !account)}
-                        className="btn w-full flex items-center justify-center gap-3 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 mt-2"
-                    >
-                        {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
-                            <>
-                                {loginMethod === 'wallet' ? 'Sign to Login' : 'Access Dashboard'}
-                                <ArrowRight size={20} />
-                            </>
-                        )}
-                    </button>
                 </form>
 
                 <div className="mt-8 text-center border-t border-subtle pt-6">
