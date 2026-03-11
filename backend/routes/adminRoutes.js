@@ -7,6 +7,7 @@ const router = express.Router();
 
 const {
     approveProperty,
+    rejectProperty,
     approveSale,
     rejectSale,
     setEncumbrance
@@ -65,6 +66,7 @@ router.use(authorize(ROLES.AUTHORITY, ROLES.COURT, ROLES.BANK_ADMIN, ROLES.SUPER
 
 // --- Property & Sale Management (Authority) ---
 router.put('/property/:id/approve', approveProperty);
+router.put('/property/:id/reject', rejectProperty);
 router.post('/sale/:id/approve', approveSale);
 router.post('/sale/:id/reject', rejectSale);
 router.post('/sale/:id/complete', completeSale);

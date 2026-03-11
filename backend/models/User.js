@@ -28,6 +28,7 @@ const mapUser = (row) => {
 };
 
 const findByWallet = async (walletAddress) => {
+    if (!walletAddress) return null;
     const result = await pool.query(
         'SELECT * FROM users WHERE LOWER(wallet_address) = LOWER($1) LIMIT 1',
         [walletAddress]
@@ -70,11 +71,12 @@ const create = async ({
     walletAddress, name, email, password, phone, governmentIdHash, role, authNonce, birthdate,
 }) => {
     const id = crypto.randomUUID();
+    const normalizedWallet = walletAddress ? walletAddress.toLowerCase() : null;
     const result = await pool.query(
         `INSERT INTO users (id, wallet_address, name, email, password, phone, government_id_hash, role, auth_nonce, birthdate)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING *`,
-        [id, walletAddress, name, email, password || null, phone || null, governmentIdHash || null, role || 'user', authNonce || null, birthdate || null]
+        [id, normalizedWallet, name, email, password || null, phone || null, governmentIdHash || null, role || 'user', authNonce || null, birthdate || null]
     );
     return mapUser(result.rows[0]);
 };
@@ -108,10 +110,11 @@ const updateKycStatus = async (id, kycStatus, kycDocumentHash) => {
 };
 
 const updateWallet = async (id, newWallet) => {
+    const normalizedWallet = newWallet ? newWallet.toLowerCase() : null;
     const result = await pool.query(
         `UPDATE users SET wallet_address = $1, updated_at = NOW()
      WHERE id = $2 RETURNING *`,
-        [newWallet, id]
+        [normalizedWallet, id]
     );
     return mapUser(result.rows[0]);
 };

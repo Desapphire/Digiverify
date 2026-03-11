@@ -44,7 +44,7 @@ const canComplete = (sale) => {
 /**
  * Initiate a new sale transaction.
  */
-const initiateSale = async ({ propertyId, buyerWallet, salePrice }, sellerWallet) => {
+const initiateSale = async ({ propertyId, buyerWallet, salePrice, onChainSaleId, onChainTxHash }, sellerWallet) => {
     // Validate property
     const property = await Property.findById(propertyId);
     if (!property) throw new AppError('Property not found.', 404);
@@ -62,20 +62,33 @@ const initiateSale = async ({ propertyId, buyerWallet, salePrice }, sellerWallet
     const activeSale = await SaleTransaction.findActiveByProperty(propertyId);
     if (activeSale) throw new AppError('An active sale already exists for this property.', 409);
 
-    const transaction = await SaleTransaction.create({ propertyId, buyerWallet, sellerWallet, salePrice });
+    const transaction = await SaleTransaction.create({
+        propertyId,
+        buyerWallet: buyer.walletAddress, // Ensure case matches users table
+        sellerWallet: property.ownerWallet, // Ensure case matches users table
+        salePrice
+    });
 
     // The initiator (seller) is considered signed by default
     await SaleTransaction.setSellerSigned(transaction.id);
 
-    let txHash = null;
+    let txHash = onChainTxHash || null;
+
     // ── Blockchain: Register sale on-chain ──────────────────
-    if (property.nftTokenId) {
+    if (onChainSaleId) {
+        // If frontend already registered it on-chain
+        await SaleTransaction.setOnChainId(transaction.id, onChainSaleId);
+        if (onChainTxHash) await SaleTransaction.setTxHash(transaction.id, onChainTxHash);
+        console.log(`✅ Sale recorded with frontend-provided On-chain ID: ${onChainSaleId}`);
+    } else if (property.nftTokenId) {
+        // Fallback: Backend tries to register (may fail due to ownership)
         try {
             console.log(`🔗 Initiating on-chain sale for NFT ${property.nftTokenId}...`);
             const result = await contractService.registerOnChainSale(
                 property.nftTokenId,
                 property.propertyCode,
-                buyerWallet,
+                property.ownerWallet, // seller
+                buyerWallet, // buyer
                 ethers.parseUnits(salePrice.toString(), 'ether')
             );
 
@@ -109,10 +122,12 @@ const signSale = async (saleId, signerWallet, signerRole, signatureHash) => {
     }
 
     return withTransaction(async (client) => {
-        // Record approval in DB
+        // Record approval in DB — Use normalized wallet from the sale record
+        const normalizedSignerWallet = signerRole === 'buyer' ? sale.buyerWallet : sale.sellerWallet;
+
         await SaleTransaction.addApproval({
             transactionId: saleId,
-            signerWallet,
+            signerWallet: normalizedSignerWallet,
             signerRole,
             signatureHash,
         }, client);
@@ -185,22 +200,33 @@ const completeSale = async (saleId) => {
         throw new AppError('Cannot complete sale. Missing signatures or funds block.', 400);
     }
 
-    validateTransition(sale.status, SALE_STATUS.COMPLETED);
-
-    return withTransaction(async (client) => {
-        // 1. Blockchain: Execute Final Transfer
-        let txHash = null;
-        if (sale.onChainId) {
+    // 1. Blockchain: Execute Final Transfer (Outside DB transaction)
+    let txHash = null;
+    if (sale.onChainId) {
+        try {
             console.log(`🔗 Executing on-chain execution for SaleID ${sale.onChainId}...`);
             const result = await contractService.completeOnChainSale(sale.onChainId);
             txHash = result.txHash;
             console.log(`✅ On-chain sale completed. Tx: ${txHash}`);
+        } catch (err) {
+            // Check if it's already completed on-chain (out-of-sync recovery)
+            if (err.message.includes('Not approved by authority')) {
+                console.log('ℹ️ Sale already completed on-chain. Syncing DB status...');
+            } else {
+                console.error('❌ On-chain sale completion failed:', err.message);
+                throw err;
+            }
         }
+    }
 
-        // 2. Transfer property ownership in DB
+    // 2. Database Updates (Atomic)
+    validateTransition(sale.status, SALE_STATUS.COMPLETED);
+
+    return withTransaction(async (client) => {
+        // Transfer property ownership in DB
         await Property.updateOwner(sale.propertyId, sale.buyerWallet, client);
 
-        // 3. Mark sale completed in DB
+        // Mark sale completed in DB
         const updatedSale = await SaleTransaction.updateStatus(saleId, SALE_STATUS.COMPLETED, client);
         return { sale: updatedSale, txHash };
     });

@@ -11,7 +11,7 @@ const catchAsync = require('../utils/catchAsync');
  * POST /api/properties
  */
 const registerProperty = catchAsync(async (req, res) => {
-    const { property, txHash } = await propertyService.registerProperty(req.body, req.user.walletAddress);
+    const { property, txHash } = await propertyService.registerProperty(req.body, req.user.walletAddress, req.user.id);
 
     await auditService.log({
         actionType: AUDIT_ACTIONS.PROPERTY_REGISTERED,

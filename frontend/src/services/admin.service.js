@@ -16,6 +16,8 @@ export const adminService = {
 
     // Property Setup
     approveProperty: (propertyId) => api.put(`/admin/property/${propertyId}/approve`),
+    rejectProperty: (propertyId) => api.put(`/admin/property/${propertyId}/reject`),
+    getPropertyDocuments: (propertyId) => api.get(`/properties/${propertyId}/documents`),
     setEncumbrance: (propertyId, description) => api.put(`/admin/property/${propertyId}/encumbrance`, { description }),
 
     // Court Actions

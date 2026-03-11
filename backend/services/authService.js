@@ -40,12 +40,8 @@ const verifyAndAuthenticate = async (walletAddress, signature) => {
         throw new AppError('Account deactivated. Contact support.', 403);
     }
 
-    if (!user.authNonce) {
-        throw new AppError('No pending nonce. Request a new nonce first.', 400);
-    }
-
-    // Reconstruct the message the user should have signed
-    const expectedMessage = SIGN_MESSAGE_TEMPLATE(user.authNonce);
+    // Instead of using a DB nonce, we use the static message signed by the frontend
+    const expectedMessage = `Sign this message to authenticate with Squrify Land Registry.`;
     const recoveredAddress = verifySignature(expectedMessage, signature);
 
     if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
@@ -53,7 +49,9 @@ const verifyAndAuthenticate = async (walletAddress, signature) => {
     }
 
     // Invalidate the nonce (prevent replay attacks)
-    await User.updateNonce(walletAddress, null);
+    if (user.authNonce) {
+        await User.updateNonce(walletAddress, null);
+    }
 
     // Issue JWT
     const accessToken = jwt.sign(

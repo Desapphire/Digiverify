@@ -12,12 +12,12 @@ import {
     Bell,
     Key,
     LogOut,
-    ChevronRight,
-    Search,
     ChevronLeft,
     Menu,
+    Search,
     Shield,
-    FileText
+    FileText,
+    ArrowLeftRight
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -26,83 +26,74 @@ const Sidebar = () => {
     const location = useLocation();
     const [isCollapsed, setIsCollapsed] = useState(false);
 
-    // Helper to check if a specific tab is active in the dashboard
-    const isDashboardTabActive = (tabName) => {
-        if (location.pathname !== '/dashboard') return false;
-        const searchParams = new URLSearchParams(location.search);
-        const currentTab = searchParams.get('tab') || 'overview';
-        return currentTab === tabName;
-    };
-
-    // Helper to check exact path match
     const isPathActive = (path) => location.pathname === path;
+    const isPathStartsWith = (prefix) => location.pathname.startsWith(prefix);
 
     const handleLogout = () => {
         logout();
         navigate('/login');
     };
 
+    // ── Nav Item ──
     const NavItem = ({ icon: Icon, label, active, onClick, badge }) => (
         <button
             onClick={onClick}
-            title={isCollapsed ? label : ''}
-            className={`w-full flex items-center justify-between px-3 py-2.5 mb-1 group sidebar-nav-item ${active
-                ? 'sidebar-nav-active text-white'
-                : 'text-muted hover:text-white'
-                }`}
+            className={`user-nav-item ${active ? 'active' : ''}`}
         >
-            <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'gap-3'}`}>
-                <Icon size={18} className={`${active ? 'text-white' : 'text-muted group-hover:text-white'} transition-colors`} />
-                {!isCollapsed && <span className="text-sm font-medium">{label}</span>}
+            <div className={`nav-content ${isCollapsed ? 'centered' : ''}`}>
+                <Icon size={18} />
+                {!isCollapsed && <span>{label}</span>}
             </div>
-            {!isCollapsed && (
-                <div className="flex items-center gap-2">
-                    {badge > 0 && (
-                        <span className="bg-primary-base text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                            {badge}
-                        </span>
-                    )}
-                </div>
+            {isCollapsed && <div className="user-tip">{label}</div>}
+            {!isCollapsed && badge > 0 && (
+                <div className="user-nav-badge">{badge}</div>
             )}
         </button>
     );
 
-    const NavSection = ({ title, children, showDivider = true }) => (
-        <div className={`mb-4 ${showDivider ? 'pb-4 border-b border-white/5' : ''}`}>
+    // ── Section ──
+    const NavSection = ({ title, children, divider = true }) => (
+        <div className={`user-nav-section ${divider ? 'with-divider' : ''}`}>
             {!isCollapsed && title && (
-                <h3 className="text-[10px] font-bold text-muted uppercase tracking-widest px-3 mb-2">{title}</h3>
+                <div className="user-section-title">{title}</div>
             )}
-            <div className="space-y-0.5">
-                {children}
-            </div>
+            {children}
         </div>
     );
 
     return (
-        <div className="flex bg-bg-base min-h-screen">
-            {/* Sidebar */}
-            <aside className={`fixed left-0 top-0 h-screen sidebar-panel flex flex-col z-50 ${isCollapsed ? 'w-20' : 'w-72'}`}>
-                {/* Logo Area */}
-                <div className="h-16 flex items-center justify-between px-4 border-b border-white/5 relative">
-                    <div className={`flex items-center gap-3 overflow-hidden transition-all ${isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-base to-secondary-base flex items-center justify-center shadow-glow-primary shrink-0">
-                            <Building size={16} className="text-white" />
+        <div className="flex" style={{ background: 'hsl(var(--color-bg-base))', minHeight: '100vh' }}>
+            {/* ── Sidebar ── */}
+            <aside className={`user-sidebar ${isCollapsed ? 'user-sidebar-collapsed' : 'user-sidebar-expanded'}`}
+                style={{ position: 'fixed', left: 0, top: 0, height: '100vh', display: 'flex', flexDirection: 'column' }}>
+
+                {/* Logo */}
+                <div className="user-topbar">
+                    <div className={`user-logo-box ${isCollapsed ? 'collapsed' : ''}`}>
+                        <div className="user-logo-icon">
+                            <Building size={18} />
                         </div>
-                        <span className="font-display font-bold text-lg tracking-tight text-white whitespace-nowrap">
-                            Digi<span className="text-primary-glow">verify</span>
-                        </span>
+                        <div className="user-logo-text">
+                            <span className="title">Digi<span className="accent">verify</span></span>
+                            <span className="subtitle">Platform</span>
+                        </div>
                     </div>
-                    <button
-                        onClick={() => setIsCollapsed(!isCollapsed)}
-                        className={`p-1.5 rounded-lg text-muted hover:text-white hover:bg-white/5 transition-colors ${isCollapsed ? 'mx-auto' : ''}`}
-                    >
-                        {isCollapsed ? <Menu size={20} /> : <ChevronLeft size={20} />}
+                    <button onClick={() => setIsCollapsed(!isCollapsed)} className="user-collapse-btn">
+                        {isCollapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}
                     </button>
                 </div>
 
-                {/* Navigation Links */}
-                <div className="flex-1 overflow-y-auto hide-scrollbar py-4 px-3">
-                    <NavSection showDivider={true}>
+                {/* Status */}
+                {!isCollapsed && (
+                    <div className="user-status-bar">
+                        <div className="user-status-dot"></div>
+                        <span className="user-status-label">Network Active</span>
+                    </div>
+                )}
+
+                {/* Navigation */}
+                <div className="user-nav-scroll">
+                    <NavSection divider={true}>
                         <NavItem
                             icon={Home}
                             label="Dashboard"
@@ -111,7 +102,7 @@ const Sidebar = () => {
                         />
                     </NavSection>
 
-                    <NavSection title="Identity" showDivider={true}>
+                    <NavSection title="Identity" divider={true}>
                         <NavItem
                             icon={UserIcon}
                             label="Profile & KYC"
@@ -120,7 +111,7 @@ const Sidebar = () => {
                         />
                     </NavSection>
 
-                    <NavSection title="Properties" showDivider={true}>
+                    <NavSection title="Properties" divider={true}>
                         <NavItem
                             icon={Building}
                             label="My Properties"
@@ -137,11 +128,11 @@ const Sidebar = () => {
                             icon={Search}
                             label="Search Assets"
                             active={isPathActive('/search-property')}
-                            onClick={() => { }}
+                            onClick={() => navigate('/search-property')}
                         />
                     </NavSection>
 
-                    <NavSection title="Transactions" showDivider={true}>
+                    <NavSection title="Transactions" divider={true}>
                         <NavItem
                             icon={Activity}
                             label="My Transactions"
@@ -156,7 +147,7 @@ const Sidebar = () => {
                         />
                     </NavSection>
 
-                    <NavSection title="System" showDivider={false}>
+                    <NavSection title="System" divider={user?.role === 'AUTHORITY'}>
                         <NavItem
                             icon={Bell}
                             label="Notifications"
@@ -172,9 +163,8 @@ const Sidebar = () => {
                         />
                     </NavSection>
 
-                    {/* Authority NavSection conditionally rendered */}
                     {user?.role === 'AUTHORITY' && (
-                        <NavSection title="Authority Actions" showDivider={false}>
+                        <NavSection title="Authority Actions" divider={false}>
                             <NavItem
                                 icon={Shield}
                                 label="Command Center"
@@ -184,54 +174,48 @@ const Sidebar = () => {
                             <NavItem
                                 icon={FileText}
                                 label="KYC Approvals"
-                                active={location.pathname.startsWith('/authority/kyc')}
+                                active={isPathStartsWith('/authority/kyc')}
                                 onClick={() => navigate('/authority/kyc/latest')}
                             />
                         </NavSection>
                     )}
                 </div>
 
-                {/* User Profile Footer */}
-                <div className="p-3 border-t border-white/5 bg-black/10">
-                    <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+                {/* Footer */}
+                <div className="user-footer">
+                    {user?.role === 'AUTHORITY' && !isCollapsed && (
+                        <button onClick={() => navigate('/authority')} className="user-switch-btn">
+                            <Shield size={14} />
+                            Switch to Authority
+                        </button>
+                    )}
+
+                    <div className={`user-user-row ${isCollapsed ? 'compact' : ''}`}>
                         {!isCollapsed && (
-                            <div className="flex items-center gap-3 overflow-hidden">
-                                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-0.5 shrink-0">
-                                    <div className="w-full h-full bg-bg-base text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            <div className="user-user-info">
+                                <div className="user-user-avatar">
+                                    <div className="user-user-avatar-inner">
                                         {user?.name?.charAt(0) || 'U'}
                                     </div>
                                 </div>
-                                <div className="overflow-hidden">
-                                    <p className="text-sm font-bold text-white truncate">{user?.name || 'User'}</p>
-                                    <p className="text-[10px] text-muted font-mono truncate bg-white/5 px-1.5 py-0.5 rounded-md inline-block mt-0.5">{user?.role?.toUpperCase() || 'USER'}</p>
+                                <div className="user-user-meta">
+                                    <div className="user-user-name">{user?.name || 'User'}</div>
+                                    <span className="user-user-role">{user?.role?.toUpperCase() || 'USER'}</span>
                                 </div>
                             </div>
                         )}
-                        <button
-                            onClick={handleLogout}
-                            className="p-2 text-muted hover:text-white hover:bg-white/10 rounded-lg transition-colors relative group"
-                            title="Logout"
-                        >
+                        <button onClick={handleLogout} className="user-logout-btn" title="Logout">
                             <LogOut size={18} />
-                            {isCollapsed && (
-                                <span className="absolute left-full ml-2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity">
-                                    Logout
-                                </span>
-                            )}
                         </button>
                     </div>
                 </div>
             </aside>
 
-            {/* Main Content Area */}
-            <main className={`flex-1 min-h-screen relative transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-72'}`}>
-                {/* Background Blobs (moved here so they stay behind content but don't bleed under sidebar as much) */}
-                <div className="background-blobs pointer-events-none absolute inset-0 overflow-hidden -z-10">
-                    <div className="blob blob-1 top-0 left-0 w-96 h-96 opacity-20"></div>
-                    <div className="blob blob-2 bottom-0 right-0 w-[500px] h-[500px] opacity-10"></div>
-                </div>
-
-                <div className="h-full">
+            {/* ── Main Content ── */}
+            <main className={`user-main ${isCollapsed ? 'collapsed-main' : 'expanded'}`}>
+                <div className="user-blob-1"></div>
+                <div className="user-blob-2"></div>
+                <div style={{ height: '100%' }}>
                     <Outlet />
                 </div>
             </main>

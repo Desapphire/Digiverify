@@ -100,6 +100,7 @@ const PropertyDetails = () => {
         frozen: { color: 'hsl(200,85%,55%)', badgeClass: 'badge-neutral' },
         under_dispute: { color: 'hsl(348,83%,47%)', badgeClass: 'badge-danger' },
         pending_transfer: { color: 'hsl(280,80%,60%)', badgeClass: 'badge-warning' },
+        rejected: { color: 'hsl(348,83%,47%)', badgeClass: 'badge-danger' },
     };
     const sc = statusConfig[property?.status] || statusConfig.pending;
 
@@ -326,9 +327,20 @@ const PropertyDetails = () => {
                                     <p style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: 'hsl(220,15%,60%)', wordBreak: 'break-all' }}>{property.documentHash}</p>
                                 </div>
                             </div>
-                            <button onClick={() => handleCopy(property.documentHash, 'dochash')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied === 'dochash' ? 'hsl(142,71%,45%)' : 'hsl(220,15%,60%)', padding: '0.3rem' }}>
-                                {copied === 'dochash' ? <CheckCircle2 size={14} /> : <Copy size={14} />}
-                            </button>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <a 
+                                    href={`https://gateway.pinata.cloud/ipfs/${property.documentHash}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-ghost"
+                                    style={{ padding: '0.3rem 0.5rem', fontSize: '0.7rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                >
+                                    <ExternalLink size={13} /> View
+                                </a>
+                                <button onClick={() => handleCopy(property.documentHash, 'dochash')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied === 'dochash' ? 'hsl(142,71%,45%)' : 'hsl(220,15%,60%)', padding: '0.3rem' }}>
+                                    {copied === 'dochash' ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                                </button>
+                            </div>
                         </div>
                     )}
 
@@ -356,9 +368,15 @@ const PropertyDetails = () => {
                                             </p>
                                         </div>
                                     </div>
-                                    <button className="btn btn-ghost" style={{ padding: '0.35rem 0.6rem', fontSize: '0.7rem' }}>
-                                        <ExternalLink size={13} /> IPFS
-                                    </button>
+                                    <a 
+                                        href={`https://gateway.pinata.cloud/ipfs/${doc.ipfs_hash || doc.document_hash}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-ghost" 
+                                        style={{ padding: '0.35rem 0.6rem', fontSize: '0.7rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                    >
+                                        <ExternalLink size={13} /> View
+                                    </a>
                                 </div>
                             ))}
                         </div>

@@ -90,6 +90,13 @@ const DashboardHome = () => {
             notifications.push({ id: `${sale.id}-pending`, type: 'warning', icon: Clock, text: `Sale awaiting signatures — ${sale.propertyId?.slice(0, 8)}...`, time: sale.createdAt });
         }
     });
+
+    properties.forEach(prop => {
+        if (prop.status === 'rejected') {
+            notifications.push({ id: `${prop.id}-rejected`, type: 'danger', icon: XCircle, text: `Property registration rejected — Survey #${prop.surveyNumber}`, time: prop.updatedAt || prop.createdAt });
+        }
+    });
+
     if (user?.kycStatus === 'pending') {
         notifications.push({ id: 'kyc-pending', type: 'warning', icon: AlertTriangle, text: 'KYC verification is pending review', time: user.updatedAt });
     }
@@ -257,8 +264,8 @@ const DashboardHome = () => {
                                             </p>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
-                                            <span className={`badge ${(prop.status === 'active' || prop.status === 'verified') ? 'badge-success' : 'badge-warning-glow'}`} style={{ fontSize: '0.65rem' }}>
-                                                {prop.status}
+                                            <span className={`badge ${(prop.status === 'active' || prop.status === 'verified') ? 'badge-success' : (prop.status === 'rejected') ? 'badge-danger' : 'badge-warning-glow'}`} style={{ fontSize: '0.65rem' }}>
+                                                {prop.status?.toUpperCase()}
                                             </span>
                                         </div>
                                     </div>

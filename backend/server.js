@@ -29,6 +29,7 @@ const propertyRoutes = require('./routes/propertyRoutes');
 const saleRoutes = require('./routes/saleRoutes');
 const bankRoutes = require('./routes/bankRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const ipfsRoutes = require('./routes/ipfsRoutes');
 
 // ── Bootstrap ───────────────────────────────────────────
 const app = express();
@@ -67,6 +68,7 @@ app.use('/api/properties', propertyRoutes);
 app.use('/api/sales', saleRoutes);
 app.use('/api/bank', bankRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/ipfs', ipfsRoutes);
 
 // ── Health Check ────────────────────────────────────────
 app.get('/', (req, res) => {

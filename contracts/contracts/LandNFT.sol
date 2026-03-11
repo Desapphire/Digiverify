@@ -17,6 +17,7 @@ contract LandNFT is ERC721, ERC721URIStorage, AccessControl, Pausable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant ADMIN_ROLE  = keccak256("ADMIN_ROLE");
     bytes32 public constant COURT_ROLE  = keccak256("COURT_ROLE");
+    bytes32 public constant SALE_CONTRACT_ROLE = keccak256("SALE_CONTRACT_ROLE");
 
     // tokenId => frozen status
     mapping(uint256 => bool) public isFrozen;
@@ -75,6 +76,13 @@ contract LandNFT is ERC721, ERC721URIStorage, AccessControl, Pausable {
     ) external onlyRole(COURT_ROLE) {
         _transfer(from, to, tokenId);
         emit ForceTransfer(tokenId, from, to, reason);
+    }
+
+    /**
+     * @dev Specialized check to allow SaleContract to move tokens without manual approval.
+     */
+    function _isAuthorized(address owner, address spender, uint256 tokenId) internal view virtual override returns (bool) {
+        return super._isAuthorized(owner, spender, tokenId) || hasRole(SALE_CONTRACT_ROLE, spender);
     }
 
     // ── Internal Hooks ─────────────────────────────────────

@@ -7,5 +7,10 @@ export const propertyService = {
     searchProperties: (query) => api.get('/properties/search', { params: { q: query } }),
     getPropertyById: (id) => api.get(`/properties/${id}`),
     uploadDocument: (id, documentHash) => api.post(`/properties/${id}/documents`, { documentHash }),
-    getDocuments: (id) => api.get(`/properties/${id}/documents`)
+    getDocuments: (id) => api.get(`/properties/${id}/documents`),
+    
+    // ── IPFS ───────────────────────────────────────────────
+    uploadToIPFS: (formData) => api.post('/ipfs/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    })
 };
