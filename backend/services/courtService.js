@@ -7,6 +7,7 @@ const { withTransaction } = require('../config/db');
 const Property = require('../models/Property');
 const SaleTransaction = require('../models/SaleTransaction');
 const saleService = require('./saleService');
+const contractService = require('../blockchain/contractService');
 const AppError = require('../utils/AppError');
 
 /**
@@ -27,13 +28,27 @@ const freezeProperty = async ({ propertyId, courtOrderHash, caseNumber, reason }
         // Update property status
         await Property.updateStatus(propertyId, 'frozen', client);
 
+        // ── Blockchain: Judicial Freeze on-chain ──────────────
+        if (property.nftTokenId) {
+            try {
+                await contractService.courtFreezeProperty(property.nftTokenId, reason || 'Judicial Order');
+                console.log(`✅ On-chain freeze ordered for property ${propertyId}`);
+            } catch (err) {
+                console.error('⚠️ On-chain freeze failed:', err.message);
+            }
+        }
+
         // Freeze any active sale
         const activeSale = await SaleTransaction.findActiveByProperty(propertyId);
         if (activeSale) {
             try {
+                // Cancel/Freeze sale on-chain as well
+                if (activeSale.onChainId) {
+                    await contractService.courtCancelSale(activeSale.onChainId, reason || 'Judicial Order');
+                }
                 await saleService.freezeSale(activeSale.id);
             } catch (e) {
-                // Sale might already be in a terminal state
+                console.warn('⚠️ Could not freeze active sale:', e.message);
             }
         }
 
@@ -63,6 +78,9 @@ const reverseFreezeOrder = async (freezeOrderId, { reversalOrderHash, reason }, 
 
         // Get current property owner
         const property = await Property.findById(freezeOrder.property_id);
+
+        // ── Blockchain: Judicial Unfreeze logic if contract supports it ──
+        // (Currently CourtOverride focuses on Freeze/Transfer/Cancel)
 
         // Insert reversal record
         const result = await client.query(
@@ -96,10 +114,25 @@ const forceTransfer = async ({ propertyId, newOwnerWallet, courtOrderHash, reaso
     if (!property) throw new AppError('Property not found.', 404);
 
     return withTransaction(async (client) => {
-        // Transfer ownership
+        // 1. Blockchain: Judicial Force Transfer on-chain
+        if (property.nftTokenId) {
+            try {
+                await contractService.courtReverseTransfer(
+                    property.nftTokenId,
+                    newOwnerWallet,
+                    reason || 'Court Ordered Force Transfer'
+                );
+                console.log(`✅ On-chain judicial transfer successful for NFT ${property.nftTokenId}`);
+            } catch (err) {
+                console.error('⚠️ On-chain judicial transfer failed:', err.message);
+                // Non-blocking in this simulation, but usually critical
+            }
+        }
+
+        // 2. Transfer ownership in DB
         await Property.updateOwner(propertyId, newOwnerWallet, client);
 
-        // Log court order
+        // 3. Log court order
         await client.query(
             `INSERT INTO court_freeze_orders (property_id, court_user_id, court_order_hash, reason, is_active)
        VALUES ($1,$2,$3,$4, FALSE)`,

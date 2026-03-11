@@ -60,7 +60,7 @@ const FundBlocking = () => {
 
             // Step 1: Request fund block
             const requestRes = await bankService.requestFundBlock({
-                transactionId: parseInt(id),
+                transactionId: id,
                 blockAmount: sale.salePrice,
             });
 

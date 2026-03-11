@@ -62,6 +62,23 @@ const UserDashboard = () => {
         }
     };
 
+    const handleLinkWallet = async () => {
+        if (!account) return;
+        setProfileSaving(true);
+        try {
+            const res = await userService.updateProfile({ walletAddress: account });
+            if (res.data?.data) {
+                setProfile(res.data.data);
+                setProfileMsg({ type: 'success', text: 'Wallet linked successfully!' });
+            }
+        } catch (err) {
+            setProfileMsg({ type: 'error', text: err.response?.data?.message || 'Failed to link wallet.' });
+        } finally {
+            setProfileSaving(false);
+        }
+    };
+
+
     const handleCopyAddress = () => {
         const addr = profile?.walletAddress || '';
         navigator.clipboard.writeText(addr);
@@ -419,26 +436,39 @@ const UserDashboard = () => {
                     {/* Connected wallet status */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                         {account ? (
-                            <div className="connected-wallet-pill" style={{
-                                background: account.toLowerCase() === data?.walletAddress?.toLowerCase()
-                                    ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
-                                border: `1px solid ${account.toLowerCase() === data?.walletAddress?.toLowerCase()
-                                    ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                                color: account.toLowerCase() === data?.walletAddress?.toLowerCase()
-                                    ? 'hsl(142,71%,45%)' : 'hsl(348,83%,47%)',
-                            }}>
-                                <div style={{
-                                    width: '8px', height: '8px', borderRadius: '50%',
-                                    background: account.toLowerCase() === data?.walletAddress?.toLowerCase()
-                                        ? 'hsl(142,71%,45%)' : 'hsl(348,83%,47%)',
-                                    boxShadow: `0 0 8px ${account.toLowerCase() === data?.walletAddress?.toLowerCase()
-                                        ? 'hsl(142,71%,45%)' : 'hsl(348,83%,47%)'}`,
-                                }}></div>
-                                <span>
-                                    {account.slice(0, 6)}...{account.slice(-4)}
-                                    {account.toLowerCase() !== data?.walletAddress?.toLowerCase() && ' (Mismatch)'}
-                                </span>
-                            </div>
+                            <>
+                                <div className="connected-wallet-pill" style={{
+                                    background: (data?.walletAddress && account.toLowerCase() === data?.walletAddress?.toLowerCase())
+                                        ? 'rgba(34,197,94,0.08)' : data?.walletAddress ? 'rgba(239,68,68,0.08)' : 'rgba(139,92,246,0.08)',
+                                    border: `1px solid ${(data?.walletAddress && account.toLowerCase() === data?.walletAddress?.toLowerCase())
+                                        ? 'rgba(34,197,94,0.3)' : data?.walletAddress ? 'rgba(239,68,68,0.3)' : 'rgba(139,92,246,0.3)'}`,
+                                    color: (data?.walletAddress && account.toLowerCase() === data?.walletAddress?.toLowerCase())
+                                        ? 'hsl(142,71%,45%)' : data?.walletAddress ? 'hsl(348,83%,47%)' : 'hsl(255,85%,65%)',
+                                }}>
+                                    <div style={{
+                                        width: '8px', height: '8px', borderRadius: '50%',
+                                        background: (data?.walletAddress && account.toLowerCase() === data?.walletAddress?.toLowerCase())
+                                            ? 'hsl(142,71%,45%)' : data?.walletAddress ? 'hsl(348,83%,47%)' : 'hsl(255,85%,65%)',
+                                        boxShadow: `0 0 8px ${(data?.walletAddress && account.toLowerCase() === data?.walletAddress?.toLowerCase())
+                                            ? 'hsl(142,71%,45%)' : data?.walletAddress ? 'hsl(348,83%,47%)' : 'hsl(255,85%,65%)'}`,
+                                    }}></div>
+                                    <span>
+                                        {account.slice(0, 6)}...{account.slice(-4)}
+                                        {data?.walletAddress && account.toLowerCase() !== data?.walletAddress?.toLowerCase() && ' (Mismatch)'}
+                                        {!data?.walletAddress && ' (Connected)'}
+                                    </span>
+                                </div>
+                                {!data?.walletAddress && (
+                                    <button
+                                        className="btn btn-primary btn-glow"
+                                        onClick={handleLinkWallet}
+                                        disabled={profileSaving}
+                                        style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
+                                    >
+                                        <ShieldCheck size={14} /> Link to Profile
+                                    </button>
+                                )}
+                            </>
                         ) : (
                             <button
                                 className="btn btn-secondary"
@@ -451,6 +481,7 @@ const UserDashboard = () => {
                             </button>
                         )}
                     </div>
+
 
                     {walletError && (
                         <div className="alert-message" style={{

@@ -13,6 +13,18 @@ export const Web3Provider = ({ children }) => {
 
     useEffect(() => {
         if (window.ethereum) {
+            const checkConnection = async () => {
+                try {
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    if (accounts.length > 0) {
+                        await connectWallet();
+                    }
+                } catch (err) {
+                    console.error('Auto-connect check failed:', err);
+                }
+            };
+            checkConnection();
+
             const handleAccountsChanged = (accounts) => {
                 if (accounts.length > 0) {
                     setAccount(accounts[0]);

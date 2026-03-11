@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../../services/auth.service';
 import { User, Mail, Lock, Calendar, Phone, IdCard, Loader2, ArrowRight, ShieldCheck, Camera, UserPlus, Wallet } from 'lucide-react';
 import { useWeb3 } from '../../context/Web3Context';
+import BiometricCapture from './BiometricCapture';
 
 const Register = () => {
     const navigate = useNavigate();
@@ -12,7 +13,6 @@ const Register = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [step, setStep] = useState(1);
-
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -27,13 +27,12 @@ const Register = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleFaceIdCapture = () => {
-        // Simulated Face ID hash capture for demonstration.
-        // In reality, this would use WebRTC to take a photo, send it to a model, and compute a robust hash.
-        const simulatedHash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
-        setFormData({ ...formData, faceIdHash: simulatedHash });
+    const handleFaceIdCapture = (hash) => {
+        setFormData({ ...formData, faceIdHash: hash });
         setStep(3); // Proceed to submit
     };
+
+
 
     const handleRegister = async (e) => {
         e.preventDefault();
@@ -80,10 +79,10 @@ const Register = () => {
     };
 
     return (
-        <div className="flex items-center justify-center p-6 h-full w-full py-12">
-            <div className="glass-panel w-full max-w-2xl p-8 md:p-10 relative z-10">
+        <div className="flex items-center justify-center p-6 h-full w-full py-12 max-w-[1200px] mx-auto">
+            <div className="glass-panel w-full max-w-[1100px] mx-auto p-8 md:p-10 relative z-10">
                 <div className="flex flex-col items-center mb-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-6 shadow-glow-primary animate-float">
+                    <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-6 shadow-glow-primary">
                         <UserPlus className="text-white w-8 h-8" />
                     </div>
                     <h1 className="text-3xl font-bold mb-2 tracking-tight">
@@ -109,76 +108,81 @@ const Register = () => {
 
                 <form onSubmit={(e) => { e.preventDefault(); if (step === 3) handleRegister(e); }}>
                     {step === 1 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-pulse-glow" style={{ animationIterationCount: 1 }}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="flex flex-col gap-2">
                                 <label className="text-xs font-bold text-muted uppercase tracking-widest ml-1">Full Legal Name</label>
                                 <div className="relative">
                                     <User className="absolute left-4 top-3.5 w-5 h-5 text-muted" />
-                                    <input type="text" name="name" className="input-premium pl-12" placeholder="John Doe" value={formData.name} onChange={handleChange} required />
+                                    <input type="text" name="name" className="input-premium w-full pl-12" placeholder="Kartik Bhavar" value={formData.name} onChange={handleChange} required />
                                 </div>
                             </div>
                             <div className="flex flex-col gap-2">
                                 <label className="text-xs font-bold text-muted uppercase tracking-widest ml-1">Birthdate</label>
                                 <div className="relative">
-                                    <Calendar className="absolute left-4 top-3.5 w-5 h-5 text-muted" />
-                                    <input type="date" name="birthdate" className="input-premium pl-12" value={formData.birthdate} onChange={handleChange} required />
+                                    <Calendar className="absolute left-4 top-3.5 w-5 h-5 text-muted pointer-events-none" />
+                                    <input 
+                                        type="date" 
+                                        name="birthdate" 
+                                        className="input-premium w-full pl-12 cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full" 
+                                        value={formData.birthdate} 
+                                        onChange={handleChange} 
+                                        onClick={(e) => {
+                                            if (e.target.showPicker) {
+                                                try { e.target.showPicker(); } catch (err) {}
+                                            }
+                                        }}
+                                        required 
+                                    />
                                 </div>
                             </div>
                             <div className="flex flex-col gap-2">
                                 <label className="text-xs font-bold text-muted uppercase tracking-widest ml-1">Email</label>
                                 <div className="relative">
                                     <Mail className="absolute left-4 top-3.5 w-5 h-5 text-muted" />
-                                    <input type="email" name="email" className="input-premium pl-12" placeholder="john@example.com" value={formData.email} onChange={handleChange} required />
+                                    <input type="email" name="email" className="input-premium w-full pl-12" placeholder="kartik.bhavar24@vit.edu" value={formData.email} onChange={handleChange} required />
                                 </div>
                             </div>
                             <div className="flex flex-col gap-2">
                                 <label className="text-xs font-bold text-muted uppercase tracking-widest ml-1">Password</label>
                                 <div className="relative">
                                     <Lock className="absolute left-4 top-3.5 w-5 h-5 text-muted" />
-                                    <input type="password" name="password" className="input-premium pl-12" placeholder="Min 6 chars" value={formData.password} onChange={handleChange} required />
+                                    <input type="password" name="password" className="input-premium w-full pl-12" placeholder="Min 6 chars" value={formData.password} onChange={handleChange} required />
                                 </div>
                             </div>
                             <div className="flex flex-col gap-2">
                                 <label className="text-xs font-bold text-muted uppercase tracking-widest ml-1">Government ID (Optional)</label>
                                 <div className="relative">
                                     <IdCard className="absolute left-4 top-3.5 w-5 h-5 text-muted" />
-                                    <input type="text" name="governmentId" className="input-premium pl-12" placeholder="UID/SSN" value={formData.governmentId} onChange={handleChange} />
+                                    <input type="text" name="governmentId" className="input-premium w-full pl-12" placeholder="UID/SSN" value={formData.governmentId} onChange={handleChange} />
                                 </div>
                             </div>
                             <div className="flex flex-col gap-2">
                                 <label className="text-xs font-bold text-muted uppercase tracking-widest ml-1">Phone (Optional)</label>
                                 <div className="relative">
                                     <Phone className="absolute left-4 top-3.5 w-5 h-5 text-muted" />
-                                    <input type="tel" name="phone" className="input-premium pl-12" placeholder="+123456789" value={formData.phone} onChange={handleChange} />
+                                    <input type="tel" name="phone" className="input-premium w-full pl-12" placeholder="+123456789" value={formData.phone} onChange={handleChange} />
                                 </div>
                             </div>
 
-                            <button type="button" onClick={() => setStep(2)} className="btn w-full md:col-span-2 flex items-center justify-center gap-3 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 mt-4">
-                                Continue to Biometrics <ArrowRight size={20} />
-                            </button>
+                            <div className="md:col-span-2 flex justify-center mt-6">
+                                <button type="button" onClick={() => setStep(2)} className="btn w-full md:w-1/2 max-w-[400px] flex items-center justify-center gap-3 bg-white text-black font-black py-4 rounded-[30px] hover:bg-gray-200">
+                                    Continue to Biometrics <ArrowRight size={20} />
+                                </button>
+                            </div>
                         </div>
                     )}
 
                     {step === 2 && (
-                        <div className="flex flex-col items-center gap-6 py-8 animate-pulse-glow" style={{ animationIterationCount: 1 }}>
-                            <div className="w-24 h-24 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/30 animate-float">
-                                <Camera className="w-10 h-10 text-primary-glow" />
-                            </div>
-                            <div className="text-center">
-                                <h3 className="text-xl font-bold mb-2">Biometric Binding</h3>
-                                <p className="text-sm text-muted max-w-sm">Capture your Face ID to securely bind your physical identity to your digital profile. This is required for critical asset transfers.</p>
-                            </div>
-                            <button type="button" onClick={handleFaceIdCapture} className="btn w-full max-w-sm flex items-center justify-center gap-3 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 mt-4">
-                                Simulate Face ID Capture
-                            </button>
-                            <button type="button" onClick={() => setStep(1)} className="text-sm text-muted font-bold hover:text-white mt-4">
-                                Go Back
-                            </button>
+                        <div className="flex flex-col items-center gap-6 py-8">
+                            <BiometricCapture 
+                                onCaptureComplete={handleFaceIdCapture}
+                                onBack={() => setStep(1)}
+                            />
                         </div>
                     )}
 
                     {step === 3 && (
-                        <div className="flex flex-col gap-8 animate-pulse-glow" style={{ animationIterationCount: 1 }}>
+                        <div className="flex flex-col gap-8">
                             <div className="bg-black/40 p-6 rounded-2xl border border-subtle">
                                 <h3 className="text-sm font-bold text-muted uppercase tracking-widest mb-4">Final Step: Link Web3 Wallet</h3>
                                 {!account ? (

@@ -33,12 +33,27 @@ const RegisterProperty = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleSimulateUpload = (field) => {
-        const mockHashes = {
-            documentHash: 'QmYwAPJzv5CZsnA625s3Xf2bXzgZ7K1Ypx9L1s7Xf2bXz',
-            taxReceiptHash: 'QmTxR3c5CZsnA625s3Xf2bXzgZ7K1Ypx9L1s7TaxRcpt',
-        };
-        setFormData({ ...formData, [field]: mockHashes[field] });
+    const [uploadingField, setUploadingField] = useState(null);
+
+    const handleFileUpload = async (e, field) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            setUploadingField(field);
+            setError('');
+            
+            const uploadData = new FormData();
+            uploadData.append('file', file);
+            
+            const res = await propertyService.uploadToIPFS(uploadData);
+            setFormData({ ...formData, [field]: res.data.data.ipfsHash });
+        } catch (err) {
+            console.error('IPFS Upload Error:', err);
+            setError(`Failed to upload ${field === 'documentHash' ? 'Title Deed' : 'Tax Receipt'}.`);
+        } finally {
+            setUploadingField(null);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -61,6 +76,10 @@ const RegisterProperty = () => {
                 geoLat: formData.geoLat ? Number(formData.geoLat) : undefined,
                 geoLng: formData.geoLng ? Number(formData.geoLng) : undefined,
                 documentHash: formData.documentHash || undefined,
+                documents: [
+                    { type: 'Title Deed', ipfsHash: formData.documentHash },
+                    { type: 'Tax Receipt', ipfsHash: formData.taxReceiptHash }
+                ].filter(d => d.ipfsHash)
             };
 
             const res = await propertyService.registerProperty(payload);
@@ -254,14 +273,27 @@ const RegisterProperty = () => {
                                         <span className="badge badge-success" style={{ fontSize: '0.6rem' }}>UPLOADED</span>
                                     </div>
                                 ) : (
-                                    <div
-                                        onClick={() => handleSimulateUpload('documentHash')}
-                                        className="upload-box"
-                                    >
-                                        <Upload size={24} style={{ margin: '0 auto 0.5rem', opacity: 0.4 }} />
-                                        <p style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem' }}>Upload Title Deed</p>
-                                        <p style={{ fontSize: '0.7rem', color: 'hsl(220,15%,60%)' }}>PDF, JPG, PNG (max 10MB)</p>
-                                    </div>
+                                    <label className="upload-box relative" style={{ display: 'block' }}>
+                                        <input 
+                                            type="file" 
+                                            accept=".pdf,.jpg"
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                                            onChange={(e) => handleFileUpload(e, 'documentHash')}
+                                            disabled={uploadingField === 'documentHash'}
+                                        />
+                                        {uploadingField === 'documentHash' ? (
+                                            <>
+                                                <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 0.5rem', color: 'hsl(255,85%,65%)' }} />
+                                                <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'hsl(255,85%,65%)' }}>Uploading to IPFS...</p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Upload size={24} style={{ margin: '0 auto 0.5rem', opacity: 0.4 }} />
+                                                <p style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem' }}>Upload Title Deed</p>
+                                                <p style={{ fontSize: '0.7rem', color: 'hsl(220,15%,60%)' }}>PDF or JPG (max 10MB)</p>
+                                            </>
+                                        )}
+                                    </label>
                                 )}
                             </div>
 
@@ -274,14 +306,27 @@ const RegisterProperty = () => {
                                         <span className="badge badge-success" style={{ fontSize: '0.6rem' }}>UPLOADED</span>
                                     </div>
                                 ) : (
-                                    <div
-                                        onClick={() => handleSimulateUpload('taxReceiptHash')}
-                                        className="upload-box"
-                                    >
-                                        <Receipt size={24} style={{ margin: '0 auto 0.5rem', opacity: 0.4 }} />
-                                        <p style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem' }}>Upload Tax Receipt</p>
-                                        <p style={{ fontSize: '0.7rem', color: 'hsl(220,15%,60%)' }}>PDF, JPG, PNG (max 10MB)</p>
-                                    </div>
+                                    <label className="upload-box relative" style={{ display: 'block' }}>
+                                        <input 
+                                            type="file" 
+                                            accept=".pdf,.jpg"
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                                            onChange={(e) => handleFileUpload(e, 'taxReceiptHash')}
+                                            disabled={uploadingField === 'taxReceiptHash'}
+                                        />
+                                        {uploadingField === 'taxReceiptHash' ? (
+                                            <>
+                                                <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 0.5rem', color: 'hsl(255,85%,65%)' }} />
+                                                <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'hsl(255,85%,65%)' }}>Uploading to IPFS...</p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Receipt size={24} style={{ margin: '0 auto 0.5rem', opacity: 0.4 }} />
+                                                <p style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem' }}>Upload Tax Receipt</p>
+                                                <p style={{ fontSize: '0.7rem', color: 'hsl(220,15%,60%)' }}>PDF or JPG (max 10MB)</p>
+                                            </>
+                                        )}
+                                    </label>
                                 )}
                             </div>
                         </div>

@@ -9,6 +9,7 @@ const { getProvider, getSigner, contractAddresses } = require('../config/blockch
 const LandNFT_ABI = require('./abis/LandNFT.json');
 const LandRegistry_ABI = require('./abis/LandRegistry.json');
 const SaleContract_ABI = require('./abis/SaleContract.json');
+const CourtOverride_ABI = require('./abis/CourtOverride.json');
 
 let contracts = {};
 
@@ -39,6 +40,14 @@ const initContracts = () => {
         contracts.saleContract = new ethers.Contract(
             contractAddresses.saleContract,
             SaleContract_ABI,
+            signerOrProvider
+        );
+    }
+
+    if (contractAddresses.courtOverride) {
+        contracts.courtOverride = new ethers.Contract(
+            contractAddresses.courtOverride,
+            CourtOverride_ABI,
             signerOrProvider
         );
     }

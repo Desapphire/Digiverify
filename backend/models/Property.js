@@ -51,7 +51,7 @@ const create = async (data, client = null) => {
             propertyCode, data.surveyNumber, data.surveyDetails || null,
             data.geoLat || null, data.geoLng || null, data.areaSqft || null,
             data.addressLine || null, data.district || null, data.state || null,
-            data.documentHash || null, data.ownerWallet,
+            data.documentHash || null, data.ownerWallet ? data.ownerWallet.toLowerCase() : null,
         ]
     );
     return mapProperty(result.rows[0]);
@@ -102,9 +102,10 @@ const updateStatus = async (id, status, client = null) => {
 
 const updateOwner = async (id, newOwnerWallet, client = null) => {
     const db = client || pool;
+    const normalizedWallet = newOwnerWallet ? newOwnerWallet.toLowerCase() : null;
     const result = await db.query(
         'UPDATE properties SET owner_wallet = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
-        [newOwnerWallet, id]
+        [normalizedWallet, id]
     );
     return mapProperty(result.rows[0]);
 };

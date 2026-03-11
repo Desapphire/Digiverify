@@ -12,19 +12,20 @@ const catchAsync = require('../utils/catchAsync');
  * POST /api/sales
  */
 const initiateSale = catchAsync(async (req, res) => {
-    const sale = await saleService.initiateSale(req.body, req.user.walletAddress);
+    const { transaction, txHash } = await saleService.initiateSale(req.body, req.user.walletAddress);
 
     await auditService.log({
         actionType: AUDIT_ACTIONS.SALE_INITIATED,
         req,
-        entityId: sale.id,
+        entityId: transaction.id,
         entityType: 'sale_transaction',
     });
 
     return res.status(201).json({
         success: true,
         message: 'Sale initiated.',
-        data: sale,
+        data: transaction,
+        blockchainTxHash: txHash
     });
 });
 
@@ -39,15 +40,15 @@ const signSale = catchAsync(async (req, res) => {
     }
 
     let signerRole;
-    if (req.user.walletAddress.toLowerCase() === saleInstance.buyer_wallet.toLowerCase()) {
+    if (req.user.walletAddress.toLowerCase() === saleInstance.buyerWallet.toLowerCase()) {
         signerRole = 'buyer';
-    } else if (req.user.walletAddress.toLowerCase() === saleInstance.seller_wallet.toLowerCase()) {
+    } else if (req.user.walletAddress.toLowerCase() === saleInstance.sellerWallet.toLowerCase()) {
         signerRole = 'seller';
     } else {
         throw new AppError('You are not authorized to sign this transaction.', 403);
     }
 
-    const sale = await saleService.signSale(
+    const { sale, txHash } = await saleService.signSale(
         req.params.id,
         req.user.walletAddress,
         signerRole,
@@ -69,6 +70,7 @@ const signSale = catchAsync(async (req, res) => {
         success: true,
         message: `Sale signed by ${signerRole}.`,
         data: sale,
+        blockchainTxHash: txHash
     });
 });
 
@@ -76,7 +78,7 @@ const signSale = catchAsync(async (req, res) => {
  * POST /api/sales/:id/complete
  */
 const completeSale = catchAsync(async (req, res) => {
-    const sale = await saleService.completeSale(req.params.id);
+    const { sale, txHash } = await saleService.completeSale(req.params.id);
 
     await auditService.log({
         actionType: AUDIT_ACTIONS.SALE_COMPLETED,
@@ -89,6 +91,7 @@ const completeSale = catchAsync(async (req, res) => {
         success: true,
         message: 'Sale completed. Ownership transferred.',
         data: sale,
+        blockchainTxHash: txHash
     });
 });
 

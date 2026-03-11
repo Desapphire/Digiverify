@@ -11,7 +11,7 @@ const catchAsync = require('../utils/catchAsync');
  * PUT /api/authority/property/:id/approve
  */
 const approveProperty = catchAsync(async (req, res) => {
-    const property = await authorityService.approveProperty(req.params.id);
+    const { property, txHash } = await authorityService.approveProperty(req.params.id);
 
     await auditService.log({
         actionType: AUDIT_ACTIONS.PROPERTY_APPROVED,
@@ -24,6 +24,27 @@ const approveProperty = catchAsync(async (req, res) => {
         success: true,
         message: 'Property approved.',
         data: property,
+        blockchainTxHash: txHash
+    });
+});
+
+/**
+ * PUT /api/authority/property/:id/reject
+ */
+const rejectProperty = catchAsync(async (req, res) => {
+    const property = await authorityService.rejectProperty(req.params.id);
+
+    await auditService.log({
+        actionType: AUDIT_ACTIONS.PROPERTY_REJECTED,
+        req,
+        entityId: req.params.id,
+        entityType: 'property',
+    });
+
+    return res.status(200).json({
+        success: true,
+        message: 'Property rejected.',
+        data: property,
     });
 });
 
@@ -31,10 +52,13 @@ const approveProperty = catchAsync(async (req, res) => {
  * POST /api/authority/sale/:id/approve
  */
 const approveSale = catchAsync(async (req, res) => {
-    const sale = await authorityService.approveSaleTransaction(
+    // Ensure req.body is defined to avoid crashes
+    const signatureHash = (req.body && req.body.signatureHash) || null;
+
+    const { sale, txHash } = await authorityService.approveSaleTransaction(
         req.params.id,
         req.user.walletAddress,
-        req.body.signatureHash
+        signatureHash
     );
 
     await auditService.log({
@@ -48,6 +72,7 @@ const approveSale = catchAsync(async (req, res) => {
         success: true,
         message: 'Sale approved by authority.',
         data: sale,
+        blockchainTxHash: txHash
     });
 });
 
@@ -76,7 +101,7 @@ const rejectSale = catchAsync(async (req, res) => {
  * PUT /api/authority/property/:id/encumbrance
  */
 const setEncumbrance = catchAsync(async (req, res) => {
-    const flag = req.body.encumbrance === true;
+    const flag = req.body?.encumbrance === true;
     const property = await authorityService.setEncumbrance(req.params.id, flag);
     const actionType = flag ? AUDIT_ACTIONS.ENCUMBRANCE_SET : AUDIT_ACTIONS.ENCUMBRANCE_CLEARED;
 
@@ -94,4 +119,4 @@ const setEncumbrance = catchAsync(async (req, res) => {
     });
 });
 
-module.exports = { approveProperty, approveSale, rejectSale, setEncumbrance };
+module.exports = { approveProperty, rejectProperty, approveSale, rejectSale, setEncumbrance };

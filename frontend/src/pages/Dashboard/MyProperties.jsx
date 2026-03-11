@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { propertyService } from '../../services/property.service';
 import { useAuth } from '../../context/AuthContext';
 import {
-    Building, MapPin, CheckCircle2, Shield, AlertTriangle,
-    Lock, Eye, ArrowUpRight, PlusCircle, Search, Loader2
+    Building, MapPin, CheckCircle2, Shield, AlertTriangle, ShieldAlert,
+    Lock, Eye, ArrowUpRight, PlusCircle, Search, Loader2, ExternalLink
 } from 'lucide-react';
 import './PropertyPages.css';
 
@@ -38,6 +38,7 @@ const MyProperties = () => {
         frozen: { label: 'FROZEN', color: 'hsl(200,85%,55%)', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.25)', icon: Lock, badgeClass: 'badge-neutral' },
         under_dispute: { label: 'UNDER DISPUTE', color: 'hsl(348,83%,47%)', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.25)', icon: AlertTriangle, badgeClass: 'badge-danger' },
         pending_transfer: { label: 'TRANSFERRING', color: 'hsl(280,80%,60%)', bg: 'rgba(168,85,247,0.08)', border: 'rgba(168,85,247,0.25)', icon: ArrowUpRight, badgeClass: 'badge-warning' },
+        rejected: { label: 'REJECTED', color: 'hsl(348,83%,47%)', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.25)', icon: ShieldAlert, badgeClass: 'badge-danger' },
     };
 
     const getStatusConfig = (status) => statusConfig[status] || statusConfig.pending;
@@ -61,6 +62,7 @@ const MyProperties = () => {
         pending: properties.filter(p => p.status === 'pending').length,
         frozen: properties.filter(p => p.status === 'frozen').length,
         under_dispute: properties.filter(p => p.status === 'under_dispute').length,
+        rejected: properties.filter(p => p.status === 'rejected').length,
     };
 
     if (loading) {
@@ -75,19 +77,19 @@ const MyProperties = () => {
     }
 
     return (
-        <div className="property-container container-lg">
+        <div className="w-full max-w-[1400px] mx-auto p-4 md:p-8 animate-fade-in">
             {/* Header */}
-            <div className="page-header-row">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
-                    <h1 className="page-title">
+                    <h1 className="text-4xl font-extrabold tracking-tight mb-2">
                         My <span className="text-gradient">Properties</span>
                     </h1>
-                    <p className="page-subtitle">
+                    <p className="text-muted font-medium">
                         {properties.length} registered asset{properties.length !== 1 ? 's' : ''} on the blockchain
                     </p>
                 </div>
                 <button
-                    className="btn btn-primary btn-glow"
+                    className="btn btn-primary btn-glow w-full md:w-auto"
                     onClick={() => navigate('/register-property')}
                     style={{ fontSize: '0.9rem', padding: '0.75rem 1.5rem' }}
                 >
@@ -96,11 +98,11 @@ const MyProperties = () => {
             </div>
 
             {/* Search + Filter Bar */}
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
+            <div className="flex flex-col xl:flex-row gap-4 mb-8">
+                <div className="relative flex-1 min-w-[220px]">
                     <Search size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'hsl(220,15%,60%)' }} />
                     <input
-                        className="input-premium"
+                        className="input-premium w-full"
                         type="text"
                         placeholder="Search by survey number, location..."
                         value={searchQuery}
@@ -108,7 +110,7 @@ const MyProperties = () => {
                         style={{ paddingLeft: '2.75rem' }}
                     />
                 </div>
-                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <div className="flex flex-wrap gap-2">
                     {Object.entries(statusCounts).map(([key, count]) => (
                         <button
                             key={key}
@@ -135,7 +137,7 @@ const MyProperties = () => {
 
             {/* Property Grid */}
             {filtered.length === 0 ? (
-                <div className="empty-state">
+                <div className="empty-state max-w-2xl mx-auto mt-12">
                     <Building size={48} style={{ opacity: 0.2, marginBottom: '1rem', color: 'hsl(255,85%,65%)', display: 'inline-block' }} />
                     <p style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>
                         {properties.length === 0 ? 'No properties registered yet' : 'No properties match your filters'}
@@ -150,20 +152,20 @@ const MyProperties = () => {
                     )}
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div className="flex flex-col gap-4">
                     {filtered.map((prop) => {
                         const sc = getStatusConfig(prop.status);
                         const StatusIcon = sc.icon;
                         return (
                             <div
                                 key={prop.id}
-                                className="property-card"
+                                className="property-card flex flex-col md:flex-row w-full justify-between items-start md:items-center gap-6"
                                 style={{ borderLeftColor: sc.color }}
                                 onClick={() => navigate(`/properties/${prop.id}`)}
                             >
-                                <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                                        <h3 className="property-card-title">
+                                <div className="w-full md:w-auto">
+                                    <div className="flex items-center gap-3 mb-2 flex-wrap">
+                                        <h3 className="text-xl font-bold flex items-center gap-2">
                                             {prop.surveyNumber}
                                             {(prop.status === 'active' || prop.status === 'verified') && <CheckCircle2 size={16} style={{ color: 'hsl(142,71%,45%)' }} />}
                                         </h3>
@@ -186,9 +188,16 @@ const MyProperties = () => {
                                             </p>
                                         )}
                                         {prop.nftTokenId && (
-                                            <p className="meta-item" style={{ color: 'hsl(255,85%,65%)', fontFamily: 'monospace' }}>
-                                                NFT #{prop.nftTokenId}
-                                            </p>
+                                            <a 
+                                                href={`https://testnet.snowtrace.io/nft/0xE94d65289Cc088f597C077938A6D7Fc0974196fe/${prop.nftTokenId}`}
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="meta-item hover-glow"
+                                                style={{ color: 'hsl(255,85%,65%)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '0.2rem', textDecoration: 'none' }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                NFT #{prop.nftTokenId} <ExternalLink size={10} />
+                                            </a>
                                         )}
                                     </div>
                                     <p style={{ fontSize: '0.7rem', color: 'hsl(220,15%,60%)', fontFamily: 'monospace' }}>
@@ -196,21 +205,21 @@ const MyProperties = () => {
                                     </p>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <div className="flex gap-3 w-full md:w-auto mt-2 md:mt-0">
                                     <button
-                                        className="btn btn-ghost"
+                                        className="btn btn-ghost flex-1 md:flex-none justify-center"
                                         onClick={(e) => { e.stopPropagation(); navigate(`/properties/${prop.id}`); }}
-                                        style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem' }}
+                                        style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
                                     >
-                                        <Eye size={14} /> Details
+                                        <Eye size={16} /> Details
                                     </button>
                                     {(prop.status === 'active' || prop.status === 'verified') && (
                                         <button
-                                            className="btn btn-primary"
+                                            className="btn btn-primary flex-1 md:flex-none justify-center"
                                             onClick={(e) => { e.stopPropagation(); navigate(`/properties/${prop.id}`); }}
-                                            style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem' }}
+                                            style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
                                         >
-                                            <ArrowUpRight size={14} /> Sell
+                                            <ArrowUpRight size={16} /> Sell
                                         </button>
                                     )}
                                 </div>
