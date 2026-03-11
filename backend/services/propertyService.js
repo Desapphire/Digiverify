@@ -9,22 +9,32 @@ const AppError = require('../utils/AppError');
 /**
  * Register a new property.
  */
-const registerProperty = async (data, ownerWallet) => {
+const registerProperty = async (data, ownerWallet, userId) => {
+    console.log(`📂 Registering property with payload:`, JSON.stringify(data, null, 2));
+    
+    // Save to off-chain DB first. It will be minted on-chain only upon authority approval.
     const property = await Property.create({ ...data, ownerWallet });
+    console.log(`🆔 Property created with ID: ${property.id}`);
 
-    let txHash = null;
-    console.log(`🔗 Registering property ${property.propertyCode} on-chain...`);
-    const result = await contractService.registerPropertyOnChain(
-        property.propertyCode,
-        ownerWallet,
-        data.documentHash || 'QmDefaultHash'
-    );
-    txHash = result.txHash;
-    if (txHash) {
-        console.log(`✅ Property registered on-chain. Tx: ${txHash}`);
+    // Persist associated documents if provided
+    if (data.documents && Array.isArray(data.documents) && data.documents.length > 0) {
+        console.log(`📄 Found ${data.documents.length} documents to persist.`);
+        for (const doc of data.documents) {
+            console.log(`  - Persisting ${doc.type}: ${doc.ipfsHash}`);
+            await Property.addDocument({
+                propertyId: property.id,
+                documentType: doc.type,
+                ipfsHash: doc.ipfsHash,
+                uploadedBy: userId
+            });
+        }
+        console.log(`✅ Persisted ${data.documents.length} documents for property ${property.propertyCode}`);
+    } else {
+        console.log(`⚠️ No documents found in payload or empty documents array.`);
     }
 
-    return { property, txHash };
+    console.log(`✨ Registration complete for property ${property.propertyCode}`);
+    return { property, txHash: null };
 };
 
 /**

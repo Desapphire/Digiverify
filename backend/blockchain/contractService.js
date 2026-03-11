@@ -55,12 +55,12 @@ const approvePropertyOnChain = async (propertyCode, metadataURI) => {
 /**
  * Initiate a sale on SaleContract.
  */
-const registerOnChainSale = async (tokenId, propertyCode, buyer, price) => {
+const registerOnChainSale = async (tokenId, propertyCode, seller, buyer, price) => {
     const { saleContract } = getContracts();
     if (!saleContract) return { txHash: null };
 
     try {
-        const tx = await saleContract.initiateSale(tokenId, propertyCode, buyer, price);
+        const tx = await saleContract.initiateSale(tokenId, propertyCode, seller, buyer, price);
         const receipt = await tx.wait();
 
         // Extract saleId from logs if needed

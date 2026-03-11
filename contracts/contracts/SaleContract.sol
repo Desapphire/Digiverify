@@ -66,14 +66,23 @@ contract SaleContract is AccessControl, ReentrancyGuard {
 
     /**
      * @notice Initiate a sale. Seller must sign immediately.
+     * @dev Added _seller parameter to support gasless initiation by AUTHORITY_ROLE.
      */
     function initiateSale(
         uint256 _tokenId,
         string calldata _propertyCode,
+        address _seller,
         address _buyer,
         uint256 _price
     ) external returns (uint256) {
-        require(landNFT.ownerOf(_tokenId) == msg.sender, "Caller is not the owner");
+        address actualOwner = landNFT.ownerOf(_tokenId);
+        require(actualOwner == _seller, "Seller is not the NFT owner");
+        
+        // Either the owner initiates it, or the Authority initiates it on behalf of the owner
+        require(
+            msg.sender == actualOwner || hasRole(AUTHORITY_ROLE, msg.sender),
+            "Caller is not owner or authority"
+        );
         
         // Check encumbrance
         (,,,bool isEncumbered,,,) = landRegistry.propertyRecords(_propertyCode);
@@ -83,7 +92,7 @@ contract SaleContract is AccessControl, ReentrancyGuard {
         sales[saleId] = Sale({
             tokenId: _tokenId,
             propertyCode: _propertyCode,
-            seller: msg.sender,
+            seller: _seller,
             buyer: _buyer,
             price: _price,
             status: SaleStatus.INITIATED,
@@ -94,7 +103,7 @@ contract SaleContract is AccessControl, ReentrancyGuard {
             createdAt: block.timestamp
         });
 
-        emit SaleInitiated(saleId, _propertyCode, msg.sender, _buyer);
+        emit SaleInitiated(saleId, _propertyCode, _seller, _buyer);
         return saleId;
     }
 
@@ -104,7 +113,12 @@ contract SaleContract is AccessControl, ReentrancyGuard {
     function buyerSign(uint256 _saleId) external {
         Sale storage s = sales[_saleId];
         require(s.status == SaleStatus.INITIATED, "Invalid status");
-        require(msg.sender == s.buyer, "Not the buyer");
+        
+        // Either the buyer signs it, or the Authority signs it after verifying off-chain proof
+        require(
+            msg.sender == s.buyer || hasRole(AUTHORITY_ROLE, msg.sender),
+            "Not the buyer or authority"
+        );
 
         s.buyerSigned = true;
         s.status = SaleStatus.BUYER_SIGNED;

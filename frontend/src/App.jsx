@@ -11,6 +11,7 @@ import Profile from './pages/Dashboard/Profile';
 import MyProperties from './pages/Dashboard/MyProperties';
 import RegisterProperty from './pages/Dashboard/RegisterProperty';
 import PropertyDetails from './pages/Dashboard/PropertyDetails';
+import SearchProperty from './pages/Dashboard/SearchProperty';
 import Sale from './pages/Dashboard/Sale';
 import PurchaseReview from './pages/Dashboard/PurchaseReview';
 import FundBlocking from './pages/Dashboard/FundBlocking';
@@ -48,6 +49,7 @@ function App() {
               <Route path="/profile" element={<Profile />} />
               <Route path="/my-properties" element={<MyProperties />} />
               <Route path="/register-property" element={<RegisterProperty />} />
+              <Route path="/search-property" element={<SearchProperty />} />
               <Route path="/properties/:id" element={<PropertyDetails />} />
               <Route path="/sale" element={<Sale />} />
               <Route path="/sale/:id/review" element={<PurchaseReview />} />

@@ -4,7 +4,8 @@ import { adminService } from '../../services/admin.service';
 import {
     Building2, CheckCircle2, XCircle, Loader2,
     RefreshCcw, Search, MapPin, Ruler, Hash, Wallet,
-    ChevronDown, ChevronUp, AlertTriangle, ShieldCheck, Clock
+    ChevronDown, ChevronUp, AlertTriangle, ShieldCheck, Clock,
+    FileText, ExternalLink, Paperclip
 } from 'lucide-react';
 
 const PropertyVerification = () => {
@@ -15,6 +16,8 @@ const PropertyVerification = () => {
     const [filter, setFilter] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedProp, setExpandedProp] = useState(null);
+    const [propDocs, setPropDocs] = useState({});
+    const [docsLoading, setDocsLoading] = useState({});
 
     const fetchProperties = async () => {
         setLoading(true);
@@ -25,6 +28,28 @@ const PropertyVerification = () => {
             console.error('Failed to fetch properties:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchDocuments = async (propId) => {
+        if (propDocs[propId]) return;
+        setDocsLoading(prev => ({ ...prev, [propId]: true }));
+        try {
+            const res = await adminService.getPropertyDocuments(propId);
+            setPropDocs(prev => ({ ...prev, [propId]: res.data?.data || [] }));
+        } catch (err) {
+            console.error('Failed to fetch docs:', err);
+        } finally {
+            setDocsLoading(prev => ({ ...prev, [propId]: false }));
+        }
+    };
+
+    const toggleExpand = (propId) => {
+        if (expandedProp === propId) {
+            setExpandedProp(null);
+        } else {
+            setExpandedProp(propId);
+            fetchDocuments(propId);
         }
     };
 
@@ -39,6 +64,19 @@ const PropertyVerification = () => {
             fetchProperties();
         } catch (err) {
             alert(err.response?.data?.message || 'Approval failed');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleReject = async (propId) => {
+        if (!window.confirm('Are you sure you want to reject this property registration?')) return;
+        setActionLoading(propId);
+        try {
+            await adminService.rejectProperty(propId);
+            fetchProperties();
+        } catch (err) {
+            alert(err.response?.data?.message || 'Rejection failed');
         } finally {
             setActionLoading(null);
         }
@@ -85,6 +123,7 @@ const PropertyVerification = () => {
         { key: '', label: 'All' },
         { key: 'pending', label: 'Pending' },
         { key: 'active', label: 'Active' },
+        { key: 'rejected', label: 'Rejected' },
         { key: 'frozen', label: 'Frozen' },
     ];
 
@@ -169,7 +208,7 @@ const PropertyVerification = () => {
                             <div key={p.id} className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
                                 {/* Main Row */}
                                 <div
-                                    onClick={() => setExpandedProp(isExpanded ? null : p.id)}
+                                    onClick={() => toggleExpand(p.id)}
                                     style={{
                                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                         padding: '1rem 1.25rem', cursor: 'pointer',
@@ -248,6 +287,21 @@ const PropertyVerification = () => {
                                                     {isActing ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                                                     Approve & Mint
                                                 </button>
+                                                <button
+                                                    onClick={() => handleReject(p.id)}
+                                                    disabled={isActing}
+                                                    style={{
+                                                        padding: '0.35rem 0.75rem', borderRadius: '0.5rem',
+                                                        fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
+                                                        background: 'rgba(239,68,68,0.1)', color: '#ef4444',
+                                                        border: '1px solid rgba(239,68,68,0.2)',
+                                                        display: 'flex', alignItems: 'center', gap: 4,
+                                                        opacity: isActing ? 0.5 : 1,
+                                                    }}
+                                                >
+                                                    {isActing ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
+                                                    Reject
+                                                </button>
                                             </div>
                                         )}
 
@@ -296,6 +350,76 @@ const PropertyVerification = () => {
                                             {p.geoLat && <DetailField label="Coordinates" value={`${p.geoLat}, ${p.geoLng}`} />}
                                             <DetailField label="Registered" value={p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'} />
                                             <DetailField label="Last Updated" value={p.updatedAt ? new Date(p.updatedAt).toLocaleString() : '—'} />
+                                        </div>
+
+                                        {/* Documents Section */}
+                                        <div style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '1rem' }}>
+                                            <p style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.15em', color: '#fca5a5', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <Paperclip size={12} /> Supporting Documents
+                                            </p>
+                                            
+                                            {docsLoading[p.id] ? (
+                                                <div className="flex items-center gap-2 text-muted py-2" style={{ fontSize: '0.8rem' }}>
+                                                    <Loader2 size={14} className="animate-spin" /> Loading documents...
+                                                </div>
+                                            ) : (
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem' }}>
+                                                    {/* Primary Title Deed fallback */}
+                                                    {p.documentHash && (
+                                                        <a 
+                                                            href={`https://ipfs.io/ipfs/${p.documentHash}`} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="glass-panel"
+                                                            style={{ 
+                                                                padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                                                textDecoration: 'none', transition: 'all 0.2s', border: '1px solid rgba(139,92,246,0.15)',
+                                                                background: 'rgba(139,92,246,0.03)'
+                                                            }}
+                                                        >
+                                                            <div style={{ width: 32, height: 32, borderRadius: '8px', background: 'rgba(139,92,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'hsl(255,85%,65%)' }}>
+                                                                <FileText size={16} />
+                                                            </div>
+                                                            <div style={{ flex: 1, overflow: 'hidden' }}>
+                                                                <p style={{ fontSize: '0.78rem', fontWeight: 700, color: 'white', margin: 0 }}>Primary Title Deed</p>
+                                                                <p style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', margin: 0, fontFamily: 'monospace' }}>{p.documentHash.slice(0, 8)}...{p.documentHash.slice(-8)}</p>
+                                                            </div>
+                                                            <ExternalLink size={14} style={{ color: 'rgba(255,255,255,0.2)' }} />
+                                                        </a>
+                                                    )}
+
+                                                    {/* Additional Documents from property_documents table */}
+                                                    {propDocs[p.id]?.map(doc => (
+                                                        <a 
+                                                            key={doc.id} 
+                                                            href={`https://ipfs.io/ipfs/${doc.ipfs_hash}`} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="glass-panel"
+                                                            style={{ 
+                                                                padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                                                textDecoration: 'none', transition: 'all 0.2s', border: '1px solid rgba(255,255,255,0.03)',
+                                                                background: 'rgba(255,255,255,0.02)'
+                                                            }}
+                                                        >
+                                                            <div style={{ width: 32, height: 32, borderRadius: '8px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)' }}>
+                                                                <FileText size={16} />
+                                                            </div>
+                                                            <div style={{ flex: 1, overflow: 'hidden' }}>
+                                                                <p style={{ fontSize: '0.78rem', fontWeight: 700, color: 'white', margin: 0 }}>{doc.document_type || 'Supporting Document'}</p>
+                                                                <p style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', margin: 0, fontFamily: 'monospace' }}>{doc.ipfs_hash.slice(0, 8)}...{doc.ipfs_hash.slice(-8)}</p>
+                                                            </div>
+                                                            <ExternalLink size={14} style={{ color: 'rgba(255,255,255,0.2)' }} />
+                                                        </a>
+                                                    ))}
+
+                                                    {!p.documentHash && (!propDocs[p.id] || propDocs[p.id].length === 0) && (
+                                                        <div className="p-4 rounded-lg bg-black/20 border border-white/5 text-center col-span-full w-full">
+                                                            <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', margin: 0 }}>No additional documents uploaded.</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}

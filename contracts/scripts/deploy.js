@@ -61,6 +61,10 @@ async function main() {
     await (await saleContract.grantRole(AUTHORITY_ROLE, courtOverrideAddress)).wait();
     console.log("   ✅ AUTHORITY_ROLE of SaleContract granted to CourtOverride");
 
+    const SALE_CONTRACT_ROLE = ethers.keccak256(ethers.toUtf8Bytes("SALE_CONTRACT_ROLE"));
+    await (await landNFT.grantRole(SALE_CONTRACT_ROLE, saleContractAddress)).wait();
+    console.log("   ✅ SALE_CONTRACT_ROLE of LandNFT granted to SaleContract");
+
     // ── 6. Save deployment info ────────────────────────────
     const deployment = {
         network: "Avalanche Fuji C-Chain (Testnet)",
