@@ -6,8 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useWeb3 } from '../../context/Web3Context';
 import {
     Loader2, CheckCircle2, AlertTriangle, Wallet, DollarSign,
-    Building, MapPin, ArrowRight, XCircle, Shield, Clock,
-    FileCheck, Landmark, Send, Camera, User as UserIcon, ExternalLink
+    Building, MapPin, ArrowRight, ChevronLeft, XCircle, Shield, Clock,
+    FileCheck, Landmark, Send, Camera, User as UserIcon, ExternalLink, Activity
 } from 'lucide-react';
 import './PropertyPages.css';
 
@@ -56,9 +56,6 @@ const PurchaseReview = () => {
             }
         };
     }, []);
-
-
-
 
     const walletAddress = account || user?.walletAddress;
     const isBuyer = walletAddress && sale?.buyerWallet?.toLowerCase() === walletAddress?.toLowerCase();
@@ -214,7 +211,7 @@ const PurchaseReview = () => {
                         const ctx = canvas.getContext('2d');
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         const face = faces.get(0);
-                        ctx.strokeStyle = '#3b82f6';
+                        ctx.strokeStyle = '#38BDF8';
                         ctx.lineWidth = 2;
                         ctx.strokeRect(face.x, face.y, face.width, face.height);
                     }
@@ -231,8 +228,6 @@ const PurchaseReview = () => {
         processVideo();
         setTimeout(() => simulateCapture(1), 2000);
     };
-
-
 
     const simulateCapture = (currentStep) => {
         setBiometricProgress(0);
@@ -268,13 +263,12 @@ const PurchaseReview = () => {
 
     const currentFlowIndex = SALE_STATUS_FLOW.indexOf(sale?.status);
 
-
     if (loading) {
         return (
-            <div className="dashboard-container" style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse-glow">
-                    <Loader2 style={{ width: '3rem', height: '3rem', color: 'hsl(255,85%,65%)' }} className="animate-spin" />
-                    <p className="text-muted" style={{ fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: '0.875rem' }}>Loading Transaction...</p>
+            <div style={{ display: 'flex', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse">
+                    <Loader2 size={32} style={{ color: '#00E5FF' }} className="animate-spin" />
+                    <p style={{ fontWeight: 800, letterSpacing: '0.1em', color: '#00E5FF', fontSize: '0.9rem' }}>FRACTALIZING SALE LOGS...</p>
                 </div>
             </div>
         );
@@ -282,366 +276,222 @@ const PurchaseReview = () => {
 
     if (error && !sale) {
         return (
-            <div className="dashboard-container container-sm">
-                <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
-                    <XCircle size={48} style={{ color: 'hsl(var(--color-danger))', marginBottom: '1rem' }} />
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.75rem' }}>Transaction Not Found</h2>
-                    <p className="text-muted" style={{ marginBottom: '1.5rem' }}>{error}</p>
-                    <button className="btn btn-primary" onClick={() => navigate('/transactions')}>Back to Transactions</button>
+            <div className="property-container container-sm mt-8 animate-fade-in" style={{ paddingBottom: '4rem' }}>
+                <div className="cyber-hud-bar" style={{ display: 'block', padding: '4rem', textAlign: 'center' }}>
+                    <XCircle size={48} style={{ color: '#FF007F', marginBottom: '1.5rem', margin: '0 auto 1.5rem' }} />
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '1rem' }}>Transaction Not Found</h2>
+                    <p style={{ color: '#9ca3af', marginBottom: '2rem' }}>{error}</p>
+                    <button className="cyber-btn-hollow" onClick={() => navigate('/transactions')} style={{ '--btn-color': '#00E5FF', width: 'auto' }}>
+                        Return to Dashboard
+                    </button>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="dashboard-container container-md">
+        <div className="property-container container-lg animate-fade-in" style={{ paddingBottom: '6rem' }}>
             {/* Header */}
-            <div className="page-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                    <h1 style={{ fontSize: '2.25rem', fontWeight: 800, letterSpacing: '-0.03em' }}>
-                        Sale <span className="text-gradient">Review</span>
-                    </h1>
-                    <span className="badge badge-neutral" style={{ fontSize: '0.7rem', fontFamily: 'monospace' }}>
-                        TX #{sale.id}
-                    </span>
-                    <span className={`badge ${isBuyer ? 'badge-info' : 'badge-warning'}`} style={{ fontSize: '0.6rem' }}>
-                        {isBuyer ? 'BUYER' : isSeller ? 'SELLER' : 'VIEWER'}
-                    </span>
+            <button 
+                onClick={() => navigate('/transactions')} 
+                style={{ background: 'none', border: 'none', color: '#00E5FF', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '1.5rem', fontWeight: 600, fontSize: '0.85rem', padding: 0 }}
+            >
+                <ChevronLeft size={16} /> RETURN TO LEDGER
+            </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                    <div style={{
+                        width: '3.5rem', height: '3.5rem', borderRadius: '12px',
+                        background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.3)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 0 20px rgba(56,189,248,0.2)'
+                    }}>
+                        <FileCheck size={24} style={{ color: '#38BDF8' }} />
+                    </div>
+                    <div>
+                        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, color: 'white', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            Sale Review
+                            <span style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.2rem 0.6rem', borderRadius: '6px', color: '#9ca3af', fontFamily: 'JetBrains Mono' }}>
+                                TX-{(sale.id).toString().slice(0, 8).toUpperCase()}
+                            </span>
+                        </h2>
+                        <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginTop: '0.3rem', margin: 0 }}>
+                            Digitally inspect and confirm the property transfer parameters.
+                        </p>
+                    </div>
                 </div>
-                <p className="text-muted" style={{ fontSize: '0.95rem' }}>
-                    Review the sale agreement and transaction details
-                </p>
+                <div className="cyber-badge" style={{ '--badge-color': isBuyer ? '#38BDF8' : '#F59E0B', '--badge-bg': isBuyer ? 'rgba(56,189,248,0.1)' : 'rgba(245,158,11,0.1)', textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                    {isBuyer ? 'BUYER CLEARANCE' : isSeller ? 'SELLER CLEARANCE' : 'READ-ONLY VIEW'}
+                </div>
             </div>
 
-            {/* Status Flow */}
-            <div className="stepper" style={{ marginBottom: '2rem' }}>
+            {/* Stepper equivalent inside a hud bar */}
+            <div className="cyber-hud-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem 2rem', marginBottom: '2rem', overflowX: 'auto', gap: '2rem' }}>
                 {SALE_STATUS_FLOW.map((status, i) => {
                     const isCompleted = i < currentFlowIndex;
                     const isActive = i === currentFlowIndex;
                     const icons = [Clock, Wallet, Landmark, Shield, CheckCircle2];
-                    const labels = ['Initiated', 'Buyer Signed', 'Funds Blocked', 'Authority Approved', 'Completed'];
+                    const labels = ['Initiated', 'Buyer Signed', 'Funds Blocked', 'Auth Approved', 'Completed'];
                     const Icon = icons[i];
+                    
+                    const color = isActive ? '#00E5FF' : isCompleted ? '#22C55E' : '#4b5563';
+                    const glowing = isActive ? '0 0 15px rgba(0,229,255,0.4)' : isCompleted ? '0 0 10px rgba(34,197,94,0.2)' : 'none';
+
                     return (
-                        <div key={status} className={`stepper-step ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
-                            <div className="stepper-circle">
-                                {isCompleted ? <CheckCircle2 size={14} /> : <Icon size={14} />}
+                        <div key={status} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', opacity: isActive || isCompleted ? 1 : 0.4 }}>
+                            <div style={{
+                                width: '40px', height: '40px', borderRadius: '50%', border: `2px solid ${color}`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: isActive ? 'rgba(0,229,255,0.1)' : isCompleted ? 'rgba(34,197,94,0.1)' : 'transparent',
+                                boxShadow: glowing, transition: 'all 0.3s ease'
+                            }}>
+                                {isCompleted ? <CheckCircle2 size={16} style={{ color: '#22C55E' }} /> : <Icon size={16} style={{ color }} />}
                             </div>
-                            <span className="stepper-label">{labels[i]}</span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: isActive ? '#00E5FF' : isCompleted ? 'white' : '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                                {labels[i]}
+                            </span>
                         </div>
                     );
                 })}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '1.5rem', alignItems: 'start' }}>
-                {/* Left Column */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    {/* Property Details */}
-                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                        <h3 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <Building size={13} /> Property Details
+                {/* Left Column (Main Data) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    
+                    {/* Primary Agreement Details */}
+                    <div className="cyber-hud-bar" style={{ display: 'block', padding: '2rem', position: 'relative', overflow: 'hidden' }}>
+                        <div className="cyber-card-glow-orb" style={{ background: '#38BDF8', width: '15rem', height: '15rem', left: '-5%', top: '-20%', opacity: 0.1 }}></div>
+                        
+                        <h3 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#38BDF8', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <FileCheck size={16} /> Commercial Agreement Matrix
+                        </h3>
+                        
+                        <div className="cyber-data-grid" style={{ marginBottom: '1.5rem' }}>
+                            <div className="cyber-data-item">
+                                <div className="label">Sale Value</div>
+                                <div className="value" style={{ color: '#00E5FF', fontSize: '1.5rem' }}>₹{sale.salePrice?.toLocaleString('en-IN')}</div>
+                            </div>
+                            <div className="cyber-data-item">
+                                <div className="label">System Status</div>
+                                <div className="value" style={{ textTransform: 'uppercase' }}>{sale.status?.replace('_', ' ')}</div>
+                            </div>
+                            <div className="cyber-data-item">
+                                <div className="label">Initiated Time (Block)</div>
+                                <div className="value" style={{ fontSize: '0.8rem' }}>{formatDate(sale.createdAt)}</div>
+                            </div>
+                        </div>
+
+                        <div className="cyber-data-grid" style={{ background: 'rgba(0,0,0,0.4)', border: 'none' }}>
+                            <div className="cyber-data-item" style={{ gridColumn: 'span 1' }}>
+                                <div className="label">Seller Node</div>
+                                <div className="value" style={{ fontFamily: 'JetBrains Mono', fontSize: '0.8rem', wordBreak: 'break-all' }}>
+                                    {sale.sellerWallet}
+                                </div>
+                                {isSeller && <span style={{ fontSize: '0.65rem', background: '#F59E0B', color: 'black', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 800, alignSelf: 'flex-start', marginTop: '0.5rem' }}>YOU</span>}
+                            </div>
+                            <div className="cyber-data-item" style={{ gridColumn: 'span 1' }}>
+                                <div className="label">Buyer Node</div>
+                                <div className="value" style={{ fontFamily: 'JetBrains Mono', fontSize: '0.8rem', wordBreak: 'break-all' }}>
+                                    {sale.buyerWallet}
+                                </div>
+                                {isBuyer && <span style={{ fontSize: '0.65rem', background: '#38BDF8', color: 'black', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 800, alignSelf: 'flex-start', marginTop: '0.5rem' }}>YOU</span>}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Property Extracted Data */}
+                    <div className="cyber-hud-bar" style={{ display: 'block', padding: '2rem' }}>
+                        <h3 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#A855F7', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Building size={16} /> Assigned Real Estate Asset
                         </h3>
                         {property ? (
-                            <div>
-                                <h4 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    {property.surveyNumber}
-                                    {(property.status === 'active' || property.status === 'verified') && <CheckCircle2 size={14} style={{ color: 'hsl(142,71%,45%)' }} />}
-                                </h4>
-                                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                                    <p className="text-muted" style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                        <MapPin size={13} /> {property.district}{property.state ? `, ${property.state}` : ''}
-                                    </p>
-                                    {property.areaSqft && (
-                                        <p style={{ fontSize: '0.8rem', color: 'hsl(var(--color-text-secondary))', fontFamily: 'monospace' }}>
-                                            {property.areaSqft.toLocaleString()} sq.ft
-                                        </p>
-                                    )}
+                            <div className="cyber-data-grid">
+                                <div className="cyber-data-item" style={{ gridColumn: 'span 2' }}>
+                                    <div className="label">Survey Anchor</div>
+                                    <div className="value" style={{ fontSize: '1.25rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        {property.surveyNumber}
+                                        {(property.status === 'active' || property.status === 'verified') && <CheckCircle2 size={16} style={{ color: '#22C55E' }} />}
+                                    </div>
                                 </div>
-                                <p style={{ fontSize: '0.7rem', fontFamily: 'monospace', color: 'hsl(220,15%,50%)' }}>
-                                    Property Code: {property.propertyCode}
-                                </p>
+                                <div className="cyber-data-item">
+                                    <div className="label">Regional Sector</div>
+                                    <div className="value" style={{ fontSize: '0.9rem' }}>
+                                        {property.district}{property.state ? `, ${property.state}` : ''}
+                                    </div>
+                                </div>
+                                <div className="cyber-data-item">
+                                    <div className="label">Area Boundary</div>
+                                    <div className="value" style={{ fontSize: '0.9rem', fontFamily: 'JetBrains Mono', color: '#00E5FF' }}>
+                                        {property.areaSqft ? `${property.areaSqft.toLocaleString()} sq.ft` : 'N/A'}
+                                    </div>
+                                </div>
+                                <div className="cyber-data-item" style={{ gridColumn: 'span 2' }}>
+                                    <div className="label">Global Property Hash</div>
+                                    <div className="value" style={{ fontSize: '0.8rem', fontFamily: 'JetBrains Mono', wordBreak: 'break-all', color: '#9ca3af' }}>
+                                        {property.propertyCode}
+                                    </div>
+                                </div>
                             </div>
                         ) : (
-                            <p className="text-muted" style={{ fontSize: '0.85rem' }}>
-                                Property ID: {sale.propertyId}
-                            </p>
+                            <div className="cyber-data-item">
+                                <div className="label">Global Property Hash</div>
+                                <div className="value" style={{ fontSize: '0.8rem', fontFamily: 'JetBrains Mono', wordBreak: 'break-all', color: '#9ca3af' }}>
+                                    {sale.propertyId}
+                                </div>
+                            </div>
                         )}
                     </div>
-
-                    {/* Sale Agreement */}
-                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                        <h3 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <FileCheck size={13} /> Sale Agreement
+                    
+                    {/* On-Chain Signatures & Verification */}
+                    <div className="cyber-hud-bar" style={{ display: 'block', padding: '2rem' }}>
+                        <h3 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#22C55E', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Shield size={16} /> Cryptographic Verifications
                         </h3>
-
-                        <div className="info-box-grid" style={{ marginBottom: '1.25rem' }}>
-                            <div className="info-box" style={{ padding: '1rem' }}>
-                                <p style={{ fontSize: '0.65rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Sale Price</p>
-                                <p style={{ fontSize: '1.5rem', fontWeight: 800 }} className="text-gradient">
-                                    ₹{sale.salePrice?.toLocaleString('en-IN')}
-                                </p>
-                            </div>
-                            <div className="info-box" style={{ padding: '1rem' }}>
-                                <p style={{ fontSize: '0.65rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Status</p>
-                                <p style={{ fontSize: '1.1rem', fontWeight: 700, textTransform: 'capitalize' }}>{sale.status?.replace('_', ' ')}</p>
-                            </div>
-                        </div>
-
-                        <div className="info-box-grid">
-                            <div className="info-box" style={{ padding: '1rem' }}>
-                                <p style={{ fontSize: '0.65rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Seller</p>
-                                <p style={{ fontSize: '0.75rem', fontFamily: 'monospace', wordBreak: 'break-all', color: 'hsl(var(--color-text-secondary))' }}>
-                                    {sale.sellerWallet}
-                                </p>
-                                {isSeller && <span className="badge badge-warning" style={{ fontSize: '0.55rem', marginTop: '0.35rem' }}>YOU</span>}
-                            </div>
-                            <div className="info-box" style={{ padding: '1rem' }}>
-                                <p style={{ fontSize: '0.65rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Buyer</p>
-                                <p style={{ fontSize: '0.75rem', fontFamily: 'monospace', wordBreak: 'break-all', color: 'hsl(var(--color-text-secondary))' }}>
-                                    {sale.buyerWallet}
-                                </p>
-                                {isBuyer && <span className="badge badge-info" style={{ fontSize: '0.55rem', marginTop: '0.35rem' }}>YOU</span>}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Column — Actions & Timeline */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    {/* Sign Action (Buyer only, if initiated status) */}
-                    {isBuyer && sale.status === 'initiated' && !signSuccess && (
-                        <div className="glass-panel-elevated" style={{ padding: '1.5rem', textAlign: 'center' }}>
-                            <div style={{
-                                width: '56px', height: '56px', borderRadius: '50%', margin: '0 auto 1rem',
-                                background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(168,85,247,0.1))',
-                                border: '2px solid rgba(139,92,246,0.3)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                            }}>
-                                <Send size={22} style={{ color: 'hsl(255,85%,65%)' }} />
-                            </div>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>Sign Transaction</h3>
-                            <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                                Review the agreement above. Sign with your wallet to confirm acceptance.
-                            </p>
-
-                            {error && (
-                                <div style={{
-                                    background: 'rgba(225,29,72,0.1)', border: '1px solid rgba(225,29,72,0.2)',
-                                    borderRadius: '10px', padding: '0.75rem', marginBottom: '1rem',
-                                    fontSize: '0.8rem', color: 'hsl(var(--color-danger))',
-                                    display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center'
-                                }}>
-                                    <AlertTriangle size={14} /> {error}
-                                </div>
-                            )}
-
-                            <button
-                                className="btn btn-primary btn-glow w-full"
-                                disabled={signing}
-                                onClick={handleSign}
-                                style={{ padding: '0.75rem', fontSize: '0.9rem' }}
-                            >
-                                {signing ? (
-                                    <><Loader2 size={16} className="animate-spin" /> Signing...</>
-                                ) : (
-                                    <><Wallet size={16} /> Sign with Wallet</>
-                                )}
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Sign Success */}
-                    {signSuccess && (
-                        <div className="glass-panel-elevated" style={{ padding: '1.5rem', textAlign: 'center' }}>
-                            <div className="scale-in" style={{ marginBottom: '1rem' }}>
-                                <div style={{
-                                    width: '56px', height: '56px', borderRadius: '50%', margin: '0 auto',
-                                    background: 'rgba(34,197,94,0.1)', border: '2px solid hsl(142,71%,45%)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                }}>
-                                    <CheckCircle2 size={24} style={{ color: 'hsl(142,71%,45%)' }} />
-                                </div>
-                            </div>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem', color: 'hsl(142,71%,45%)' }}>
-                                Transaction Signed!
-                            </h3>
-                            <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '1.25rem' }}>
-                                Proceed to block funds for this purchase.
-                            </p>
-                            <button
-                                className="btn btn-primary btn-glow w-full"
-                                onClick={() => navigate(`/sale/${sale.id}/fund-block`)}
-                                style={{ padding: '0.75rem', fontSize: '0.9rem' }}
-                            >
-                                <Landmark size={16} /> Proceed to Fund Blocking <ArrowRight size={16} />
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Fund Blocking CTA (buyer, buyer_signed status) */}
-                    {isBuyer && sale.status === 'buyer_signed' && !signSuccess && (
-                        <div className="glass-panel-elevated" style={{ padding: '1.5rem', textAlign: 'center' }}>
-                            <Landmark size={28} style={{ color: 'hsl(255,85%,65%)', marginBottom: '0.75rem' }} />
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>Fund Blocking Required</h3>
-                            <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '1.25rem' }}>
-                                You've signed. Block funds via ASBA to proceed with the sale.
-                            </p>
-                            <button
-                                className="btn btn-primary btn-glow w-full"
-                                onClick={() => navigate(`/sale/${sale.id}/fund-block`)}
-                                style={{ padding: '0.75rem', fontSize: '0.9rem' }}
-                            >
-                                <Landmark size={16} /> Block Funds <ArrowRight size={16} />
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Finalize Sale CTA (buyer/seller, authority_approved status) */}
-                    {sale.status === 'authority_approved' && (
-                        <div className="glass-panel-elevated" style={{ padding: '1.5rem', textAlign: 'center', border: '2px solid hsla(142,71%,45%,0.3)' }}>
-                            <div style={{
-                                width: '56px', height: '56px', borderRadius: '50%', margin: '0 auto 1rem',
-                                background: 'rgba(34,197,94,0.1)', border: '2px solid hsl(142,71%,45%)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                            }}>
-                                <CheckCircle2 size={24} style={{ color: 'hsl(142,71%,45%)' }} />
-                            </div>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>Ready to Finalize</h3>
-                            <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '1.25rem' }}>
-                                The authority has approved this sale. {isBuyer ? 'Finalize to complete ownership transfer.' : 'The buyer can now finalize the transfer.'}
-                            </p>
-                            {isBuyer && !completeSuccess && (
-                                <button
-                                    className="btn btn-primary btn-glow w-full"
-                                    disabled={completing}
-                                    onClick={handleComplete}
-                                    style={{ padding: '0.75rem', fontSize: '0.9rem', background: 'hsl(142,71%,45%)', borderColor: 'hsl(142,71%,45%)' }}
-                                >
-                                    {completing ? (
-                                        <><Loader2 size={16} className="animate-spin" /> Finalizing...</>
-                                    ) : (
-                                        <><CheckCircle2 size={16} /> Finalize Purchase</>
-                                    )}
-                                </button>
-                            )}
-                            {completeSuccess && (
-                                <div className="text-success" style={{ fontWeight: 700, fontSize: '0.9rem' }}>
-                                    Ownership Transferred Successfully!
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Signatures Status */}
-                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                        <h3 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '1rem' }}>
-                            Signature Status
-                        </h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
                             {[
-                                { label: 'Seller Signed', signed: sale.sellerSigned },
-                                { label: 'Buyer Signed', signed: sale.buyerSigned },
-                                { label: 'Authority Approved', signed: sale.authoritySigned },
-                                { label: 'Funds Blocked', signed: sale.fundsBlocked },
+                                { label: 'Seller Encrypted Signature', signed: sale.sellerSigned },
+                                { label: 'Buyer Encrypted Signature', signed: sale.buyerSigned },
+                                { label: 'Authority Execution Sign', signed: sale.authoritySigned },
+                                { label: 'Automated Fund Lock', signed: sale.fundsBlocked },
                             ].map((item, i) => (
-                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '0.85rem', color: 'hsl(var(--color-text-secondary))' }}>{item.label}</span>
+                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', borderLeft: item.signed ? '3px solid #22C55E' : '3px solid #4b5563' }}>
+                                    <span style={{ fontSize: '0.85rem', color: item.signed ? 'white' : '#9ca3af', fontWeight: 600 }}>{item.label}</span>
                                     {item.signed ? (
-                                        <CheckCircle2 size={18} style={{ color: 'hsl(142,71%,45%)' }} />
+                                        <CheckCircle2 size={18} style={{ color: '#22C55E' }} />
                                     ) : (
-                                        <Clock size={18} style={{ color: 'hsl(var(--color-text-muted))' }} />
+                                        <span style={{ fontSize: '0.7rem', color: '#4b5563', textTransform: 'uppercase', fontWeight: 800 }}>Awaiting</span>
                                     )}
                                 </div>
                             ))}
                         </div>
-                    </div>
 
-                    {/* Timeline */}
-                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                        <h3 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '1rem' }}>
-                            Timeline
-                        </h3>
-                        <div className="timeline">
-                            <div className="timeline-item completed">
-                                <p style={{ fontSize: '0.85rem', fontWeight: 600 }}>Sale Initiated</p>
-                                <p className="text-muted" style={{ fontSize: '0.75rem' }}>{formatDate(sale.createdAt)}</p>
-                            </div>
-                            {sale.updatedAt && sale.updatedAt !== sale.createdAt && (
-                                <div className="timeline-item active">
-                                    <p style={{ fontSize: '0.85rem', fontWeight: 600, textTransform: 'capitalize' }}>
-                                        {sale.status?.replace('_', ' ')}
-                                    </p>
-                                    <p className="text-muted" style={{ fontSize: '0.75rem' }}>{formatDate(sale.updatedAt)}</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Detailed Transaction Info */}
-                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                        <h3 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <Shield size={13} /> Blockchain & Multi-Sig
-                        </h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            <div>
-                                <p style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', marginBottom: '0.15rem' }}>Property NFT</p>
-                                <p style={{ fontSize: '0.75rem', fontWeight: 600 }}>
-                                    {sale.nftTokenId ? (
-                                        <a 
-                                            href={`https://testnet.snowtrace.io/nft/0xE94d65289Cc088f597C077938A6D7Fc0974196fe/${sale.nftTokenId}`}
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="explorer-link"
-                                            style={{ color: 'hsl(255,85%,65%)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
-                                        >
-                                            Token #{sale.nftTokenId} <ExternalLink size={10} />
-                                        </a>
-                                    ) : 'No NFT Minted'}
-                                </p>
-                            </div>
-                            <div>
-                                <p style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', marginBottom: '0.15rem' }}>On-Chain Sale Index</p>
-                                <p style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: 'hsl(var(--color-text-secondary))' }}>
-                                    {sale.onChainId ? (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                            <span style={{ fontWeight: 800, color: 'hsl(255,85%,65%)' }}>#{sale.onChainId}</span>
-                                            <a
-                                                href={`https://testnet.snowtrace.io/address/0xD8Ad46876774659fBD40026e7887532A6f375005#readContract`} 
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="explorer-link"
-                                                style={{ color: 'hsl(220,15%,60%)', fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}
-                                            >
-                                                Verify on Contract <ExternalLink size={10} />
-                                            </a>
-                                        </div>
-                                    ) : 'Not registered on-chain yet'}
-                                </p>
-                            </div>
+                        <div className="cyber-data-grid" style={{ gap: '1rem' }}>
                             {sale.txHash && (
-                                <div>
-                                    <p style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', marginBottom: '0.15rem' }}>Initiation Tx Hash</p>
+                                <div className="cyber-data-item" style={{ gridColumn: '1 / -1' }}>
+                                    <div className="label">Master Transaction Hash</div>
                                     <a 
                                         href={`https://testnet.snowtrace.io/tx/${sale.txHash}`}
                                         target="_blank" 
                                         rel="noopener noreferrer"
-                                        className="explorer-link"
-                                        style={{ fontSize: '0.7rem', fontFamily: 'monospace', wordBreak: 'break-all', color: 'hsl(255,85%,65%)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                                        style={{ fontSize: '0.8rem', fontFamily: 'JetBrains Mono', wordBreak: 'break-all', color: '#00E5FF', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none' }}
                                     >
-                                        {sale.txHash} <ExternalLink size={10} />
+                                        {sale.txHash} <ExternalLink size={12} />
                                     </a>
                                 </div>
                             )}
                             {sale.approvals && sale.approvals.length > 0 && (
-                                <div>
-                                    <p style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Signatures</p>
+                                <div className="cyber-data-item" style={{ gridColumn: '1 / -1' }}>
+                                    <div className="label" style={{ marginBottom: '0.5rem' }}>Signature Logs</div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         {sale.approvals.map((app, i) => (
-                                            <div key={i} style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-                                                    <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase' }}>{app.signer_role}</span>
-                                                    <span style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))' }}>{shortenWallet(app.signer_wallet)}</span>
+                                            <div key={i} style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.5)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                                                    <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#38BDF8' }}>{app.signer_role}</span>
+                                                    <span style={{ fontSize: '0.7rem', color: '#9ca3af', fontFamily: 'JetBrains Mono' }}>{shortenWallet(app.signer_wallet)}</span>
                                                 </div>
-                                                <p style={{ fontSize: '0.55rem', fontFamily: 'monospace', wordBreak: 'break-all', opacity: 0.6 }}>
+                                                <p style={{ fontSize: '0.65rem', fontFamily: 'JetBrains Mono', wordBreak: 'break-all', color: '#6b7280', margin: 0 }}>
                                                     {app.signature_hash}
                                                 </p>
                                             </div>
@@ -652,30 +502,155 @@ const PurchaseReview = () => {
                         </div>
                     </div>
 
-                    {/* Fund Blocking Info */}
+                </div>
+
+                {/* Right Column (Actions) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'sticky', top: '2rem' }}>
+                    
+                    {isBuyer && sale.status === 'initiated' && !signSuccess && (
+                        <div className="cyber-hud-bar" style={{ display: 'block', padding: '2rem', textAlign: 'center', background: 'linear-gradient(180deg, rgba(139,92,246,0.1) 0%, rgba(11,7,20,0.9) 100%)', border: '1px solid rgba(139,92,246,0.3)' }}>
+                            <div style={{
+                                width: '60px', height: '60px', borderRadius: '50%', margin: '0 auto 1.5rem',
+                                background: 'rgba(139,92,246,0.1)', border: '2px solid #8B5CF6',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                boxShadow: '0 0 20px rgba(139,92,246,0.4)'
+                            }}>
+                                <Send size={24} style={{ color: '#A855F7' }} />
+                            </div>
+                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '0.75rem' }}>Authorize Protocol</h3>
+                            <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                                You are reviewing a binding digital smart contract. Sign via your cryptographic wallet to lock parameters.
+                            </p>
+
+                            {error && (
+                                <div style={{
+                                    background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                                    borderRadius: '8px', padding: '0.75rem', marginBottom: '1.5rem',
+                                    fontSize: '0.8rem', color: '#EF4444', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center'
+                                }}>
+                                    <AlertTriangle size={14} /> {error}
+                                </div>
+                            )}
+
+                            <button
+                                className="cyber-btn-hollow"
+                                disabled={signing}
+                                onClick={() => handleSign(false)}
+                                style={{ '--btn-color': '#00E5FF', width: '100%', padding: '1rem', fontSize: '0.9rem', justifyContent: 'center' }}
+                            >
+                                {signing ? (
+                                    <><Loader2 size={18} className="animate-spin" /> Verifying Signature...</>
+                                ) : (
+                                    <><Wallet size={18} /> Sign with Wallet Interface</>
+                                )}
+                            </button>
+                        </div>
+                    )}
+
+                    {signSuccess && (
+                        <div className="cyber-hud-bar" style={{ display: 'block', padding: '2rem', textAlign: 'center', border: '1px solid rgba(34,197,94,0.3)' }}>
+                            <div className="scale-in" style={{ marginBottom: '1.5rem' }}>
+                                <div style={{
+                                    width: '60px', height: '60px', borderRadius: '50%', margin: '0 auto',
+                                    background: 'rgba(34,197,94,0.1)', border: '2px solid #22C55E',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    boxShadow: '0 0 20px rgba(34,197,94,0.4)'
+                                }}>
+                                    <CheckCircle2 size={28} style={{ color: '#22C55E' }} />
+                                </div>
+                            </div>
+                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#22C55E', marginBottom: '0.75rem' }}>
+                                Contract Signed
+                            </h3>
+                            <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginBottom: '1.5rem' }}>
+                                The smart contract has accepted your signature. The next step is securely blocking fiat funds via ASBA.
+                            </p>
+                            <button
+                                className="cyber-btn-hollow"
+                                onClick={() => navigate(`/sale/${sale.id}/fund-block`)}
+                                style={{ '--btn-color': '#A855F7', width: '100%', padding: '1rem', fontSize: '0.9rem', justifyContent: 'center' }}
+                            >
+                                <Landmark size={18} /> Advance to Fund Reserve <ArrowRight size={18} />
+                            </button>
+                        </div>
+                    )}
+
+                    {isBuyer && sale.status === 'buyer_signed' && !signSuccess && (
+                        <div className="cyber-hud-bar" style={{ display: 'block', padding: '2rem', textAlign: 'center', border: '1px solid rgba(168,85,247,0.3)' }}>
+                            <Landmark size={32} style={{ color: '#A855F7', margin: '0 auto 1.25rem' }} />
+                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '0.75rem' }}>Fiat Reserve Stage</h3>
+                            <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                                Cryptographic confirmation successful. You must now invoke ASBA APIs to block equivalent fiat currency at your bank branch.
+                            </p>
+                            <button
+                                className="cyber-btn-hollow"
+                                onClick={() => navigate(`/sale/${sale.id}/fund-block`)}
+                                style={{ '--btn-color': '#A855F7', width: '100%', padding: '1rem', fontSize: '0.9rem', justifyContent: 'center' }}
+                            >
+                                <Landmark size={18} /> Execute ASCB Block <ArrowRight size={18} />
+                            </button>
+                        </div>
+                    )}
+
+                    {sale.status === 'authority_approved' && (
+                        <div className="cyber-hud-bar" style={{ display: 'block', padding: '2rem', textAlign: 'center', border: '1px solid rgba(34,197,94,0.3)', background: 'linear-gradient(180deg, rgba(34,197,94,0.1) 0%, rgba(11,7,20,0.9) 100%)' }}>
+                            <div style={{
+                                width: '60px', height: '60px', borderRadius: '50%', margin: '0 auto 1.5rem',
+                                background: 'rgba(34,197,94,0.1)', border: '2px solid #22C55E',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                boxShadow: '0 0 20px rgba(34,197,94,0.4)'
+                            }}>
+                                <CheckCircle2 size={24} style={{ color: '#22C55E' }} />
+                            </div>
+                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '0.75rem' }}>Final Transfer Ready</h3>
+                            <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                                Regulatory authority has executed sign-off. {isBuyer ? 'Finalize the transaction to re-mint the master deed NFT under your wallet address.' : 'The buyer can now claim full physical and cryptographic ownership.'}
+                            </p>
+                            {isBuyer && !completeSuccess && (
+                                <button
+                                    className="cyber-btn-hollow"
+                                    disabled={completing}
+                                    onClick={handleComplete}
+                                    style={{ '--btn-color': '#22C55E', width: '100%', padding: '1rem', fontSize: '0.9rem', justifyContent: 'center' }}
+                                >
+                                    {completing ? (
+                                        <><Loader2 size={18} className="animate-spin" /> Transmitting...</>
+                                    ) : (
+                                        <><Shield size={18} /> Issue Finalize Command</>
+                                    )}
+                                </button>
+                            )}
+                            {completeSuccess && (
+                                <div style={{ fontSize: '0.9rem', color: '#22C55E', fontWeight: 800, background: 'rgba(34,197,94,0.1)', padding: '1rem', borderRadius: '8px' }}>
+                                    Ownership Successfully Transferred via Smart Contract!
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {sale.fundBlocks && sale.fundBlocks.length > 0 && (
-                        <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                            <h3 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <Landmark size={13} /> Bank Fund Blocking
+                        <div className="cyber-hud-bar" style={{ display: 'block', padding: '1.5rem' }}>
+                            <h3 style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#A855F7', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Landmark size={14} /> Fiat Holding Log
                             </h3>
                             {sale.fundBlocks.map((fb, i) => (
-                                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                                         <div>
-                                            <p style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', marginBottom: '0.15rem' }}>Amount</p>
-                                            <p style={{ fontSize: '0.85rem', fontWeight: 700 }}>₹{fb.blockAmount?.toLocaleString('en-IN')}</p>
+                                            <p style={{ fontSize: '0.6rem', color: '#9ca3af', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Blocked Value</p>
+                                            <p style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white', margin: 0 }}>₹{fb.blockAmount?.toLocaleString('en-IN')}</p>
                                         </div>
                                         <div>
-                                            <p style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', marginBottom: '0.15rem' }}>Status</p>
-                                            <span className={`badge ${fb.status === 'blocked' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.55rem' }}>
+                                            <p style={{ fontSize: '0.6rem', color: '#9ca3af', textTransform: 'uppercase', marginBottom: '0.25rem' }}>State</p>
+                                            <span style={{ fontSize: '0.65rem', background: fb.status === 'blocked' ? 'rgba(34,197,94,0.1)' : 'rgba(245,158,11,0.1)', color: fb.status === 'blocked' ? '#22C55E' : '#F59E0B', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 800 }}>
                                                 {fb.status?.toUpperCase()}
                                             </span>
                                         </div>
                                     </div>
                                     {fb.bankReferenceId && (
-                                        <div>
-                                            <p style={{ fontSize: '0.6rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', marginBottom: '0.15rem' }}>Bank Reference</p>
-                                            <p style={{ fontSize: '0.8rem', fontFamily: 'monospace', fontWeight: 600 }}>{fb.bankReferenceId}</p>
+                                        <div style={{ marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <p style={{ fontSize: '0.6rem', color: '#9ca3af', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Bank Origin Ref</p>
+                                            <p style={{ fontSize: '0.8rem', fontFamily: 'JetBrains Mono', color: '#00E5FF', margin: 0, wordBreak: 'break-all' }}>{fb.bankReferenceId}</p>
                                         </div>
                                     )}
                                 </div>
@@ -685,15 +660,17 @@ const PurchaseReview = () => {
                 </div>
             </div>
 
-            {/* Biometric Verification Modal */}
+            {/* Standardized Biometric Verification Glass Modal */}
             {showBiometricModal && (
                 <div style={{
-                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
-                    backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center',
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+                    backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center',
                     justifyContent: 'center', zIndex: 1000, padding: '1.5rem'
                 }}>
-                    <div className="glass-panel scale-in" style={{ maxWidth: '450px', width: '100%', padding: '2.5rem', textAlign: 'center' }}>
-                        <div className="relative w-32 h-32 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/30 overflow-hidden mx-auto mb-6">
+                    <div className="cyber-hud-bar scale-in" style={{ display: 'block', maxWidth: '450px', width: '100%', padding: '2.5rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+                        <div className="cyber-card-glow-orb" style={{ background: '#00E5FF', top: '-10%', right: '-10%', width: '15rem', height: '15rem', opacity: 0.15 }}></div>
+                        
+                        <div className="relative flex items-center justify-center overflow-hidden mx-auto mb-6" style={{ width: '320px', height: '240px', borderRadius: '16px', border: '2px solid rgba(0, 229, 255, 0.4)', background: 'rgba(0,229,255,0.05)', boxShadow: '0 0 30px rgba(0,229,255,0.1)' }}>
                             {biometricStep > 0 && biometricStep < 4 ? (
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <video
@@ -704,7 +681,7 @@ const PurchaseReview = () => {
                                         width="320"
                                         height="240"
                                         className="absolute inset-0 w-full h-full object-cover grayscale"
-                                        style={{ filter: 'brightness(0.7) contrast(1.2)' }}
+                                        style={{ filter: 'brightness(0.9) contrast(1.3)' }}
                                     />
                                     <canvas
                                         ref={canvasRef}
@@ -712,48 +689,63 @@ const PurchaseReview = () => {
                                         height="240"
                                         className="absolute inset-0 w-full h-full object-cover z-20 pointer-events-none"
                                     />
+                                    {/* Cyberpunk HUD Overlay Graphics */}
+                                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '20px', height: '20px', borderTop: '2px solid #00E5FF', borderLeft: '2px solid #00E5FF', zIndex: 25 }}></div>
+                                    <div style={{ position: 'absolute', top: '10px', right: '10px', width: '20px', height: '20px', borderTop: '2px solid #00E5FF', borderRight: '2px solid #00E5FF', zIndex: 25 }}></div>
+                                    <div style={{ position: 'absolute', bottom: '10px', left: '10px', width: '20px', height: '20px', borderBottom: '2px solid #00E5FF', borderLeft: '2px solid #00E5FF', zIndex: 25 }}></div>
+                                    <div style={{ position: 'absolute', bottom: '10px', right: '10px', width: '20px', height: '20px', borderBottom: '2px solid #00E5FF', borderRight: '2px solid #00E5FF', zIndex: 25 }}></div>
+                                    
                                     {!faceDetected && (
-                                        <div className="absolute inset-0 flex items-center justify-center z-30 bg-black/40">
-                                            <p className="text-[10px] font-bold text-white uppercase tracking-tighter">Position Face</p>
+                                        <div className="absolute inset-0 flex items-center justify-center z-30 bg-black/60 backdrop-blur-sm">
+                                            <p style={{ fontSize: '0.9rem', fontWeight: 800, color: '#00E5FF', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Awaiting Target...</p>
                                         </div>
                                     )}
-                                    <div className="absolute inset-0 bg-blue-500/20 animate-pulse"></div>
-                                    <svg className="absolute inset-0 w-full h-full transform -rotate-90 z-40">
-                                        <circle cx="64" cy="64" r="62" stroke="rgba(59, 130, 246, 0.1)" strokeWidth="4" fill="transparent" />
-                                        <circle cx="64" cy="64" r="62" stroke="#3b82f6" strokeWidth="4" fill="transparent"
-                                            strokeDasharray={2 * Math.PI * 62}
-                                            strokeDashoffset={2 * Math.PI * 62 * (1 - biometricProgress / 100)}
-                                            style={{ transition: 'stroke-dashoffset 0.1s linear' }} />
-                                    </svg>
+                                    <div className="absolute inset-0 bg-[#00E5FF]/10 animate-pulse z-10 pointer-events-none"></div>
+                                    
+                                    {/* Scanning Beam Animation */}
+                                    <style>
+                                        {`
+                                            @keyframes scannerBeam {
+                                                0% { top: -10%; opacity: 0; }
+                                                10% { opacity: 1; }
+                                                90% { opacity: 1; }
+                                                100% { top: 110%; opacity: 0; }
+                                            }
+                                        `}
+                                    </style>
+                                    <div style={{ position: 'absolute', left: 0, right: 0, height: '2px', background: '#00E5FF', boxShadow: '0 0 20px 4px rgba(0, 229, 255, 0.6)', animation: 'scannerBeam 2.5s infinite ease-in-out', zIndex: 45 }}></div>
 
+                                    {/* Linear Progress Bar */}
+                                    <div style={{ position: 'absolute', bottom: 0, left: 0, background: 'rgba(0,0,0,0.5)', width: '100%', height: '6px', zIndex: 50 }}>
+                                        <div style={{ height: '100%', background: '#00E5FF', width: `${biometricProgress}%`, transition: 'width 0.1s linear', boxShadow: '0 0 10px #00E5FF' }}></div>
+                                    </div>
                                 </div>
                             ) : biometricStep === 4 ? (
-
-                                <CheckCircle2 className="w-16 h-16 text-green-400" />
+                                <CheckCircle2 className="w-16 h-16" style={{ color: '#22C55E' }} />
                             ) : (
-                                <UserIcon className="w-12 h-12 text-blue-400" />
+                                <Activity className="w-12 h-12" style={{ color: '#00E5FF' }} />
                             )}
                         </div>
 
                         {biometricStep === 0 ? (
-                            <>
-                                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.75rem' }}>Identity Confirmation</h3>
-                                <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-                                    To review and sign this purchase agreement, please verify your identity with a quick liveness check.
+                            <div style={{ position: 'relative', zIndex: 10 }}>
+                                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.75rem', color: 'white' }}>Node Identity Lock</h3>
+                                <p style={{ color: '#9ca3af', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                                    Before cryptographic signing is permitted, you must verify biological operator presence via a mandatory liveness check.
                                 </p>
                                 <div className="flex gap-3">
-                                    <button onClick={() => setShowBiometricModal(false)} className="btn btn-secondary flex-1">Cancel</button>
-                                    <button onClick={startBiometric} className="btn btn-primary flex-1">Verify Identity</button>
+                                    <button onClick={() => setShowBiometricModal(false)} className="cyber-btn-hollow flex-1" style={{ '--btn-color': '#9ca3af', justifyContent: 'center' }}>Abort</button>
+                                    <button onClick={startBiometric} className="cyber-btn-hollow flex-1" style={{ '--btn-color': '#00E5FF', justifyContent: 'center' }}>Commence Scan</button>
                                 </div>
-                            </>
+                            </div>
                         ) : (
-                            <div>
-                                {biometricStep === 1 && <h4 className="text-xl font-black text-blue-400 animate-pulse">CENTER FACE</h4>}
-                                {biometricStep === 2 && <h4 className="text-xl font-black text-blue-400 animate-pulse">TILT LEFT</h4>}
-                                {biometricStep === 3 && <h4 className="text-xl font-black text-blue-400 animate-pulse">TILT RIGHT</h4>}
-                                {biometricStep === 4 && <h4 className="text-xl font-black text-green-400">PASSED</h4>}
-                                <p className="text-muted mt-4" style={{ fontSize: '0.8rem' }}>
-                                    Verifying session liveness and binding identity to purchase signature...
+                            <div style={{ position: 'relative', zIndex: 10 }}>
+                                {biometricStep === 1 && <h4 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#00E5FF' }} className="animate-pulse">LOCK CENTER NODE</h4>}
+                                {biometricStep === 2 && <h4 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#00E5FF' }} className="animate-pulse">SHIFT LEFT VECTOR</h4>}
+                                {biometricStep === 3 && <h4 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#00E5FF' }} className="animate-pulse">SHIFT RIGHT VECTOR</h4>}
+                                {biometricStep === 4 && <h4 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#22C55E' }}>OVERRIDE PASSED</h4>}
+                                <p style={{ color: '#9ca3af', marginTop: '1rem', fontSize: '0.8rem' }}>
+                                    Binding biometric session metrics to blockchain ledger signature...
                                 </p>
                                 <button 
                                     onClick={() => {
@@ -771,7 +763,7 @@ const PurchaseReview = () => {
                                         textDecoration: 'underline'
                                     }}
                                 >
-                                    Stuck? Click to bypass (Dev Mode)
+                                    Force Override (Dev Root)
                                 </button>
                             </div>
                         )}
@@ -781,6 +773,5 @@ const PurchaseReview = () => {
         </div>
     );
 };
-
 
 export default PurchaseReview;
