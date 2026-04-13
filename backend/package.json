@@ -14,8 +14,8 @@
     "nft",
     "government"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Digiverify Engineering Team",
+  "license": "Proprietary",
   "dependencies": {
     "axios": "^1.13.6",
     "bcrypt": "^6.0.0",
