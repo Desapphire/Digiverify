@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { propertyService } from '../../services/property.service';
-import { Search, MapPin, Building, Key, Ruler, ArrowRight, Loader2 } from 'lucide-react';
+import { Search, MapPin, Building, Activity, ArrowRight, Loader2, Globe, Database } from 'lucide-react';
 import './PropertyPages.css';
 
 const SearchProperty = () => {
@@ -17,10 +17,14 @@ const SearchProperty = () => {
 
         setLoading(true);
         try {
+            // Mapping query directly to 'district' or letting the backend handle it as a fuzzy param if supported
+            // Right now we just pass it as 'district' since the backend handles district, state, status.
             const response = await propertyService.searchProperties(query);
-            setResults(response.data.data.properties);
+            // Handling both potential paths based on backend differences
+            setResults(response.data.data.properties || response.data.data || []);
         } catch (error) {
             console.error("Search failed:", error);
+            setResults([]);
         } finally {
             setLoading(false);
             setSearched(true);
@@ -28,118 +32,184 @@ const SearchProperty = () => {
     };
 
     const getStatusConfig = (status) => {
-        const s = status?.toUpperCase();
+        const s = status?.toLowerCase() || 'pending';
         switch (s) {
-            case 'ACTIVE':
-            case 'VERIFIED': return { bg: 'bg-green-500/10', text: 'text-green-500', label: 'Verified' };
-            case 'PENDING': return { bg: 'bg-yellow-500/10', text: 'text-yellow-500', label: 'Pending Assessment' };
-            case 'REJECTED': return { bg: 'bg-red-500/10', text: 'text-red-500', label: 'Rejected' };
-            case 'FROZEN': return { bg: 'bg-blue-500/10', text: 'text-blue-400', label: 'Frozen' };
-            default: return { bg: 'bg-white/5', text: 'text-gray-400', label: status || 'Unknown' };
+            case 'verified':
+            case 'approved': return { color: '#00E5FF', bg: 'rgba(0,229,255,0.1)', label: 'Verified' };
+            case 'pending': return { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', label: 'Pending Assessment' };
+            case 'rejected': return { color: '#EF4444', bg: 'rgba(239,68,68,0.1)', label: 'Rejected' };
+            case 'frozen': return { color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)', label: 'Frozen Asset' };
+            default: return { color: '#9ca3af', bg: 'rgba(255,255,255,0.05)', label: status || 'Unknown' };
         }
     };
 
     return (
-        <div className="property-page-container">
-            <div className="property-header">
-                <div className="flex-1">
-                    <h1 className="property-title">Search Assets</h1>
-                    <p className="property-subtitle">Find registered properties across the blockchain</p>
+        <div className="property-container container-sm animate-fade-in" style={{ paddingBottom: '4rem' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '2rem' }}>
+                <div style={{
+                    width: '3.5rem', height: '3.5rem', borderRadius: '12px',
+                    background: 'rgba(0,229,255,0.1)', border: '1px solid rgba(0,229,255,0.3)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 0 20px rgba(0,229,255,0.2)'
+                }}>
+                    <Search size={24} style={{ color: '#00E5FF' }} />
+                </div>
+                <div>
+                    <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, color: 'white' }}>
+                        Decentralized Property Search
+                    </h2>
+                    <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginTop: '0.3rem', margin: 0 }}>
+                        Query the distributed ledger for verified real estate parameters
+                    </p>
                 </div>
             </div>
 
-            <div className="card-glass-panel p-6 mb-8">
-                <form onSubmit={handleSearch} className="flex gap-4">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" size={20} />
+            {/* Search HUD */}
+            <div className="cyber-hud-bar" style={{ display: 'block', padding: '2rem 2.5rem', marginBottom: '3rem', position: 'relative', overflow: 'hidden' }}>
+                <div className="cyber-card-glow-orb" style={{ background: '#00E5FF', top: '-20%', right: '-5%', opacity: 0.1, width: '15rem', height: '15rem' }}></div>
+                
+                <form onSubmit={handleSearch} style={{ display: 'flex', gap: '1.5rem', position: 'relative', zIndex: 10 }}>
+                    <div style={{ position: 'relative', flex: 1 }}>
+                        <div style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#00E5FF' }}>
+                            <Database size={20} />
+                        </div>
                         <input
                             type="text"
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Search by survey number, state, district..."
-                            className="input-field pl-12 w-full h-12 text-lg"
+                            placeholder="Query by Survey Number, District, or Global Node State..."
+                            style={{
+                                width: '100%', padding: '1.2rem 1rem 1.2rem 3.5rem', background: 'rgba(0,0,0,0.5)',
+                                border: '1px solid rgba(0,229,255,0.3)', borderRadius: '12px', color: 'white',
+                                fontSize: '1.05rem', fontFamily: 'inherit', outline: 'none', transition: 'all 0.2s ease',
+                                boxShadow: 'inset 0 0 20px rgba(0,0,0,0.5)'
+                            }}
                         />
                     </div>
                     <button
                         type="submit"
                         disabled={loading || !query.trim()}
-                        className="btn-primary px-8 h-12 text-lg font-bold min-w-[140px]"
+                        className="cyber-btn-hollow"
+                        style={{ '--btn-color': '#00E5FF', width: '180px', fontSize: '1.05rem', padding: '0 2rem', borderStyle: 'solid' }}
                     >
-                        {loading ? <Loader2 className="animate-spin mx-auto" size={24} /> : 'Search'}
+                        {loading ? <Loader2 className="animate-spin" size={24} /> : 'Execute Query'}
                     </button>
                 </form>
+
+                <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1.5rem', position: 'relative', zIndex: 10 }}>
+                    <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Suggested Nodes:</span>
+                    <button type="button" onClick={() => setQuery('Mumbai')} style={{ fontSize: '0.75rem', color: '#00E5FF', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>[Mumbai]</button>
+                    <button type="button" onClick={() => setQuery('Active')} style={{ fontSize: '0.75rem', color: '#FF007F', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>[Verified Status]</button>
+                    <button type="button" onClick={() => setQuery('Urban')} style={{ fontSize: '0.75rem', color: '#00E5FF', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>[Urban Sector]</button>
+                </div>
             </div>
 
-            {loading ? (
-                <div className="py-20 flex flex-col items-center justify-center">
-                    <div className="w-16 h-16 rounded-full border-4 border-primary-base/20 border-t-primary-base animate-spin mb-4"></div>
-                    <p className="text-muted font-mono">Querying decentralized registry...</p>
+            {/* Loading State */}
+            {loading && (
+                <div style={{ padding: '4rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(0,229,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem', border: '1px solid rgba(0,229,255,0.2)' }}>
+                        <Loader2 size={32} className="animate-spin" style={{ color: '#00E5FF' }} />
+                    </div>
+                    <p style={{ fontFamily: 'JetBrains Mono, monospace', color: '#00E5FF', fontSize: '0.9rem', letterSpacing: '0.1em' }}>QUERYING BLOCKCHAIN LEDGER...</p>
                 </div>
-            ) : searched ? (
-                results.length > 0 ? (
-                    <div className="property-grid">
-                        {results.map((property) => {
-                            const status = getStatusConfig(property.status);
-                            return (
-                                <div key={property.id} className="property-card group">
-                                    <div className="property-card-header">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="p-3 rounded-xl bg-white/5 group-hover:bg-primary-base/20 transition-colors">
-                                                <Building size={24} className="text-primary-base" />
-                                            </div>
-                                            <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase border border-current/20 ${status.bg} ${status.text}`}>
-                                                {status.label}
-                                            </span>
-                                        </div>
-                                        <h3 className="text-lg font-bold text-white mb-2 line-clamp-1">
-                                            Survey: {property.details.surveyNumber}
-                                        </h3>
-                                        <div className="flex items-center gap-2 text-sm text-muted">
-                                            <MapPin size={14} className="text-primary-base/70" />
-                                            <span className="truncate">{property.details.district}, {property.details.state}</span>
-                                        </div>
-                                    </div>
+            )}
 
-                                    <div className="property-card-body">
-                                        <div className="grid grid-cols-2 gap-3 mb-4">
-                                            <div className="stat-sm">
-                                                <span className="stat-label">
-                                                    <Ruler size={12} /> Area
-                                                </span>
-                                                <span className="stat-value">{property.details.area} Units</span>
-                                            </div>
-                                            <div className="stat-sm">
-                                                <span className="stat-label">
-                                                    <Key size={12} /> Type
-                                                </span>
-                                                <span className="stat-value">{property.details.propertyType}</span>
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            onClick={() => navigate(`/properties/${property.id}`)}
-                                            className="w-full py-2.5 rounded-lg bg-white/5 hover:bg-primary-base/20 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 group-hover:text-primary-base border border-white/5 group-hover:border-primary-base/30"
-                                        >
-                                            View Details
-                                            <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
+            {/* Results */}
+            {!loading && searched && (
+                <div className="animate-fade-in">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>
+                            Ledger Results <span style={{ color: '#9ca3af', fontWeight: 500, fontSize: '0.9rem', marginLeft: '0.5rem' }}>({results.length} matches)</span>
+                        </h3>
                     </div>
-                ) : (
-                    <div className="py-20 text-center">
-                        <div className="w-20 h-20 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Search size={32} className="text-muted" />
+
+                    {results.length > 0 ? (
+                        <div className="cyber-grid-layout">
+                            {results.map((prop, idx) => {
+                                const sc = getStatusConfig(prop.verificationStatus || prop.status);
+                                return (
+                                    <div
+                                        key={prop._id || prop.id}
+                                        className="cyber-property-card"
+                                        style={{ 
+                                            '--tier-color': sc.color, 
+                                            '--tier-color-hover': sc.color,
+                                            '--tier-glow': sc.bg,
+                                            animationDelay: `${idx * 0.05}s`
+                                        }}
+                                        onClick={() => navigate(`/properties/${prop._id || prop.id}`)}
+                                    >
+                                        <div className="cyber-card-glow-orb" style={{ background: sc.color }}></div>
+                                        
+                                        <div>
+                                            <div className="flex justify-between items-start mb-4">
+                                                <h3 className="text-xl font-bold tracking-tight text-white mb-1">
+                                                    {prop.surveyNumber || prop.details?.surveyNumber || 'Survey Unknown'}
+                                                </h3>
+                                                <div 
+                                                    className="cyber-badge" 
+                                                    style={{ 
+                                                        '--badge-color': sc.color, 
+                                                        '--badge-bg': sc.bg,
+                                                        '--badge-border': `rgba(255,255,255,0.1)`,
+                                                        textTransform: 'uppercase'
+                                                    }}
+                                                >
+                                                    <div className="cyber-badge-dot" style={{ background: sc.color, boxShadow: `0 0 8px ${sc.color}` }}></div>
+                                                    {sc.label}
+                                                </div>
+                                            </div>
+                                            
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'hsl(220,15%,60%)', fontSize: '0.85rem', fontWeight: 500, marginBottom: '1rem' }}>
+                                                <MapPin size={14} style={{ color: sc.color }} />
+                                                {(prop.district || prop.details?.district) || 'Unknown District'}{(prop.state || prop.details?.state) ? `, ${prop.state || prop.details?.state}` : ''}
+                                            </div>
+
+                                            <div className="cyber-data-grid">
+                                                <div className="cyber-data-item">
+                                                    <div className="label">Total Area</div>
+                                                    <div className="value">{(prop.areaSqft || prop.details?.area) ? (prop.areaSqft || prop.details?.area).toLocaleString() + ' sq.ft' : 'N/A'}</div>
+                                                </div>
+                                                <div className="cyber-data-item">
+                                                    <div className="label">Encumbrance</div>
+                                                    <div className="value" style={{ color: prop.encumbranceStatus === 'clear' ? '#00E5FF' : '#9ca3af' }}>
+                                                        {prop.encumbranceStatus === 'clear' ? 'Clear' : 'Unspecified'}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            {(prop.nftTokenId || prop.details?.nftTokenId) && (
+                                                <div style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                                                    <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#FF007F', background: 'rgba(255,0,127,0.1)', padding: '0.3rem 0.6rem', borderRadius: '4px', border: '1px solid rgba(255,0,127,0.2)' }}>
+                                                        Token: #{prop.nftTokenId || prop.details?.nftTokenId}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'flex-end' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: sc.color, fontSize: '0.85rem', fontWeight: 700 }}>
+                                                Access Records <ArrowRight size={14} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
-                        <h3 className="text-xl font-bold text-white mb-2">No Properties Found</h3>
-                        <p className="text-muted max-w-md mx-auto">
-                            We couldn't find any properties matching "{query}". Try searching with different keywords like state or district.
-                        </p>
-                    </div>
-                )
-            ) : null}
+                    ) : (
+                        <div style={{ padding: '5rem 0', textAlign: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '24px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                            <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <Globe size={40} style={{ color: '#6b7280' }} />
+                            </div>
+                            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '0.75rem' }}>No Matches Identified</h3>
+                            <p style={{ color: '#9ca3af', maxWidth: '400px', margin: '0 auto', lineHeight: 1.6 }}>
+                                The distributed ledger returned zero matches for the parameters <span style={{ color: 'white', fontWeight: 600 }}>"{query}"</span>. Alter your search vectors and execute again.
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

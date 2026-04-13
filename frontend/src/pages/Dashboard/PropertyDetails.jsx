@@ -88,26 +88,31 @@ const PropertyDetails = () => {
         }
     };
 
-    const labelStyle = {
-        fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase',
-        letterSpacing: '0.1em', color: 'hsl(220,15%,60%)', marginBottom: '0.3rem',
-    };
-
     const statusConfig = {
-        active: { color: 'hsl(142,71%,45%)', badgeClass: 'badge-success' },
-        verified: { color: 'hsl(142,71%,45%)', badgeClass: 'badge-success' },
-        pending: { color: 'hsl(38,92%,50%)', badgeClass: 'badge-warning-glow' },
-        frozen: { color: 'hsl(200,85%,55%)', badgeClass: 'badge-neutral' },
-        under_dispute: { color: 'hsl(348,83%,47%)', badgeClass: 'badge-danger' },
-        pending_transfer: { color: 'hsl(280,80%,60%)', badgeClass: 'badge-warning' },
-        rejected: { color: 'hsl(348,83%,47%)', badgeClass: 'badge-danger' },
+        active: { color: '#00E5FF', bg: 'rgba(0, 229, 255, 0.1)', badgeClass: 'badge-success' },
+        verified: { color: '#00E5FF', bg: 'rgba(0, 229, 255, 0.1)', badgeClass: 'badge-success' },
+        pending: { color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.1)', badgeClass: 'badge-warning-glow' },
+        frozen: { color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.1)', badgeClass: 'badge-neutral' },
+        under_dispute: { color: '#EF4444', bg: 'rgba(239, 68, 68, 0.1)', badgeClass: 'badge-danger' },
+        pending_transfer: { color: '#A855F7', bg: 'rgba(168, 85, 247, 0.1)', badgeClass: 'badge-warning' },
+        rejected: { color: '#EF4444', bg: 'rgba(239, 68, 68, 0.1)', badgeClass: 'badge-danger' },
     };
     const sc = statusConfig[property?.status] || statusConfig.pending;
+
+    const cyberInputStyle = {
+        width: '100%', padding: '0.85rem 1rem', background: 'rgba(0,0,0,0.4)',
+        border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px',
+        color: 'white', fontFamily: 'inherit', fontSize: '0.9rem',
+        transition: 'all 0.2s ease', outline: 'none'
+    };
 
     if (loading) {
         return (
             <div style={{ display: 'flex', height: '100vh', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
-                <Loader2 style={{ width: '3rem', height: '3rem', color: 'hsl(255,85%,65%)' }} className="animate-spin" />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse">
+                    <Loader2 style={{ width: '3rem', height: '3rem', color: '#00E5FF' }} className="animate-spin" />
+                    <p style={{ fontWeight: 600, letterSpacing: '0.05em', fontSize: '0.875rem', color: '#00E5FF' }}>Loading property data...</p>
+                </div>
             </div>
         );
     }
@@ -115,190 +120,201 @@ const PropertyDetails = () => {
     if (error || !property) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', height: '80vh', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2rem' }}>
-                <ShieldAlert size={56} style={{ color: 'hsl(348,83%,47%)', marginBottom: '1rem' }} />
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>Asset Not Found</h2>
-                <p className="text-muted" style={{ marginBottom: '1.5rem' }}>{error}</p>
-                <button className="btn btn-secondary" onClick={() => navigate('/my-properties')}>Return to Properties</button>
+                <ShieldAlert size={56} style={{ color: '#EF4444', marginBottom: '1rem' }} />
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem', color: 'white' }}>Property Not Found</h2>
+                <p style={{ color: '#9ca3af', marginBottom: '1.5rem' }}>{error || 'Unable to locate this asset record on the blockchain.'}</p>
+                <button className="cyber-btn-hollow" onClick={() => navigate('/my-properties')} style={{ '--btn-color': '#00E5FF', textTransform: 'capitalize' }}>
+                    Return to Dashboard
+                </button>
             </div>
         );
     }
 
     return (
-        <div className="property-container container-md">
+        <div className="property-container container-md animate-fade-in">
             <button
-                className="back-button"
+                className="cyber-btn-hollow mb-6"
                 onClick={() => navigate(-1)}
+                style={{ '--btn-color': '#00E5FF', width: 'auto', border: 'none', textTransform: 'capitalize' }}
             >
                 <ArrowLeft size={16} /> Back
             </button>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
-                {/* Two column on larger screens */}
+                {/* Top Section */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: '1.5rem' }}>
 
                     {/* ─── Asset Overview ─── */}
-                    <div className="details-panel" style={{ gridColumn: 'span 1' }}>
-                        <div className="details-panel-glow" style={{ background: sc.color }}></div>
+                    <div className="cyber-hud-bar" style={{ display: 'block', position: 'relative', overflow: 'hidden', padding: '2rem', gridColumn: 'span 1' }}>
+                        <div className="cyber-card-glow-orb" style={{ background: sc.color, top: '-5%', right: '-5%', opacity: 0.1, width: '12rem', height: '12rem' }}></div>
 
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem', position: 'relative', zIndex: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                                 <div style={{
-                                    width: '3.5rem', height: '3.5rem', borderRadius: '1rem',
-                                    background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)',
+                                    width: '3.5rem', height: '3.5rem', borderRadius: '12px',
+                                    background: sc.bg, border: `1px solid ${sc.color}33`,
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    boxShadow: `0 0 20px ${sc.color}33`
                                 }}>
-                                    <Building size={24} style={{ color: 'hsl(255,85%,65%)' }} />
+                                    <Building size={24} style={{ color: sc.color }} />
                                 </div>
                                 <div>
-                                    <h1 style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: '0.25rem' }}>{property.surveyNumber}</h1>
-                                    <p style={{ fontSize: '0.85rem', color: 'hsl(220,15%,60%)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                        <MapPin size={14} /> {property.district}{property.state ? `, ${property.state}` : ''}
+                                    <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, color: 'white' }}>{property.surveyNumber}</h1>
+                                    <p style={{ fontSize: '0.9rem', color: '#9ca3af', marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                        <MapPin size={14} style={{ color: sc.color }} /> {property.district}{property.state ? `, ${property.state}` : ''}
                                     </p>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                <span className={`badge ${sc.badgeClass}`}>{property.status?.toUpperCase()}</span>
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <div className="cyber-badge" style={{ '--badge-color': sc.color, '--badge-bg': 'transparent', '--badge-border': `${sc.color}66` }}>
+                                    <div className="cyber-badge-dot" style={{ background: sc.color, boxShadow: `0 0 5px ${sc.color}` }}></div>
+                                    {property.status?.toUpperCase()}
+                                </div>
                                 {property.encumbranceStatus && property.encumbranceStatus !== 'clear' && (
-                                    <span className="badge badge-danger" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                                        <Shield size={10} /> ENCUMBERED
-                                    </span>
+                                    <div className="cyber-badge" style={{ '--badge-color': '#EF4444', '--badge-bg': 'rgba(239,68,68,0.1)', '--badge-border': 'rgba(239,68,68,0.3)' }}>
+                                        <Shield size={12} style={{ marginRight: '0.2rem' }} /> ENCUMBERED
+                                    </div>
                                 )}
                             </div>
                         </div>
 
                         {/* Key Details Grid */}
-                        <div className="info-grid-box">
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1.25rem' }}>
-                                <div>
-                                    <p className="info-label">Property ID</p>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                        <p className="info-value-mono" style={{ fontSize: '0.75rem', color: 'hsl(255,85%,65%)' }}>{property.id.slice(0, 12)}...</p>
-                                        <button onClick={() => handleCopy(property.id, 'id')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied === 'id' ? 'hsl(142,71%,45%)' : 'hsl(220,15%,60%)', padding: 0 }}>
-                                            {copied === 'id' ? <CheckCircle2 size={12} /> : <Copy size={12} />}
-                                        </button>
-                                    </div>
+                        <div className="cyber-data-grid" style={{ marginBottom: 0, position: 'relative', zIndex: 10, background: 'rgba(0,0,0,0.4)', borderColor: 'rgba(255,255,255,0.05)' }}>
+                            <div className="cyber-data-item">
+                                <p className="label">Property Record ID</p>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <p className="value" style={{ color: '#00E5FF' }}>{property.id.slice(0, 12)}...</p>
+                                    <button onClick={() => handleCopy(property.id, 'id')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied === 'id' ? '#00E5FF' : '#9ca3af', padding: 0 }}>
+                                        {copied === 'id' ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                                    </button>
                                 </div>
-                                <div>
-                                    <p className="info-label">Property Code</p>
-                                    <p className="info-value" style={{ color: 'hsl(255,85%,65%)' }}>{property.propertyCode || '—'}</p>
+                            </div>
+                            <div className="cyber-data-item">
+                                <p className="label">Property Code</p>
+                                <p className="value" style={{ color: '#00E5FF', textShadow: '0 0 10px rgba(0,229,255,0.3)' }}>{property.propertyCode || '—'}</p>
+                            </div>
+                            
+                            {property.nftTokenId && (
+                                <div className="cyber-data-item">
+                                    <p className="label">Digital Title ID</p>
+                                    <a 
+                                        href={`https://testnet.snowtrace.io/nft/0xE94d65289Cc088f597C077938A6D7Fc0974196fe/${property.nftTokenId}`}
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="value"
+                                        style={{ color: '#A855F7', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'none' }}
+                                    >
+                                        #{property.nftTokenId} <ExternalLink size={12} />
+                                    </a>
                                 </div>
-                                {property.nftTokenId && (
-                                    <div>
-                                        <p className="info-label">NFT Token ID</p>
-                                        <a 
-                                            href={`https://testnet.snowtrace.io/nft/0xE94d65289Cc088f597C077938A6D7Fc0974196fe/${property.nftTokenId}`}
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="info-value-mono hover-glow"
-                                            style={{ color: 'hsl(280,80%,60%)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none' }}
-                                        >
-                                            #{property.nftTokenId} <ExternalLink size={10} />
-                                        </a>
-                                    </div>
-                                )}
-                                <div>
-                                    <p className="info-label">Area</p>
-                                    <p className="info-value-mono">{property.areaSqft?.toLocaleString() || '—'} sq.ft</p>
+                            )}
+                            
+                            <div className="cyber-data-item">
+                                <p className="label">Area Size</p>
+                                <p className="value">{property.areaSqft?.toLocaleString() || '—'} sq.ft</p>
+                            </div>
+                            
+                            {(property.geoLat || property.geoLng) && (
+                                <div className="cyber-data-item">
+                                    <p className="label"><Globe size={11} style={{ display: 'inline', marginRight: '0.2rem' }} /> Geolocation</p>
+                                    <p className="value" style={{ fontSize: '0.8rem' }}>{property.geoLat}, {property.geoLng}</p>
                                 </div>
-                                {(property.geoLat || property.geoLng) && (
-                                    <div>
-                                        <p className="info-label"><Globe size={10} style={{ display: 'inline', marginRight: '0.2rem' }} />Coordinates</p>
-                                        <p className="info-value-mono" style={{ fontSize: '0.8rem' }}>{property.geoLat}, {property.geoLng}</p>
-                                    </div>
-                                )}
-                                <div style={{ gridColumn: '1 / -1' }}>
-                                    <p className="info-label">Full Address</p>
-                                    <p className="info-value" style={{ fontWeight: 500, fontSize: '0.9rem' }}>{property.addressLine || '—'}</p>
-                                </div>
-                                <div style={{ gridColumn: '1 / -1' }}>
-                                    <p className="info-label">Current Owner</p>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                        <code style={{
-                                            fontFamily: 'monospace', fontSize: '0.8rem', fontWeight: 600,
-                                            color: 'hsl(255,85%,65%)', background: 'rgba(139,92,246,0.08)',
-                                            padding: '0.3rem 0.5rem', borderRadius: '0.375rem',
-                                            border: '1px solid rgba(139,92,246,0.2)', wordBreak: 'break-all',
-                                        }}>
-                                            {property.ownerWallet}
-                                        </code>
-                                        {isOwner && <span className="badge badge-success" style={{ fontSize: '0.6rem' }}>YOU</span>}
-                                        <button onClick={() => handleCopy(property.ownerWallet, 'owner')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied === 'owner' ? 'hsl(142,71%,45%)' : 'hsl(220,15%,60%)', padding: 0 }}>
-                                            {copied === 'owner' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
-                                        </button>
-                                    </div>
+                            )}
+                            
+                            <div className="cyber-data-item" style={{ gridColumn: '1 / -1' }}>
+                                <p className="label">Full Address</p>
+                                <p className="value" style={{ fontFamily: 'inherit', fontSize: '0.9rem', color: 'white' }}>{property.addressLine || '—'}</p>
+                            </div>
+                            
+                            <div className="cyber-data-item" style={{ gridColumn: '1 / -1' }}>
+                                <p className="label">Current Legal Owner</p>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                                    <code style={{
+                                        fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem',
+                                        color: '#A855F7', background: 'rgba(168,85,247,0.1)',
+                                        padding: '0.4rem 0.6rem', borderRadius: '6px',
+                                        border: '1px solid rgba(168,85,247,0.2)', wordBreak: 'break-all',
+                                    }}>
+                                        {property.ownerWallet}
+                                    </code>
+                                    {isOwner && <span className="cyber-badge" style={{ '--badge-bg': 'transparent', '--badge-color': '#00E5FF', '--badge-border': 'rgba(0,229,255,0.3)', padding: '0.2rem 0.5rem' }}>YOU</span>}
+                                    <button onClick={() => handleCopy(property.ownerWallet, 'owner')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied === 'owner' ? '#00E5FF' : '#9ca3af', padding: 0 }}>
+                                        {copied === 'owner' ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* ─── Actions Panel ─── */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {/* ─── Actions & Alerts Panel ─── */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        
                         {/* Sale Initiation (owner only, active status) */}
                         {isOwner && (property.status === 'active' || property.status === 'verified') && (
-                            <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '3px solid hsl(142,71%,45%)' }}>
-                                <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <DollarSign size={18} style={{ color: 'hsl(142,71%,45%)' }} /> Initiate Sale
-                                </h4>
-                                <p style={{ fontSize: '0.8rem', color: 'hsl(220,15%,60%)', marginBottom: '1rem', lineHeight: 1.5 }}>
-                                    Deploy an ASBA transfer contract. Buyer funds will be locked until biometric verification.
-                                </p>
-                                <form onSubmit={handleInitiateSale} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    <div className="form-group">
-                                        <label className="form-label">Buyer Wallet</label>
-                                        <input className="input-premium" type="text" placeholder="0x..." value={saleForm.buyerWallet} onChange={e => setSaleForm({ ...saleForm, buyerWallet: e.target.value })} required style={{ fontFamily: 'monospace', fontSize: '0.85rem' }} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Sale Price (₹)</label>
-                                        <input className="input-premium" type="number" placeholder="500000" value={saleForm.price} onChange={e => setSaleForm({ ...saleForm, price: e.target.value })} required min="1" style={{ fontFamily: 'monospace', fontSize: '0.85rem' }} />
-                                    </div>
-                                    <button type="submit" disabled={saleLoading} className="btn btn-primary btn-glow" style={{ width: '100%', fontSize: '0.85rem', padding: '0.75rem' }}>
-                                        {saleLoading ? <><Loader2 size={16} className="animate-spin" /> Deploying...</> : 'Deploy Contract'}
-                                    </button>
-                                </form>
-                                {saleMsg.text && (
-                                    <div className="alert-message" style={{
-                                        marginTop: '0.75rem',
-                                        background: saleMsg.type === 'success' ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
-                                        border: `1px solid ${saleMsg.type === 'success' ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
-                                        color: saleMsg.type === 'success' ? 'hsl(142,71%,45%)' : 'hsl(348,83%,47%)',
-                                    }}>
-                                        {saleMsg.type === 'success' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />} {saleMsg.text}
-                                    </div>
-                                )}
+                            <div className="cyber-hud-bar" style={{ padding: '1.75rem', position: 'relative', overflow: 'hidden' }}>
+                                <div style={{ borderLeft: '4px solid #00E5FF', paddingLeft: '1rem', position: 'relative', zIndex: 10 }}>
+                                    <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
+                                        <DollarSign size={18} style={{ color: '#00E5FF' }} /> Sell Property
+                                    </h4>
+                                    <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                                        Initiate a smart contract sale. Funds will be securely locked in escrow until verification.
+                                    </p>
+                                    <form onSubmit={handleInitiateSale} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.75rem', color: '#d1d5db', marginBottom: '0.4rem', display: 'block', fontWeight: 600 }}>Buyer Wallet Address</label>
+                                            <input style={cyberInputStyle} type="text" placeholder="0x..." value={saleForm.buyerWallet} onChange={e => setSaleForm({ ...saleForm, buyerWallet: e.target.value })} required />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.75rem', color: '#d1d5db', marginBottom: '0.4rem', display: 'block', fontWeight: 600 }}>Sale Price (₹)</label>
+                                            <input style={cyberInputStyle} type="number" placeholder="500000" value={saleForm.price} onChange={e => setSaleForm({ ...saleForm, price: e.target.value })} required min="1" />
+                                        </div>
+                                        <button type="submit" disabled={saleLoading} className="cyber-btn-hollow" style={{ '--btn-color': '#00E5FF', width: '100%', padding: '0.85rem', marginTop: '0.5rem', textTransform: 'capitalize' }}>
+                                            {saleLoading ? <><Loader2 size={16} className="animate-spin" /> Deploying Contract...</> : 'Initiate Sale Contract'}
+                                        </button>
+                                    </form>
+                                    {saleMsg.text && (
+                                        <div className="alert-message mt-4" style={{
+                                            background: saleMsg.type === 'success' ? 'rgba(0,229,255,0.1)' : 'rgba(239,68,68,0.1)',
+                                            border: `1px solid ${saleMsg.type === 'success' ? 'rgba(0,229,255,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                                            color: saleMsg.type === 'success' ? '#00E5FF' : '#EF4444',
+                                        }}>
+                                            {saleMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />} {saleMsg.text}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
 
                         {/* Active Transfer Alert */}
                         {property.status === 'pending_transfer' && (
-                            <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '3px solid hsl(38,92%,50%)' }}>
-                                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'hsl(38,92%,50%)' }}>
-                                    <Activity size={16} /> Active Transfer Contract
+                            <div className="cyber-hud-bar" style={{ padding: '1.25rem', borderLeft: '4px solid #F59E0B' }}>
+                                <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#F59E0B' }}>
+                                    <Activity size={18} /> Active Transfer Pending
                                 </h4>
-                                <p style={{ fontSize: '0.8rem', lineHeight: 1.5 }}>This property is locked in an active ASBA transfer. Standard operations are suspended.</p>
+                                <p style={{ fontSize: '0.85rem', color: '#d1d5db', lineHeight: 1.5 }}>This property is currently locked in an active blockchain transfer. Other operations are paused.</p>
                             </div>
                         )}
 
                         {/* Read-only Alert (not owner) */}
                         {!isOwner && (
-                            <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '3px solid hsl(220,15%,60%)' }}>
-                                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                    <ShieldAlert size={16} /> Read-Only Access
+                            <div className="cyber-hud-bar" style={{ padding: '1.25rem', borderLeft: '4px solid #6b7280' }}>
+                                <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
+                                    <ShieldAlert size={18} style={{ color: '#9ca3af' }} /> View Only Mode
                                 </h4>
-                                <p style={{ fontSize: '0.8rem', color: 'hsl(220,15%,60%)', lineHeight: 1.5 }}>This asset is verified on-chain but you are not the owner.</p>
+                                <p style={{ fontSize: '0.85rem', color: '#9ca3af', lineHeight: 1.5 }}>This asset is registered on the blockchain, but you are not listed as the owner.</p>
                             </div>
                         )}
 
                         {/* Status info */}
-                        <div className="glass-panel" style={{ padding: '1.25rem' }}>
-                            <p style={labelStyle}>Encumbrance</p>
+                        <div className="cyber-hud-bar" style={{ padding: '1.25rem' }}>
+                            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Legal Encumbrance Status</p>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <div style={{
-                                    width: '0.6rem', height: '0.6rem', borderRadius: '9999px',
-                                    background: (!property.encumbranceStatus || property.encumbranceStatus === 'clear') ? 'hsl(142,71%,45%)' : 'hsl(348,83%,47%)',
-                                    boxShadow: `0 0 6px ${(!property.encumbranceStatus || property.encumbranceStatus === 'clear') ? 'hsl(142,71%,45%)' : 'hsl(348,83%,47%)'}`,
+                                <div className="cyber-badge-dot" style={{
+                                    background: (!property.encumbranceStatus || property.encumbranceStatus === 'clear') ? '#00E5FF' : '#EF4444',
+                                    boxShadow: `0 0 8px ${(!property.encumbranceStatus || property.encumbranceStatus === 'clear') ? '#00E5FF' : '#EF4444'}`
                                 }}></div>
-                                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-                                    {(!property.encumbranceStatus || property.encumbranceStatus === 'clear') ? 'Clear — No Encumbrances' : property.encumbranceStatus?.toUpperCase()}
+                                <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'white' }}>
+                                    {(!property.encumbranceStatus || property.encumbranceStatus === 'clear') ? 'Clear Record — No Encumbrances' : property.encumbranceStatus?.toUpperCase()}
                                 </span>
                             </div>
                         </div>
@@ -306,25 +322,25 @@ const PropertyDetails = () => {
                 </div>
 
                 {/* ─── Document Vault ─── */}
-                <div className="details-panel">
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <FileText size={20} style={{ color: 'hsl(255,85%,65%)' }} /> Document Vault
+                <div className="cyber-hud-bar" style={{ display: 'block', padding: '2rem' }}>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'white' }}>
+                        <FileText size={22} style={{ color: '#00E5FF' }} /> Registered Documents
                     </h3>
 
                     {/* Property-level document hash */}
                     {property.documentHash && (
                         <div style={{
-                            marginBottom: '1rem', padding: '1rem', background: 'rgba(0,0,0,0.15)',
-                            borderRadius: '0.75rem', border: '1px solid var(--border-subtle)',
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem',
+                            marginBottom: '1rem', padding: '1.25rem', background: 'rgba(0,0,0,0.4)',
+                            borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)',
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem',
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ padding: '0.4rem', borderRadius: '0.5rem', background: 'rgba(139,92,246,0.12)' }}>
-                                    <Hash size={16} style={{ color: 'hsl(255,85%,65%)' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <div style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(0,229,255,0.1)' }}>
+                                    <Hash size={18} style={{ color: '#00E5FF' }} />
                                 </div>
                                 <div>
-                                    <p style={{ fontWeight: 700, fontSize: '0.8rem', marginBottom: '0.15rem' }}>Title Deed Hash</p>
-                                    <p style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: 'hsl(220,15%,60%)', wordBreak: 'break-all' }}>{property.documentHash}</p>
+                                    <p style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.2rem', color: 'white' }}>Title Deed IPFS Hash</p>
+                                    <p style={{ fontFamily: 'JetBrains Mono', fontSize: '0.75rem', color: '#9ca3af', wordBreak: 'break-all' }}>{property.documentHash}</p>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -332,38 +348,38 @@ const PropertyDetails = () => {
                                     href={`https://gateway.pinata.cloud/ipfs/${property.documentHash}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="btn btn-ghost"
-                                    style={{ padding: '0.3rem 0.5rem', fontSize: '0.7rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                    className="cyber-btn-hollow"
+                                    style={{ '--btn-color': '#00E5FF', padding: '0.4rem 0.75rem', border: '1px solid rgba(0,229,255,0.3)' }}
                                 >
-                                    <ExternalLink size={13} /> View
+                                    <ExternalLink size={14} /> View Document
                                 </a>
-                                <button onClick={() => handleCopy(property.documentHash, 'dochash')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied === 'dochash' ? 'hsl(142,71%,45%)' : 'hsl(220,15%,60%)', padding: '0.3rem' }}>
-                                    {copied === 'dochash' ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                                <button onClick={() => handleCopy(property.documentHash, 'dochash')} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', color: copied === 'dochash' ? '#00E5FF' : '#9ca3af', padding: '0.5rem', borderRadius: '8px' }}>
+                                    {copied === 'dochash' ? <CheckCircle2 size={16} /> : <Copy size={16} />}
                                 </button>
                             </div>
                         </div>
                     )}
 
                     {documents.length === 0 && !property.documentHash ? (
-                        <div style={{ textAlign: 'center', padding: '2rem', color: 'hsl(220,15%,60%)', background: 'rgba(0,0,0,0.1)', borderRadius: '0.75rem', border: '1px dashed var(--border-subtle)' }}>
-                            <FileText size={28} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
-                            <p style={{ fontSize: '0.85rem' }}>No documents found for this asset</p>
+                        <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#9ca3af', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                            <FileText size={32} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
+                            <p style={{ fontSize: '0.9rem' }}>No verification documents found for this asset.</p>
                         </div>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {documents.map((doc) => (
                                 <div key={doc.id || doc.document_hash} style={{
                                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                    padding: '0.875rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)',
-                                    borderRadius: '0.75rem', transition: 'background 0.2s',
+                                    padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
+                                    borderRadius: '12px', transition: 'background 0.2s', flexWrap: 'wrap', gap: '1rem'
                                 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                        <div style={{ padding: '0.4rem', borderRadius: '0.5rem', background: 'rgba(59,130,246,0.12)' }}>
-                                            <FileText size={16} style={{ color: 'hsl(200,85%,55%)' }} />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        <div style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(168,85,247,0.1)' }}>
+                                            <FileText size={18} style={{ color: '#A855F7' }} />
                                         </div>
                                         <div>
-                                            <p style={{ fontWeight: 700, fontSize: '0.8rem', marginBottom: '0.15rem' }}>{doc.document_type || 'Document'}</p>
-                                            <p style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: 'hsl(220,15%,60%)', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            <p style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.2rem', color: 'white' }}>{doc.document_type || 'Attached Document'}</p>
+                                            <p style={{ fontFamily: 'JetBrains Mono', fontSize: '0.75rem', color: '#9ca3af', maxWidth: '350px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {doc.ipfs_hash || doc.document_hash}
                                             </p>
                                         </div>
@@ -372,10 +388,10 @@ const PropertyDetails = () => {
                                         href={`https://gateway.pinata.cloud/ipfs/${doc.ipfs_hash || doc.document_hash}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="btn btn-ghost" 
-                                        style={{ padding: '0.35rem 0.6rem', fontSize: '0.7rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                        className="cyber-btn-hollow" 
+                                        style={{ '--btn-color': '#A855F7', padding: '0.4rem 0.75rem', border: '1px solid rgba(168,85,247,0.3)' }}
                                     >
-                                        <ExternalLink size={13} /> View
+                                        <ExternalLink size={14} /> Open File
                                     </a>
                                 </div>
                             ))}
@@ -384,70 +400,77 @@ const PropertyDetails = () => {
                 </div>
 
                 {/* ─── Transaction History ─── */}
-                <div className="details-panel">
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Activity size={20} style={{ color: 'hsl(255,85%,65%)' }} /> Transaction History
+                <div className="cyber-hud-bar" style={{ display: 'block', padding: '2rem' }}>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'white' }}>
+                        <Activity size={22} style={{ color: '#00E5FF' }} /> Transaction History
                     </h3>
 
                     {transactions.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '2rem', color: 'hsl(220,15%,60%)', background: 'rgba(0,0,0,0.1)', borderRadius: '0.75rem', border: '1px dashed var(--border-subtle)' }}>
-                            <Activity size={28} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
-                            <p style={{ fontSize: '0.85rem' }}>No transaction history for this property</p>
+                        <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#9ca3af', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                            <Activity size={32} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
+                            <p style={{ fontSize: '0.9rem' }}>No past ledger transactions recorded for this property.</p>
                         </div>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {transactions.map((tx) => {
                                 const isSeller = tx.sellerWallet?.toLowerCase() === account?.toLowerCase();
                                 const txStatusConfig = {
-                                    completed: { badgeClass: 'badge-success', color: 'hsl(142,71%,45%)' },
-                                    cancelled: { badgeClass: 'badge-danger', color: 'hsl(348,83%,47%)' },
-                                    expired: { badgeClass: 'badge-neutral', color: 'hsl(220,15%,60%)' },
+                                    completed: { color: '#00E5FF', bg: 'rgba(0,229,255,0.1)' },
+                                    cancelled: { color: '#EF4444', bg: 'rgba(239,68,68,0.1)' },
+                                    expired: { color: '#9ca3af', bg: 'rgba(255,255,255,0.05)' },
                                 };
-                                const tsc = txStatusConfig[tx.status] || { badgeClass: 'badge-warning-glow', color: 'hsl(38,92%,50%)' };
+                                const tsc = txStatusConfig[tx.status] || { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' };
 
                                 return (
-                                    <div key={tx.id} className="tx-row">
+                                    <div key={tx.id} style={{
+                                        padding: '1.5rem', background: 'rgba(0,0,0,0.3)',
+                                        borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)',
+                                        display: 'grid', gridTemplateColumns: '1fr auto', gap: '1rem',
+                                        alignItems: 'center', transition: 'all 0.2s ease'
+                                    }}>
                                         <div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem', flexWrap: 'wrap' }}>
                                                 {isSeller
-                                                    ? <ArrowUpRight size={14} style={{ color: 'hsl(280,80%,60%)' }} />
-                                                    : <ArrowDownLeft size={14} style={{ color: 'hsl(200,85%,55%)' }} />
+                                                    ? <ArrowUpRight size={16} style={{ color: '#A855F7' }} />
+                                                    : <ArrowDownLeft size={16} style={{ color: '#00E5FF' }} />
                                                 }
-                                                <span className="badge badge-neutral" style={{ fontSize: '0.55rem' }}>{isSeller ? 'SOLD' : 'BOUGHT'}</span>
-                                                <span className={`badge ${tsc.badgeClass}`} style={{ fontSize: '0.55rem' }}>{tx.status?.toUpperCase()}</span>
+                                                <span className="cyber-badge" style={{ '--badge-bg': 'rgba(255,255,255,0.1)', '--badge-color': '#d1d5db', '--badge-border': 'transparent', padding: '0.2rem 0.4rem', fontSize: '0.6rem' }}>
+                                                    {isSeller ? 'SELLER' : 'BUYER'}
+                                                </span>
+                                                <span className="cyber-badge" style={{ '--badge-bg': tsc.bg, '--badge-color': tsc.color, '--badge-border': 'transparent', padding: '0.2rem 0.4rem', fontSize: '0.6rem' }}>
+                                                    {tx.status?.toUpperCase()}
+                                                </span>
                                                 {tx.txHash && (
                                                     <a 
                                                         href={`https://testnet.snowtrace.io/tx/${tx.txHash}`}
                                                         target="_blank" 
                                                         rel="noopener noreferrer"
-                                                        className="hover-glow"
-                                                        style={{ fontFamily: 'monospace', fontSize: '0.65rem', color: 'hsl(220,15%,60%)', display: 'flex', alignItems: 'center', gap: '0.2rem', textDecoration: 'none' }}
+                                                        style={{ fontFamily: 'JetBrains Mono', fontSize: '0.75rem', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'none', marginLeft: '0.5rem' }}
                                                     >
-                                                        TX: {tx.txHash.slice(0, 10)}... <ExternalLink size={10} />
+                                                        TX: {tx.txHash.slice(0, 10)}... <ExternalLink size={12} />
                                                     </a>
                                                 )}
                                             </div>
-                                            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.75rem', color: 'hsl(220,15%,60%)' }}>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                                                    <Wallet size={11} /> Buyer: <span style={{ fontFamily: 'monospace' }}>{tx.buyerWallet?.slice(0, 8)}...</span>
+                                            <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', fontSize: '0.8rem', color: '#d1d5db' }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                    <Wallet size={12} style={{ color: '#6b7280' }} /> Buyer: <span style={{ fontFamily: 'JetBrains Mono' }}>{tx.buyerWallet?.slice(0, 8)}...</span>
                                                 </span>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                                                    <Wallet size={11} /> Seller: <span style={{ fontFamily: 'monospace' }}>{tx.sellerWallet?.slice(0, 8)}...</span>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                    <Wallet size={12} style={{ color: '#6b7280' }} /> Seller: <span style={{ fontFamily: 'JetBrains Mono' }}>{tx.sellerWallet?.slice(0, 8)}...</span>
                                                 </span>
                                             </div>
-                                            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.4rem', fontSize: '0.7rem', color: 'hsl(220,15%,60%)' }}>
-                                                <span>Buyer: {tx.buyerSigned ? '✓ Signed' : '✗ Pending'}</span>
-                                                <span>Seller: {tx.sellerSigned ? '✓ Signed' : '✗ Pending'}</span>
-                                                <span>Authority: {tx.authoritySigned ? '✓ Signed' : '✗ Pending'}</span>
-                                                <span>Funds: {tx.fundsBlocked ? '✓ Blocked' : '✗ Pending'}</span>
+                                            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', fontSize: '0.75rem', color: '#9ca3af' }}>
+                                                <span>Buyer: {tx.buyerSigned ? <span style={{color: '#00E5FF'}}>✓ Signed</span> : '⏳ Pending'}</span>
+                                                <span>Seller: {tx.sellerSigned ? <span style={{color: '#00E5FF'}}>✓ Signed</span> : '⏳ Pending'}</span>
+                                                <span>Authority: {tx.authoritySigned ? <span style={{color: '#00E5FF'}}>✓ Verified</span> : '⏳ Pending'}</span>
                                             </div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
-                                            <p style={{ fontWeight: 800, fontSize: '1.1rem', color: 'hsl(142,71%,45%)', textShadow: '0 0 6px rgba(34,197,94,0.2)' }}>
+                                            <p style={{ fontWeight: 800, fontSize: '1.25rem', color: '#00E5FF', textShadow: '0 0 10px rgba(0,229,255,0.3)' }}>
                                                 ₹{Number(tx.salePrice).toLocaleString('en-IN')}
                                             </p>
-                                            <p style={{ fontSize: '0.65rem', color: 'hsl(220,15%,60%)', display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
-                                                <Clock size={10} /> {new Date(tx.createdAt).toLocaleDateString()}
+                                            <p style={{ fontSize: '0.75rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '0.3rem', justifyContent: 'flex-end', marginTop: '0.4rem' }}>
+                                                <Clock size={12} /> {new Date(tx.createdAt).toLocaleDateString()}
                                             </p>
                                         </div>
                                     </div>

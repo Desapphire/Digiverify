@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { propertyService } from '../../services/property.service';
 import { useAuth } from '../../context/AuthContext';
 import {
-    Building, MapPin, CheckCircle2, Shield, AlertTriangle, ShieldAlert,
+    MapPin, CheckCircle2, Shield, AlertTriangle, ShieldAlert,
     Lock, Eye, ArrowUpRight, PlusCircle, Search, Loader2, ExternalLink
 } from 'lucide-react';
 import './PropertyPages.css';
@@ -32,13 +32,13 @@ const MyProperties = () => {
     }, [user]);
 
     const statusConfig = {
-        active: { label: 'ACTIVE', color: 'hsl(142,71%,45%)', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.25)', icon: CheckCircle2, badgeClass: 'badge-success' },
-        verified: { label: 'ACTIVE', color: 'hsl(142,71%,45%)', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.25)', icon: CheckCircle2, badgeClass: 'badge-success' },
-        pending: { label: 'PENDING', color: 'hsl(38,92%,50%)', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)', icon: AlertTriangle, badgeClass: 'badge-warning-glow' },
-        frozen: { label: 'FROZEN', color: 'hsl(200,85%,55%)', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.25)', icon: Lock, badgeClass: 'badge-neutral' },
-        under_dispute: { label: 'UNDER DISPUTE', color: 'hsl(348,83%,47%)', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.25)', icon: AlertTriangle, badgeClass: 'badge-danger' },
-        pending_transfer: { label: 'TRANSFERRING', color: 'hsl(280,80%,60%)', bg: 'rgba(168,85,247,0.08)', border: 'rgba(168,85,247,0.25)', icon: ArrowUpRight, badgeClass: 'badge-warning' },
-        rejected: { label: 'REJECTED', color: 'hsl(348,83%,47%)', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.25)', icon: ShieldAlert, badgeClass: 'badge-danger' },
+        active: { label: 'ACTIVE', color: '#00E5FF', bg: 'rgba(0, 229, 255, 0.1)', icon: CheckCircle2 },
+        verified: { label: 'VERIFIED', color: '#00E5FF', bg: 'rgba(0, 229, 255, 0.1)', icon: CheckCircle2 },
+        pending: { label: 'PENDING', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.1)', icon: AlertTriangle },
+        frozen: { label: 'FROZEN', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.1)', icon: Lock },
+        under_dispute: { label: 'DISPUTED', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.1)', icon: AlertTriangle },
+        pending_transfer: { label: 'TRANSFER', color: '#A855F7', bg: 'rgba(168, 85, 247, 0.1)', icon: ArrowUpRight },
+        rejected: { label: 'REJECTED', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.1)', icon: ShieldAlert },
     };
 
     const getStatusConfig = (status) => statusConfig[status] || statusConfig.pending;
@@ -51,7 +51,8 @@ const MyProperties = () => {
             return (p.surveyNumber?.toLowerCase().includes(q) ||
                 p.district?.toLowerCase().includes(q) ||
                 p.state?.toLowerCase().includes(q) ||
-                p.addressLine?.toLowerCase().includes(q));
+                p.addressLine?.toLowerCase().includes(q) ||
+                p.id?.toString().includes(q));
         }
         return true;
     });
@@ -62,15 +63,14 @@ const MyProperties = () => {
         pending: properties.filter(p => p.status === 'pending').length,
         frozen: properties.filter(p => p.status === 'frozen').length,
         under_dispute: properties.filter(p => p.status === 'under_dispute').length,
-        rejected: properties.filter(p => p.status === 'rejected').length,
     };
 
     if (loading) {
         return (
             <div style={{ display: 'flex', height: '100vh', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse-glow">
-                    <Loader2 style={{ width: '3rem', height: '3rem', color: 'hsl(255,85%,65%)' }} className="animate-spin" />
-                    <p className="text-muted" style={{ fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: '0.875rem' }}>Loading Properties...</p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse">
+                    <Loader2 style={{ width: '3rem', height: '3rem', color: '#00E5FF' }} className="animate-spin" />
+                    <p style={{ fontWeight: 600, letterSpacing: '0.05em', fontSize: '0.875rem', color: '#00E5FF' }}>Loading properties, please wait...</p>
                 </div>
             </div>
         );
@@ -81,53 +81,41 @@ const MyProperties = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
-                    <h1 className="text-4xl font-extrabold tracking-tight mb-2">
-                        My <span className="text-gradient">Properties</span>
+                    <h1 className="text-4xl font-black tracking-tight mb-2" style={{ letterSpacing: '-0.02em', color: 'white' }}>
+                        My Properties
                     </h1>
-                    <p className="text-muted font-medium">
-                        {properties.length} registered asset{properties.length !== 1 ? 's' : ''} on the blockchain
+                    <p style={{ color: 'hsl(220,15%,60%)', fontSize: '0.95rem' }}>
+                        Showing {properties.length} registered properties on the blockchain
                     </p>
                 </div>
                 <button
-                    className="btn btn-primary btn-glow w-full md:w-auto"
+                    className="cyber-btn-hollow"
                     onClick={() => navigate('/register-property')}
-                    style={{ fontSize: '0.9rem', padding: '0.75rem 1.5rem' }}
+                    style={{ '--btn-color': '#00E5FF', padding: '0.85rem 1.5rem', width: 'auto', alignSelf: 'flex-start', textTransform: 'capitalize' }}
                 >
-                    <PlusCircle size={18} /> Register New Asset
+                    <PlusCircle size={18} /> Register New Property
                 </button>
             </div>
 
-            {/* Search + Filter Bar */}
-            <div className="flex flex-col xl:flex-row gap-4 mb-8">
-                <div className="relative flex-1 min-w-[220px]">
-                    <Search size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'hsl(220,15%,60%)' }} />
+            {/* Dash Bar */}
+            <div className="cyber-hud-bar">
+                <div className="cyber-search-wrapper">
+                    <Search className="cyber-search-icon" size={16} />
                     <input
-                        className="input-premium w-full"
                         type="text"
-                        placeholder="Search by survey number, location..."
+                        placeholder="Search by Survey No, District, or State..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        style={{ paddingLeft: '2.75rem' }}
+                        style={{ fontFamily: 'inherit' }}
                     />
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="cyber-filter-container">
                     {Object.entries(statusCounts).map(([key, count]) => (
                         <button
                             key={key}
+                            className={`cyber-filter-btn ${filter === key ? 'active' : ''}`}
                             onClick={() => setFilter(key)}
-                            style={{
-                                padding: '0.5rem 0.9rem',
-                                borderRadius: '9999px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.05em',
-                                cursor: 'pointer',
-                                border: `1px solid ${filter === key ? 'rgba(139,92,246,0.4)' : 'var(--border-subtle)'}`,
-                                background: filter === key ? 'rgba(139,92,246,0.15)' : 'rgba(0,0,0,0.15)',
-                                color: filter === key ? 'hsl(255,85%,65%)' : 'hsl(220,15%,60%)',
-                                transition: 'all 0.2s ease',
-                            }}
+                            style={{ textTransform: 'capitalize' }}
                         >
                             {key === 'all' ? 'All' : key.replace('_', ' ')} ({count})
                         </button>
@@ -137,91 +125,114 @@ const MyProperties = () => {
 
             {/* Property Grid */}
             {filtered.length === 0 ? (
-                <div className="empty-state max-w-2xl mx-auto mt-12">
-                    <Building size={48} style={{ opacity: 0.2, marginBottom: '1rem', color: 'hsl(255,85%,65%)', display: 'inline-block' }} />
-                    <p style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-                        {properties.length === 0 ? 'No properties registered yet' : 'No properties match your filters'}
+                <div className="empty-state max-w-2xl mx-auto mt-12" style={{ border: '1px dashed rgba(0,229,255,0.3)', background: 'rgba(0,229,255,0.02)' }}>
+                    <Search size={48} style={{ opacity: 0.5, marginBottom: '1.5rem', color: '#00E5FF', display: 'inline-block' }} />
+                    <p style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem', color: 'white' }}>
+                        {properties.length === 0 ? 'No Properties Registered' : 'No properties match your search'}
                     </p>
-                    <p className="page-subtitle" style={{ marginBottom: '1.5rem' }}>
-                        {properties.length === 0 ? 'Register your first property to get started on the blockchain.' : 'Try adjusting your search or filter criteria.'}
+                    <p style={{ marginBottom: '1.5rem', color: 'hsl(220,15%,60%)' }}>
+                        {properties.length === 0 ? 'Start by registering your first property to the system.' : 'Try adjusting your search query or clear the filters.'}
                     </p>
                     {properties.length === 0 && (
-                        <button className="btn btn-primary" onClick={() => navigate('/register-property')} style={{ fontSize: '0.875rem' }}>
+                        <button className="cyber-btn-hollow" onClick={() => navigate('/register-property')} style={{ '--btn-color': '#00E5FF', textTransform: 'capitalize' }}>
                             <PlusCircle size={16} /> Register Property
                         </button>
                     )}
                 </div>
             ) : (
-                <div className="flex flex-col gap-4">
-                    {filtered.map((prop) => {
+                <div className="cyber-grid-layout">
+                    {filtered.map((prop, idx) => {
                         const sc = getStatusConfig(prop.status);
-                        const StatusIcon = sc.icon;
+                        
                         return (
                             <div
                                 key={prop.id}
-                                className="property-card flex flex-col md:flex-row w-full justify-between items-start md:items-center gap-6"
-                                style={{ borderLeftColor: sc.color }}
+                                className="cyber-property-card"
+                                style={{ 
+                                    '--tier-color': sc.color, 
+                                    '--tier-color-hover': sc.color,
+                                    '--tier-glow': sc.bg,
+                                    animationDelay: `${idx * 0.05}s`
+                                }}
                                 onClick={() => navigate(`/properties/${prop.id}`)}
                             >
-                                <div className="w-full md:w-auto">
-                                    <div className="flex items-center gap-3 mb-2 flex-wrap">
-                                        <h3 className="text-xl font-bold flex items-center gap-2">
+                                <div className="cyber-card-glow-orb" style={{ background: sc.color }}></div>
+                                
+                                <div>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <h3 className="text-xl font-bold tracking-tight text-white mb-1">
                                             {prop.surveyNumber}
-                                            {(prop.status === 'active' || prop.status === 'verified') && <CheckCircle2 size={16} style={{ color: 'hsl(142,71%,45%)' }} />}
                                         </h3>
-                                        <span className={`badge ${sc.badgeClass}`} style={{ fontSize: '0.6rem' }}>
-                                            <StatusIcon size={10} style={{ marginRight: '0.2rem' }} /> {sc.label}
-                                        </span>
-                                        {prop.encumbranceStatus && prop.encumbranceStatus !== 'clear' && (
-                                            <span className="badge badge-danger" style={{ fontSize: '0.6rem' }}>
-                                                <Shield size={10} style={{ marginRight: '0.2rem' }} /> ENCUMBERED
-                                            </span>
-                                        )}
+                                        <div 
+                                            className="cyber-badge" 
+                                            style={{ 
+                                                '--badge-color': sc.color, 
+                                                '--badge-bg': sc.bg,
+                                                '--badge-border': `rgba(255,255,255,0.1)`,
+                                                textTransform: 'uppercase'
+                                            }}
+                                        >
+                                            <div className="cyber-badge-dot" style={{ background: sc.color, boxShadow: `0 0 8px ${sc.color}` }}></div>
+                                            {sc.label}
+                                        </div>
                                     </div>
-                                    <div className="property-card-meta">
-                                        <p className="meta-item">
-                                            <MapPin size={13} /> {prop.district}{prop.state ? `, ${prop.state}` : ''}
-                                        </p>
-                                        {prop.areaSqft && (
-                                            <p className="meta-item" style={{ fontFamily: 'monospace' }}>
-                                                {prop.areaSqft.toLocaleString()} sq.ft
-                                            </p>
-                                        )}
-                                        {prop.nftTokenId && (
+                                    
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'hsl(220,15%,60%)', fontSize: '0.85rem', fontWeight: 500, marginBottom: '1rem' }}>
+                                        <MapPin size={14} style={{ color: sc.color }} />
+                                        {prop.district}{prop.state ? `, ${prop.state}` : ''}
+                                    </div>
+
+                                    <div className="cyber-data-grid">
+                                        <div className="cyber-data-item">
+                                            <div className="label">Area</div>
+                                            <div className="value">{prop.areaSqft ? prop.areaSqft.toLocaleString() + ' sq.ft' : 'N/A'}</div>
+                                        </div>
+                                        <div className="cyber-data-item">
+                                            <div className="label">Encumbrance</div>
+                                            <div className="value" style={{ color: prop.encumbranceStatus === 'clear' ? '#00E5FF' : '#FF007F' }}>
+                                                {prop.encumbranceStatus === 'clear' ? 'Clear' : 'Flagged'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {prop.nftTokenId && (
+                                        <div style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
                                             <a 
                                                 href={`https://testnet.snowtrace.io/nft/0xE94d65289Cc088f597C077938A6D7Fc0974196fe/${prop.nftTokenId}`}
                                                 target="_blank" 
                                                 rel="noopener noreferrer"
-                                                className="meta-item hover-glow"
-                                                style={{ color: 'hsl(255,85%,65%)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '0.2rem', textDecoration: 'none' }}
+                                                style={{ color: '#00E5FF', fontFamily: 'JetBrains Mono', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', background: 'rgba(0,229,255,0.05)', padding: '0.4rem 0.75rem', borderRadius: '6px', border: '1px solid rgba(0,229,255,0.2)' }}
                                                 onClick={(e) => e.stopPropagation()}
                                             >
-                                                NFT #{prop.nftTokenId} <ExternalLink size={10} />
+                                                Digital Title #{prop.nftTokenId} <ExternalLink size={12} />
                                             </a>
-                                        )}
-                                    </div>
-                                    <p style={{ fontSize: '0.7rem', color: 'hsl(220,15%,60%)', fontFamily: 'monospace' }}>
-                                        ID: {prop.id}
-                                    </p>
+                                        </div>
+                                    )}
                                 </div>
 
-                                <div className="flex gap-3 w-full md:w-auto mt-2 md:mt-0">
-                                    <button
-                                        className="btn btn-ghost flex-1 md:flex-none justify-center"
-                                        onClick={(e) => { e.stopPropagation(); navigate(`/properties/${prop.id}`); }}
-                                        style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
-                                    >
-                                        <Eye size={16} /> Details
-                                    </button>
-                                    {(prop.status === 'active' || prop.status === 'verified') && (
+                                <div>
+                                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '1rem', wordBreak: 'break-all' }}>
+                                        Record ID: {prop.id}
+                                    </div>
+                                    
+                                    <div className="cyber-actions" style={{ position: 'relative', zIndex: 10 }}>
                                         <button
-                                            className="btn btn-primary flex-1 md:flex-none justify-center"
+                                            className="cyber-btn-hollow"
                                             onClick={(e) => { e.stopPropagation(); navigate(`/properties/${prop.id}`); }}
-                                            style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                                            style={{ '--btn-color': '#9ca3af', textTransform: 'capitalize' }}
                                         >
-                                            <ArrowUpRight size={16} /> Sell
+                                            <Eye size={16} /> View Details
                                         </button>
-                                    )}
+                                        {(prop.status === 'active' || prop.status === 'verified') && (
+                                            <button
+                                                className="cyber-btn-hollow"
+                                                onClick={(e) => { e.stopPropagation(); navigate(`/properties/${prop.id}`); }}
+                                                style={{ '--btn-color': sc.color, textTransform: 'capitalize' }}
+                                            >
+                                                <ArrowUpRight size={16} /> Sell Property
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         );
