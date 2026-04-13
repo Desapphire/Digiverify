@@ -1,109 +1,105 @@
-# Digiverify (Squrify)
+<div align="center">
+  <img src="./frontend/public/logo.png" alt="Digiverify Logo" width="120" />
+</div>
 
-![Digiverify Hero Banner](/assets/hero_banner.png)   
+# Digiverify
 
-**The Future of Trustless Land Registry & Verification**
+**The Future of Trustless Land Registry & Cyber Verification**
 
-Digiverify is a comprehensive, blockchain-powered platform designed for the secure registration, verification, and sale of land assets. By combining a robust Node.js/Express backend with Ethereum smart contracts and IPFS storage, Digiverify eliminates fraud and ensures immutable ownership records.
+Digiverify is a comprehensive, government-grade platform designed for the secure registration, verification, and sale of land assets. Powered by a robust Node.js/Express backend and an immersive **Cyber HUD** frontend (React), Digiverify eliminates fraud and ensures immutable ownership records by anchoring transaction proofs to blockchain architecture.
 
 ---
 
-## 🖥️ Dashboard Overview
+## 🖥️ System Interface
 
-![Admin Dashboard](/assets/dashboard.png)  
-
-Our centralized admin dashboard provides real-time insights into the entire ecosystem, including registered properties, confirmed transactions, and active smart contracts.
+Our application has undergone a premium "Cyber HUD" visual overhaul, featuring:
+- **Immersive Glassmorphism**: High-fidelity dark mode styling with neon cyan/magenta data accents.
+- **Terminal Aesthetics**: Monospace typography (`JetBrains Mono`) for ledger logs, notifications, and crypto wallets.
+- **Holographic Experiences**: Deep integration of rich media and holographic backgrounds for contract signatures and property search layouts.
 
 ---
 
 ## 🚀 Key Features
 
-- **Digital Asset Tokenization**: Land ownership is represented by unique, non-fungible tokens (ERC-721 NFTs).
-- **Multi-Signature Sale Workflow**: Every transaction requires signed approvals from the Seller, Buyer, and a Regulatory Authority.
-- **ASBA-Style Fund Blocking**: Integrated banking simulation that blocks buyer funds securely before sale completion.
-- **Legal Oversight & Protection**: Courts can "freeze" disputed properties or reverse fraudulent transactions on-chain.
-- **Decentralized Document Storage**: Legal documents are hashed and stored on IPFS, ensuring they are tamper-proof.
+* **Digital Asset Tokenization**: Land ownership is securely tracked.
+* **Biometric & FaceID Validation**: OpenCV-powered liveness checks before issuing critical actions (e.g., initiating property sales, wallet recovery).
+* **Multi-Signature Sale Workflow**: Every transaction requires signed cryptographic approvals from the Seller, Buyer, and a Regulatory Authority.
+* **Breach Recovery Module**: A dedicated incident response workflow to freeze assets and safely re-allocate compromised wallet key-pairs.
+* **Real-time Commlink Logs**: System activity and authority approvals are tracked natively via the centralized Cyber Notifications ledger.
 
 ---
 
-## 📄 Property Verification & Details
+## 🏗️ Architecture & Modules
 
-![Property Details](/assets/property_details.png)
+### 1. The Citizen Dashboard (Frontend)
+- **Identity & KYC**: Users must pass KYC + FaceID mapping before interacting with land contracts.
+- **Market Operations**: Fluid interfaces for buying, selling, and executing fund escrow protocols.
+- **Asset Portfolio**: Visual tracking of acquired and pending land assets.
 
-Each property is linked to a detailed verification page showing geo-coordinates, verified IPFS-backed documents (Title Deed, Survey Report, Tax Certificate), and ownership history.
-
----
-
-## 🔗 Multi-Signature Transaction Flow
-
-![Multi-sig Flow](/assets/sale_signature.png)
-
-Transactions follow a strict on-chain multi-sig protocol requiring Buyer, Seller, and Authority signatures, integrated directly with MetaMask for secure execution.
-
----
-
-## 🏗️ System Architecture
-
-### Multi-Stakeholder Lifecycle
-1.  **Survey & Registration**: User registers property; Authority approves and mints the NFT.
-2.  **Market Listing**: Seller initiates a sale to a verified buyer.
-3.  **Digital Signatures**: Buyer accepts the offer using their cryptographic wallet.
-4.  **Financial Securitization**: Bank confirms funds are blocked for the specific transaction ID.
-5.  **Chain Settlement**: Smart contract executes the transfer upon final Authority "seal".
+### 2. The Command Center (Admin / Authority)
+- **KYC & Property Verification**: Government validators can approve or reject property filings and identities.
+- **Investigation Logs**: Authorities can search hashes, track transaction states, and monitor wallet breaches across the platform.
 
 ---
 
 ## 💻 Technical Stack
 
-### Backend
-- **Framework**: Node.js & Express
-- **Database**: PostgreSQL (pg)
-- **Blockchain Interface**: Ethers.js
-- **Security**: Bcrypt, Express Session, PGCrypto
-- **File System**: Multer + IPFS (via CID pinning)
-
 ### Frontend
-- **Library**: React.js
-- **Routing**: React Router v6
-- **API Client**: Axios
-- **Web3**: Direct MetaMask integration for on-chain signing.
+- **Framework**: React.js / Vite
+- **Styling**: Vanilla CSS (Custom Cyber-HUD design system, Flexbox/Grid) + Lucide Icons (react-lucide)
+- **Computer Vision**: OpenCV.js for localized face-scanning.
+- **Web3 Integrations**: Ethers.js integration for hardware signing.
+
+### Backend
+- **Framework**: Node.js & Express API
+- **Database**: PostgreSQL (`pg`) with declarative schema management.
+- **Security Protocols**: JWT (`jsonwebtoken`), Bcrypt encoding, Express Session tracking.
+- **File Systems**: Multer handling for biometric & government ID capture.
 
 ---
 
-## 📂 Project Structure
+## 📂 Repository Structure
+
 ```text
 Digiverify/
-├── assets/             # Project screenshots & branding
-├── backend/            # Express API & Business Logic
-├── frontend/           # React SPA
-├── contracts/          # Solidity Smart Contracts
-└── admin-cli/          # Internal tools for system admins
+├── backend/            # Express API & Core DB Logic
+├── frontend/           # React Interface (Vite)
+├── contracts/          # Smart Contract Prototypes
+├── admin-cli/          # Python automation wrappers for sysadmins
+└── database_schema.md  # Detailed DB architectural map
 ```
 
 ---
 
 ## 🛠️ Setup & Installation
 
-### Step 1: Database Setup
-1. Create a database called `digiverify`.
-2. Run the schema migrations:
-   ```bash
-   psql -d digiverify -f backend/config/schema.sql
-   ```
-
-### Step 2: Launch
+### Step 1: Initialize the Postgres Ledger
+Create a root database named `digiverify`, then execute the schema application:
 ```bash
-# Start Backend
-cd backend && npm install && npm run dev
+psql -d digiverify -f backend/config/schema.sql
+```
 
-# Start Frontend
-cd frontend && npm install && npm start
+### Step 2: Boot Sequences
+Launch the modular services:
+
+**Backend (API Server):**
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+**Frontend (Client Proxy):**
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
 ---
 
-## 📜 License
-ISC License. Distributed for development and educational purposes within the Digiverify ecosystem.
+## 📜 Legal & Licensing
+ISC License. Built for rigorous verification and demonstration purposes within the Digiverify ecosystem.
 
 ---
-*Created with ❤️ by the Digiverify Engineering Team.*
+*Commanded by the Digiverify Systems Architecture Team.*
