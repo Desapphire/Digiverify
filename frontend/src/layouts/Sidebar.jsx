@@ -71,7 +71,7 @@ const Sidebar = () => {
                 <div className="user-topbar">
                     <div className={`user-logo-box ${isCollapsed ? 'collapsed' : ''}`}>
                         <div className="user-logo-icon">
-                            <Building size={18} />
+                            <img src="/logo.png" alt="Digiverify" style={{ width: 24, height: 24 }} />
                         </div>
                         <div className="user-logo-text">
                             <span className="title">Digi<span className="accent">verify</span></span>
@@ -213,8 +213,6 @@ const Sidebar = () => {
 
             {/* ── Main Content ── */}
             <main className={`user-main ${isCollapsed ? 'collapsed-main' : 'expanded'}`}>
-                <div className="user-blob-1"></div>
-                <div className="user-blob-2"></div>
                 <div style={{ height: '100%' }}>
                     <Outlet />
                 </div>

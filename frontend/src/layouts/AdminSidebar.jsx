@@ -67,7 +67,7 @@ const AdminSidebar = () => {
                 <div className="admin-topbar">
                     <div className={`admin-logo-box ${isCollapsed ? 'collapsed' : ''}`}>
                         <div className="admin-logo-icon">
-                            <ShieldAlert size={18} />
+                            <img src="/logo.png" alt="Digiverify" style={{ width: 24, height: 24 }} />
                         </div>
                         <div className="admin-logo-text">
                             <span className="title">Digi<span className="accent">verify</span></span>

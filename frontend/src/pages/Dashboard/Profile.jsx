@@ -5,9 +5,10 @@ import { userService } from '../../services/user.service';
 import {
     User, Wallet, ShieldCheck, FileText, Mail, Phone,
     KeyRound, AlertTriangle, CheckCircle2, Copy, ExternalLink,
-    RefreshCw, Edit3, Save, X, Clock, Fingerprint
+    RefreshCw, Edit3, Save, X, Fingerprint, Activity
 } from 'lucide-react';
 import './Profile.css';
+import './PropertyPages.css';
 
 const UserDashboard = () => {
     const { user } = useAuth();
@@ -149,360 +150,301 @@ const UserDashboard = () => {
     if (loading) {
         return (
             <div style={{ display: 'flex', height: '100vh', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse-glow">
-                    <div style={{ width: '4rem', height: '4rem', borderRadius: '9999px', border: '4px solid rgba(139,92,246,0.3)', borderTopColor: 'hsl(255,85%,65%)' }} className="animate-spin"></div>
-                    <p className="text-muted" style={{ fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: '0.875rem' }}>Loading Profile...</p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse">
+                    <Activity style={{ width: '3rem', height: '3rem', color: '#00E5FF' }} className="animate-spin" />
+                    <p style={{ fontWeight: 600, letterSpacing: '0.05em', fontSize: '0.875rem', color: '#00E5FF' }}>Loading Profile Payload...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="profile-container">
+        <div className="animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
+
             {/* Page Header */}
-            <div className="profile-header">
-                <h1 className="profile-title">
-                    My <span className="text-gradient">Profile</span>
+            <div style={{ marginBottom: '2.5rem' }}>
+                <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.75rem', letterSpacing: '-0.02em', marginBottom: '0.5rem' }}>
+                    Identity <span style={{ color: '#00E5FF', textShadow: '0 0 15px rgba(0,229,255,0.4)' }}>Profile</span>
                 </h1>
-                <p className="profile-subtitle">Manage your identity, security, and wallet settings</p>
+                <p style={{ color: '#9ca3af', fontSize: '0.9rem', maxWidth: '600px' }}>
+                    Manage your secure identity parameters, connected financial nodes, and recovery protocols.
+                </p>
             </div>
 
-            <div className="profile-grid-layout">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1.5rem', alignItems: 'start' }}>
+                {/* Left Column: Details & Verification */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-                {/* ─── Section 1: Personal Details ─── */}
-                <div className="profile-panel">
-                    <div className="panel-header-row">
-                        <h3 className="section-title">
-                            <User style={{ width: '1.25rem', height: '1.25rem', color: 'hsl(255,85%,65%)' }} /> Personal Details
-                        </h3>
-                        {!editMode && (
-                            <button className="btn btn-ghost" onClick={startEdit} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <Edit3 size={14} /> Edit
-                            </button>
-                        )}
-                    </div>
-
-                    <div className="details-grid">
-                        <div className="detail-card">
-                            <p className="detail-label">Full Name</p>
-                            <p className="detail-value">{data?.name || '—'}</p>
-                        </div>
-                        <div className="detail-card">
-                            <p className="detail-label">Email</p>
-                            <p className="detail-value" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data?.email || '—'}</p>
-                        </div>
-                        <div className="detail-card">
-                            <p className="detail-label">Phone</p>
-                            <p className="detail-value">{data?.phone || 'Not Provided'}</p>
-                        </div>
-                        <div className="detail-card">
-                            <p className="detail-label">Birthdate</p>
-                            <p className="detail-value">{data?.birthdate ? new Date(data.birthdate).toLocaleDateString() : 'Not Provided'}</p>
-                        </div>
-                        <div className="detail-card">
-                            <p className="detail-label">Role</p>
-                            <p className="detail-value" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', color: 'hsl(255,85%,65%)' }}>{data?.role || 'user'}</p>
-                        </div>
-                        <div className="detail-card">
-                            <p className="detail-label">Joined</p>
-                            <p className="detail-value">{data?.createdAt ? new Date(data.createdAt).toLocaleDateString() : '—'}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* ─── Section 2: KYC Status ─── */}
-                <div className="profile-panel">
-                    <h3 className="section-title" style={{ marginBottom: '1.5rem' }}>
-                        <ShieldCheck style={{ width: '1.25rem', height: '1.25rem', color: 'hsl(255,85%,65%)' }} /> Verification Status
-                    </h3>
-                    <div className="kyc-cards-container">
-                        {/* KYC Document Status */}
-                        <div className="kyc-card" style={{
-                            borderColor: data?.kycStatus === 'approved' || data?.kycStatus === 'verified' ? 'rgba(34,197,94,0.3)' : data?.kycStatus === 'pending' ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)',
-                            background: data?.kycStatus === 'approved' || data?.kycStatus === 'verified' ? 'rgba(34,197,94,0.08)' : data?.kycStatus === 'pending' ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)',
-                        }}>
-                            <div className="kyc-icon-wrapper" style={{
-                                background: data?.kycStatus === 'approved' || data?.kycStatus === 'verified' ? 'rgba(34,197,94,0.15)' : data?.kycStatus === 'pending' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
-                            }}>
-                                <FileText size={28} style={{ color: data?.kycStatus === 'approved' || data?.kycStatus === 'verified' ? 'hsl(142,71%,45%)' : data?.kycStatus === 'pending' ? 'hsl(38,92%,50%)' : 'hsl(348,83%,47%)' }} />
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <p style={{ fontWeight: 700, fontSize: '1rem', margin: '0 0 0.4rem 0' }}>Document KYC</p>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span className={`badge ${data?.kycStatus === 'approved' || data?.kycStatus === 'verified' ? 'badge-success' : data?.kycStatus === 'pending' ? 'badge-warning-glow' : 'badge-danger'}`}>
-                                        {data?.kycStatus?.toUpperCase() || 'UNKNOWN'}
-                                    </span>
-                                    {data?.kycStatus === 'pending' && <span style={{ width: '0.5rem', height: '0.5rem', borderRadius: '9999px', background: 'hsl(38,92%,50%)', animation: 'pulse-glow 2s infinite' }}></span>}
-                                </div>
-                                {data?.kycStatus !== 'approved' && data?.kycStatus !== 'verified' && (
-                                    <div className="kyc-progress-track">
-                                        <div style={{
-                                            background: data?.kycStatus === 'pending' ? 'hsl(38,92%,50%)' : 'hsl(348,83%,47%)',
-                                            height: '100%',
-                                            width: data?.kycStatus === 'pending' ? '50%' : '10%',
-                                            borderRadius: '9999px',
-                                            boxShadow: `0 0 8px ${data?.kycStatus === 'pending' ? 'hsl(38,92%,50%)' : 'hsl(348,83%,47%)'}`,
-                                        }} className="animate-pulse-glow"></div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Biometric Face ID */}
-                        <div className="kyc-card" style={{
-                            borderColor: data?.faceVerified ? 'rgba(34,197,94,0.3)' : 'var(--border-subtle)',
-                            background: data?.faceVerified ? 'rgba(34,197,94,0.08)' : 'rgba(0,0,0,0.15)',
-                        }}>
-                            <div className="kyc-icon-wrapper" style={{
-                                background: data?.faceVerified ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.05)',
-                            }}>
-                                <Fingerprint size={28} style={{ color: data?.faceVerified ? 'hsl(142,71%,45%)' : 'hsl(220,15%,60%)' }} />
-                            </div>
-                            <div>
-                                <p style={{ fontWeight: 700, fontSize: '1rem', margin: '0 0 0.4rem 0' }}>Biometric Face ID</p>
-                                <span className={`badge ${data?.faceVerified ? 'badge-success' : 'badge-neutral'}`}>
-                                    {data?.faceVerified ? 'VERIFIED & BOUND' : 'PENDING'}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* ─── Section 3: Update Email / Phone ─── */}
-                <div className="profile-panel">
-                    <h3 className="section-title" style={{ marginBottom: '1.5rem' }}>
-                        <Edit3 style={{ width: '1.25rem', height: '1.25rem', color: 'hsl(255,85%,65%)' }} /> Update Contact Info
-                    </h3>
-
-                    {!editMode ? (
-                        <div className="contact-info-list">
-                            <div className="contact-row">
-                                <Mail size={18} style={{ color: 'hsl(255,85%,65%)', flexShrink: 0 }} />
-                                <div>
-                                    <p className="contact-label">Email</p>
-                                    <p style={{ fontWeight: 500, margin: 0 }}>{data?.email || '—'}</p>
-                                </div>
-                            </div>
-                            <div className="contact-row">
-                                <Phone size={18} style={{ color: 'hsl(255,85%,65%)', flexShrink: 0 }} />
-                                <div>
-                                    <p className="contact-label">Phone</p>
-                                    <p style={{ fontWeight: 500, margin: 0 }}>{data?.phone || 'Not Provided'}</p>
-                                </div>
-                            </div>
-                            <button className="btn btn-secondary" onClick={startEdit} style={{ alignSelf: 'flex-start', marginTop: '0.5rem', fontSize: '0.875rem' }}>
-                                <Edit3 size={16} /> Edit Contact Info
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="contact-info-list">
-                            <div className="form-group">
-                                <label className="form-label">Email Address</label>
-                                <input
-                                    className="input-premium"
-                                    type="email"
-                                    value={editEmail}
-                                    onChange={(e) => setEditEmail(e.target.value)}
-                                    placeholder="you@example.com"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Phone Number</label>
-                                <input
-                                    className="input-premium"
-                                    type="tel"
-                                    value={editPhone}
-                                    onChange={(e) => setEditPhone(e.target.value)}
-                                    placeholder="+91 98765 43210"
-                                />
-                            </div>
-                            <div className="action-buttons">
-                                <button className="btn btn-primary btn-glow" onClick={handleSaveProfile} disabled={profileSaving} style={{ fontSize: '0.875rem' }}>
-                                    {profileSaving ? <><RefreshCw size={16} className="animate-spin" /> Saving...</> : <><Save size={16} /> Save Changes</>}
-                                </button>
-                                <button className="btn btn-ghost" onClick={cancelEdit} style={{ fontSize: '0.875rem' }}>
-                                    <X size={16} /> Cancel
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {profileMsg.text && (
-                        <div className="alert-message" style={{
-                            background: profileMsg.type === 'success' ? 'rgba(34,197,94,0.1)' : profileMsg.type === 'error' ? 'rgba(239,68,68,0.1)' : 'rgba(139,92,246,0.1)',
-                            border: `1px solid ${profileMsg.type === 'success' ? 'rgba(34,197,94,0.3)' : profileMsg.type === 'error' ? 'rgba(239,68,68,0.3)' : 'rgba(139,92,246,0.3)'}`,
-                            color: profileMsg.type === 'success' ? 'hsl(142,71%,45%)' : profileMsg.type === 'error' ? 'hsl(348,83%,47%)' : 'hsl(255,85%,65%)',
-                        }}>
-                            {profileMsg.type === 'success' ? <CheckCircle2 size={16} /> : profileMsg.type === 'error' ? <AlertTriangle size={16} /> : null}
-                            {profileMsg.text}
-                        </div>
-                    )}
-                </div>
-
-                {/* ─── Section 4: Wallet Recovery ─── */}
-                <div className="profile-panel">
-                    <h3 className="section-title" style={{ marginBottom: '1.5rem' }}>
-                        <KeyRound style={{ width: '1.25rem', height: '1.25rem', color: 'hsl(255,85%,65%)' }} /> Wallet Recovery
-                    </h3>
-                    <p className="text-muted" style={{ fontSize: '0.875rem', marginBottom: '1.25rem', lineHeight: 1.6 }}>
-                        Lost access to your wallet? Submit a recovery request. A government authority will verify your identity via biometric checks before processing.
-                    </p>
-
-                    {!showRecovery ? (
-                        <button className="btn btn-secondary" onClick={() => { setShowRecovery(true); setRecoveryMsg({ type: '', text: '' }); }} style={{ fontSize: '0.875rem' }}>
-                            <KeyRound size={16} /> Request Wallet Recovery
-                        </button>
-                    ) : (
-                        <div className="recovery-form-box">
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label">Lost Wallet Address</label>
-                                <input
-                                    className="input-premium"
-                                    type="text"
-                                    value={recoveryWallet}
-                                    onChange={(e) => setRecoveryWallet(e.target.value)}
-                                    placeholder="0x..."
-                                />
-                            </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label">Reason for Recovery</label>
-                                <textarea
-                                    className="input-premium"
-                                    rows={3}
-                                    value={recoveryReason}
-                                    onChange={(e) => setRecoveryReason(e.target.value)}
-                                    placeholder="Describe why you need to recover this wallet..."
-                                    style={{ resize: 'vertical', minHeight: '80px' }}
-                                />
-                            </div>
-                            <div className="action-buttons">
-                                <button
-                                    className="btn btn-primary btn-glow"
-                                    onClick={handleRequestRecovery}
-                                    disabled={recoverySaving || !recoveryWallet || recoveryReason.length < 10}
-                                    style={{ fontSize: '0.875rem' }}
-                                >
-                                    {recoverySaving ? <><RefreshCw size={16} className="animate-spin" /> Submitting...</> : <><KeyRound size={16} /> Submit Request</>}
-                                </button>
-                                <button className="btn btn-ghost" onClick={() => setShowRecovery(false)} style={{ fontSize: '0.875rem' }}>
-                                    <X size={16} /> Cancel
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {recoveryMsg.text && (
-                        <div className="alert-message" style={{
-                            background: recoveryMsg.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-                            border: `1px solid ${recoveryMsg.type === 'success' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                            color: recoveryMsg.type === 'success' ? 'hsl(142,71%,45%)' : 'hsl(348,83%,47%)',
-                        }}>
-                            {recoveryMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-                            {recoveryMsg.text}
-                        </div>
-                    )}
-                </div>
-
-                {/* ─── Section 5: Linked Wallet Address ─── */}
-                <div className="profile-panel">
-                    <h3 className="section-title" style={{ marginBottom: '1.5rem' }}>
-                        <Wallet style={{ width: '1.25rem', height: '1.25rem', color: 'hsl(255,85%,65%)' }} /> Linked Wallet
-                    </h3>
-
-                    {/* Registered wallet display */}
-                    <div className="wallet-display-box">
-                        <p className="contact-label" style={{ marginBottom: '0.75rem' }}>Registered Wallet Address</p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                            <code className="wallet-address-code">
-                                {data?.walletAddress || 'No wallet linked'}
-                            </code>
-                            {data?.walletAddress && (
-                                <button
-                                    onClick={handleCopyAddress}
-                                    className="copy-btn"
-                                    style={{
-                                        background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.05)',
-                                        border: `1px solid ${copied ? 'rgba(34,197,94,0.3)' : 'var(--border-subtle)'}`,
-                                        color: copied ? 'hsl(142,71%,45%)' : 'hsl(220,15%,60%)',
-                                    }}
-                                    title="Copy address"
-                                >
-                                    {copied ? <><CheckCircle2 size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+                    {/* ─── Section 1: Personal Details ─── */}
+                    <div className="cyber-hud-bar" style={{ display: 'block' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
+                            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <User size={18} style={{ color: '#00E5FF' }} /> Master Node Data
+                            </h3>
+                            {!editMode && (
+                                <button className="cyber-btn-hollow" onClick={startEdit} style={{ '--btn-color': '#00E5FF', padding: '0.4rem 1rem', fontSize: '0.75rem' }}>
+                                    <Edit3 size={14} /> Update
                                 </button>
                             )}
                         </div>
+
+                        <div className="cyber-data-grid">
+                            <div className="cyber-data-item">
+                                <span className="label">Citizen Name</span>
+                                <span className="value">{data?.name || '—'}</span>
+                            </div>
+                            <div className="cyber-data-item">
+                                <span className="label">Registered Node Email</span>
+                                <span className="value" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data?.email || '—'}</span>
+                            </div>
+                            <div className="cyber-data-item">
+                                <span className="label">Contact Number</span>
+                                <span className="value">{data?.phone || 'Not Provided'}</span>
+                            </div>
+                            <div className="cyber-data-item">
+                                <span className="label">Birthdate</span>
+                                <span className="value">{data?.birthdate ? new Date(data.birthdate).toLocaleDateString() : 'Not Provided'}</span>
+                            </div>
+                            <div className="cyber-data-item">
+                                <span className="label">Authorization Tier</span>
+                                <span className="value" style={{ color: '#00E5FF', textTransform: 'uppercase' }}>{data?.role || 'user'}</span>
+                            </div>
+                            <div className="cyber-data-item">
+                                <span className="label">Initialization Date</span>
+                                <span className="value">{data?.createdAt ? new Date(data.createdAt).toLocaleDateString() : '—'}</span>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Connected wallet status */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                        {account ? (
-                            <>
-                                <div className="connected-wallet-pill" style={{
-                                    background: (data?.walletAddress && account.toLowerCase() === data?.walletAddress?.toLowerCase())
-                                        ? 'rgba(34,197,94,0.08)' : data?.walletAddress ? 'rgba(239,68,68,0.08)' : 'rgba(139,92,246,0.08)',
-                                    border: `1px solid ${(data?.walletAddress && account.toLowerCase() === data?.walletAddress?.toLowerCase())
-                                        ? 'rgba(34,197,94,0.3)' : data?.walletAddress ? 'rgba(239,68,68,0.3)' : 'rgba(139,92,246,0.3)'}`,
-                                    color: (data?.walletAddress && account.toLowerCase() === data?.walletAddress?.toLowerCase())
-                                        ? 'hsl(142,71%,45%)' : data?.walletAddress ? 'hsl(348,83%,47%)' : 'hsl(255,85%,65%)',
-                                }}>
-                                    <div style={{
-                                        width: '8px', height: '8px', borderRadius: '50%',
-                                        background: (data?.walletAddress && account.toLowerCase() === data?.walletAddress?.toLowerCase())
-                                            ? 'hsl(142,71%,45%)' : data?.walletAddress ? 'hsl(348,83%,47%)' : 'hsl(255,85%,65%)',
-                                        boxShadow: `0 0 8px ${(data?.walletAddress && account.toLowerCase() === data?.walletAddress?.toLowerCase())
-                                            ? 'hsl(142,71%,45%)' : data?.walletAddress ? 'hsl(348,83%,47%)' : 'hsl(255,85%,65%)'}`,
-                                    }}></div>
-                                    <span>
-                                        {account.slice(0, 6)}...{account.slice(-4)}
-                                        {data?.walletAddress && account.toLowerCase() !== data?.walletAddress?.toLowerCase() && ' (Mismatch)'}
-                                        {!data?.walletAddress && ' (Connected)'}
-                                    </span>
+                    {/* ─── Section 3: Update Contact Info ─── */}
+                    {editMode && (
+                        <div className="cyber-hud-bar" style={{ display: 'block', borderColor: '#F59E0B' }}>
+                            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
+                                <Edit3 size={18} style={{ color: '#F59E0B' }} /> Network Node Rewrite
+                            </h3>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>Email Assignment</label>
+                                    <input
+                                        type="email"
+                                        value={editEmail}
+                                        onChange={(e) => setEditEmail(e.target.value)}
+                                        style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
+                                        placeholder="user@network.gov"
+                                    />
                                 </div>
-                                {!data?.walletAddress && (
-                                    <button
-                                        className="btn btn-primary btn-glow"
-                                        onClick={handleLinkWallet}
-                                        disabled={profileSaving}
-                                        style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
-                                    >
-                                        <ShieldCheck size={14} /> Link to Profile
+                                <div>
+                                    <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>Terminal Contact</label>
+                                    <input
+                                        type="tel"
+                                        value={editPhone}
+                                        onChange={(e) => setEditPhone(e.target.value)}
+                                        style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
+                                        placeholder="+000 000 000"
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                    <button className="cyber-btn-hollow" onClick={handleSaveProfile} disabled={profileSaving} style={{ '--btn-color': '#00E5FF' }}>
+                                        {profileSaving ? 'Synthesizing...' : 'Commit Protocol'}
+                                    </button>
+                                    <button className="cyber-btn-hollow" onClick={cancelEdit} style={{ '--btn-color': '#EF4444' }}>
+                                        Abort
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+
+                    {/* ─── Section 2: Verification Status ─── */}
+                    <div className="cyber-hud-bar" style={{ display: 'block' }}>
+                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
+                            <ShieldCheck size={18} style={{ color: '#10B981' }} /> Certification Matrix
+                        </h3>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+                            {/* Document Status */}
+                            <div style={{
+                                padding: '1.25rem', borderRadius: '12px', background: 'rgba(0,0,0,0.3)',
+                                border: `1px solid ${data?.kycStatus === 'approved' || data?.kycStatus === 'verified' ? '#10B981' : data?.kycStatus === 'pending' ? '#F59E0B' : '#EF4444'}60`,
+                                display: 'flex', gap: '1rem', alignItems: 'flex-start'
+                            }}>
+                                <div style={{
+                                    padding: '0.6rem', borderRadius: '8px',
+                                    background: `${data?.kycStatus === 'approved' || data?.kycStatus === 'verified' ? '#10B981' : data?.kycStatus === 'pending' ? '#F59E0B' : '#EF4444'}20`
+                                }}>
+                                    <FileText size={24} style={{ color: data?.kycStatus === 'approved' || data?.kycStatus === 'verified' ? '#10B981' : data?.kycStatus === 'pending' ? '#F59E0B' : '#EF4444' }} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'white', marginBottom: '0.5rem' }}>Documentation Ledger</p>
+                                    <div className="cyber-badge" style={{
+                                        '--badge-color': data?.kycStatus === 'approved' || data?.kycStatus === 'verified' ? '#10B981' : data?.kycStatus === 'pending' ? '#F59E0B' : '#EF4444',
+                                        '--badge-bg': 'rgba(0,0,0,0.5)', padding: '0.3rem 0.6rem', fontSize: '0.65rem'
+                                    }}>
+                                        {data?.kycStatus?.toUpperCase() || 'UNKNOWN'}
+                                    </div>
+                                    {data?.kycStatus !== 'approved' && data?.kycStatus !== 'verified' && (
+                                        <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', marginTop: '0.75rem', overflow: 'hidden' }}>
+                                            <div className="animate-pulse" style={{ height: '100%', width: data?.kycStatus === 'pending' ? '50%' : '10%', background: data?.kycStatus === 'pending' ? '#F59E0B' : '#EF4444' }}></div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Biometric Status */}
+                            <div style={{
+                                padding: '1.25rem', borderRadius: '12px', background: 'rgba(0,0,0,0.3)',
+                                border: `1px solid ${data?.faceVerified ? '#10B981' : 'rgba(255,255,255,0.1)'}`,
+                                display: 'flex', gap: '1rem', alignItems: 'flex-start'
+                            }}>
+                                <div style={{
+                                    padding: '0.6rem', borderRadius: '8px',
+                                    background: `${data?.faceVerified ? '#10B981' : '#ffffff'}20`
+                                }}>
+                                    <Fingerprint size={24} style={{ color: data?.faceVerified ? '#10B981' : '#9ca3af' }} />
+                                </div>
+                                <div>
+                                    <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'white', marginBottom: '0.5rem' }}>Biometric Sync</p>
+                                    <div className="cyber-badge" style={{
+                                        '--badge-color': data?.faceVerified ? '#10B981' : '#9ca3af',
+                                        '--badge-bg': 'rgba(0,0,0,0.5)', padding: '0.3rem 0.6rem', fontSize: '0.65rem', '--badge-border': 'transparent'
+                                    }}>
+                                        {data?.faceVerified ? 'VERIFIED' : 'PENDING SECURE'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                {/* Right Column: Wallet & Recovery */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+                    {/* ─── Section 5: Linked Wallet ─── */}
+                    <div className="cyber-hud-bar" style={{ display: 'block' }}>
+                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
+                            <Wallet size={18} style={{ color: '#A855F7' }} /> Decentralized Address
+                        </h3>
+
+                        <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '1.5rem' }}>
+                            <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.6rem' }}>Primary Ledger ID</p>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                                <code style={{
+                                    fontFamily: 'monospace', color: '#A855F7', background: 'rgba(168,85,247,0.1)',
+                                    padding: '0.5rem 0.75rem', borderRadius: '6px', fontSize: '0.85rem', flex: 1, wordBreak: 'break-all'
+                                }}>
+                                    {data?.walletAddress || 'Uninitialized'}
+                                </code>
+                                {data?.walletAddress && (
+                                    <button onClick={handleCopyAddress} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+                                        {copied ? <><CheckCircle2 size={12} style={{ color: '#10B981' }} /> Copied</> : <><Copy size={12} /> Copy</>}
                                     </button>
                                 )}
-                            </>
-                        ) : (
-                            <button
-                                className="btn btn-secondary"
-                                onClick={handleConnectWallet}
-                                disabled={isConnecting}
-                                style={{ fontSize: '0.875rem' }}
-                            >
-                                <Wallet size={16} />
-                                {isConnecting ? 'Connecting...' : 'Connect Wallet'}
-                            </button>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                            {account ? (
+                                <>
+                                    <div className="cyber-badge" style={{
+                                        '--badge-color': (data?.walletAddress && account.toLowerCase() === data?.walletAddress?.toLowerCase()) ? '#10B981' : data?.walletAddress ? '#EF4444' : '#F59E0B',
+                                        '--badge-bg': 'rgba(0,0,0,0.4)', padding: '0.6rem 1rem', wordBreak: 'break-all'
+                                    }}>
+                                        {account}
+                                        {data?.walletAddress && account.toLowerCase() !== data?.walletAddress?.toLowerCase() && ' (MISMATCH)'}
+                                        {!data?.walletAddress && ' (CONNECTED)'}
+                                    </div>
+                                    {!data?.walletAddress && (
+                                        <button className="cyber-btn-hollow" onClick={handleLinkWallet} disabled={profileSaving} style={{ '--btn-color': '#10B981', padding: '0.5rem 1rem' }}>
+                                            Link to Identity
+                                        </button>
+                                    )}
+                                </>
+                            ) : (
+                                <button className="cyber-btn-hollow" onClick={handleConnectWallet} disabled={isConnecting} style={{ '--btn-color': '#A855F7', padding: '0.6rem 1.25rem', width: '100%', justifyContent: 'center' }}>
+                                    <Wallet size={16} /> {isConnecting ? 'Establishing Link...' : 'Connect Hardware Wallet'}
+                                </button>
+                            )}
+                        </div>
+
+                        {walletError && (
+                            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#EF4444', marginTop: '1rem' }}><AlertTriangle size={12} style={{ display: 'inline' }} /> {walletError}</p>
+                        )}
+                        {profileMsg.text && (
+                            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: profileMsg.type === 'success' ? '#10B981' : '#EF4444', marginTop: '1rem', textTransform: 'uppercase' }}>
+                                {profileMsg.text}
+                            </p>
                         )}
                     </div>
 
+                    {/* ─── Section 4: Wallet Recovery ─── */}
+                    <div className="cyber-hud-bar" style={{ display: 'block', borderColor: 'rgba(239,68,68,0.2)' }}>
+                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
+                            <KeyRound size={18} style={{ color: '#EF4444' }} /> Emergency Recovery
+                        </h3>
 
-                    {walletError && (
-                        <div className="alert-message" style={{
-                            background: 'rgba(239,68,68,0.1)',
-                            border: '1px solid rgba(239,68,68,0.3)',
-                            color: 'hsl(348,83%,47%)',
-                        }}>
-                            <AlertTriangle size={14} /> {walletError}
-                        </div>
-                    )}
-                </div>
+                        <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                            Initiate a protocol override if hardware wallet access is permanently corrupted. Required multi-sig validation from government authorities.
+                        </p>
 
-                {/* Security Footer Note */}
-                <div className="profile-footer">
-                    <ShieldCheck style={{ flexShrink: 0, color: 'hsl(255,85%,65%)', width: '1.25rem', height: '1.25rem' }} />
-                    <p style={{ fontSize: '0.75rem', color: 'hsl(220,15%,60%)', lineHeight: 1.6 }}>
-                        Your identity data is cryptographically secured on-chain. All profile changes are logged in the immutable audit trail. Smart contract actions require wallet signature.
-                    </p>
+                        {!showRecovery ? (
+                            <button className="cyber-btn-hollow" onClick={() => { setShowRecovery(true); setRecoveryMsg({ type: '', text: '' }); }} style={{ '--btn-color': '#EF4444', width: '100%', justifyContent: 'center' }}>
+                                <KeyRound size={16} /> Initialize Recovery Protocol
+                            </button>
+                        ) : (
+                            <div style={{ background: 'rgba(239,68,68,0.05)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#EF4444', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>Corrupted Wallet Payload</label>
+                                    <input
+                                        type="text"
+                                        value={recoveryWallet}
+                                        onChange={(e) => setRecoveryWallet(e.target.value)}
+                                        style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(239,68,68,0.3)', color: 'white', borderRadius: '8px' }}
+                                        placeholder="0x..."
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#EF4444', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>System Diagnostics Reason</label>
+                                    <textarea
+                                        rows={3}
+                                        value={recoveryReason}
+                                        onChange={(e) => setRecoveryReason(e.target.value)}
+                                        style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(239,68,68,0.3)', color: 'white', borderRadius: '8px', minHeight: '80px', resize: 'vertical' }}
+                                        placeholder="..."
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem' }}>
+                                    <button
+                                        className="cyber-btn-hollow"
+                                        onClick={handleRequestRecovery}
+                                        disabled={recoverySaving || !recoveryWallet || recoveryReason.length < 10}
+                                        style={{ '--btn-color': '#EF4444', flex: 1, justifyContent: 'center' }}
+                                    >
+                                        Execute Command
+                                    </button>
+                                    <button className="cyber-btn-hollow" onClick={() => setShowRecovery(false)} style={{ '--btn-color': '#9ca3af' }}>Abort</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {recoveryMsg.text && (
+                            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: recoveryMsg.type === 'success' ? '#10B981' : '#EF4444', marginTop: '1rem' }}>
+                                <AlertTriangle size={12} style={{ display: 'inline' }} /> {recoveryMsg.text}
+                            </p>
+                        )}
+                    </div>
                 </div>
             </div>
-        </div >
+
+            <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1rem', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <ShieldCheck style={{ width: '1.5rem', height: '1.5rem', color: '#00E5FF' }} />
+                <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: 1.5, margin: 0 }}>
+                    Strict immutability enforced. Core identity parameters are secured via state-backed cryptography. Wallet alterations are permanently tracked in the network ledger.
+                </p>
+            </div>
+        </div>
     );
 };
 
