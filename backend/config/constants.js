@@ -156,7 +156,7 @@ const AUDIT_ACTIONS = Object.freeze({
 
 // ── Nonce message template for wallet signing ────────────
 const SIGN_MESSAGE_TEMPLATE = (nonce) =>
-    `Sign this message to authenticate with Squrify Land Registry.\n\nNonce: ${nonce}\n\nThis request will not trigger a blockchain transaction or cost any gas fees.`;
+    `Sign this message to authenticate with Digiverify Land Registry.\n\nNonce: ${nonce}\n\nThis request will not trigger a blockchain transaction or cost any gas fees.`;
 
 module.exports = {
     ROLES,

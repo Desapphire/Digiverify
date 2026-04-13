@@ -1,5 +1,5 @@
 -- ============================================================
---  Squrify / Digiverify — Land Registry Database Schema
+--  Digiverify — Land Registry Database Schema
 --  PostgreSQL ≥ 14  |  All tables use IF NOT EXISTS for safety
 -- ============================================================
 

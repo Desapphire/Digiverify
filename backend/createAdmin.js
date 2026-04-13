@@ -9,7 +9,7 @@ const { pool, connectDB } = require('./config/db');
 
 const ADMIN = {
     name: 'Super Admin',
-    email: 'admin@squrify.com',
+    email: 'admin@digiverify.com',
     password: 'Admin@123',            // Change this!
     role: 'super_admin',
     walletAddress: '0x0000000000000000000000000000000000000001',
