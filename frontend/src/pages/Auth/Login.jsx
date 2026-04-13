@@ -59,119 +59,154 @@ const Login = () => {
     };
 
     return (
-        <div className="flex items-center justify-center p-6 h-full w-full">
-            <div className="glass-panel w-full max-w-md p-8 md:p-10 relative z-10 animate-pulse-glow" style={{ animationIterationCount: 0 }}>
-                <div className="flex flex-col items-center mb-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-6 shadow-glow-primary animate-float">
-                        <Shield className="text-white w-8 h-8" />
-                    </div>
-                    <h1 className="text-3xl font-bold mb-2 tracking-tight">
-                        Welcome <span className="text-gradient">Back</span>
-                    </h1>
-                    <p className="text-muted text-sm font-medium">Digital Verification System</p>
-                </div>
-
-                <div className="flex p-1 bg-black/40 rounded-2xl border border-subtle mb-8 overflow-hidden">
-                    <button
-                        type="button"
-                        onClick={() => { setLoginMethod('password'); setError(''); }}
-                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all uppercase tracking-widest ${loginMethod === 'password' ? 'bg-primary-base text-white shadow-lg' : 'text-muted hover:text-white hover:bg-white/5'}`}
-                    >
-                        Credentials
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => { setLoginMethod('wallet'); setError(''); }}
-                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all uppercase tracking-widest ${loginMethod === 'wallet' ? 'bg-primary-base text-white shadow-lg' : 'text-muted hover:text-white hover:bg-white/5'}`}
-                    >
-                        Web3 Wallet
-                    </button>
-                </div>
-
-                <form onSubmit={handlePasswordLogin} className="flex flex-col gap-6">
-                    {loginMethod === 'wallet' ? (
-                        <div className="flex flex-col gap-6 items-center py-6">
-                            <div className="w-16 h-16 bg-orange-500/10 rounded-full flex items-center justify-center mb-2 border border-orange-500/20">
-                                <Wallet className="w-8 h-8 text-orange-400" />
+        <div className="flex w-full min-h-screen bg-[#0a0a0a] overflow-hidden">
+            {/* Left Panel: 40% */}
+            <div className="w-full lg:w-[40%] flex items-center justify-center relative z-10 p-6 sm:p-12">
+                <div className="w-full max-w-md">
+                    <div className="glass-panel p-8 md:p-10 animate-pulse-glow" style={{ animationIterationCount: 0 }}>
+                        <div className="flex flex-col items-center mb-8 text-center">
+                            <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-6 shadow-glow-primary animate-float">
+                                <Shield className="text-white w-8 h-8" />
                             </div>
-                            <div className="text-center mb-2">
-                                <h3 className="font-bold text-lg mb-1">Web3 Authentication</h3>
-                                <p className="text-muted text-sm px-4">Connect your wallet and sign a message to securely access your account instantly.</p>
-                            </div>
-                            
+                            <h1 className="text-3xl font-bold mb-2 tracking-tight">
+                                Welcome <span className="text-gradient">Back</span>
+                            </h1>
+                            <p className="text-muted text-sm font-medium">Digital Verification System</p>
+                        </div>
+
+                        <div className="flex p-1 bg-black/40 rounded-2xl border border-subtle mb-8 overflow-hidden">
                             <button
                                 type="button"
-                                onClick={handleDirectWalletLogin}
-                                disabled={loading || isConnecting}
-                                className="btn w-full flex items-center justify-center gap-3 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 shadow-glow-primary transition-all active:scale-[0.98]"
+                                onClick={() => { setLoginMethod('password'); setError(''); }}
+                                className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all uppercase tracking-widest ${loginMethod === 'password' ? 'bg-primary-base text-white shadow-lg' : 'text-muted hover:text-white hover:bg-white/5'}`}
                             >
-                                {loading || isConnecting ? <Loader2 className="w-6 h-6 animate-spin" /> : (
-                                    <>
-                                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" className="w-6 h-6 mr-1" />
-                                        Continue with MetaMask
-                                    </>
-                                )}
+                                Credentials
                             </button>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-5">
-                            <div className="flex flex-col gap-2">
-                                <label className="text-xs font-bold text-muted uppercase tracking-widest ml-1">Email</label>
-                                <div className="relative">
-                                    <Mail className="absolute left-4 top-3.5 w-5 h-5 text-muted" />
-                                    <input
-                                        type="email"
-                                        className="input-premium pl-12"
-                                        placeholder="kartik.bhavar24@vit.edu"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <label className="text-xs font-bold text-muted uppercase tracking-widest ml-1">Password</label>
-                                <div className="relative">
-                                    <Lock className="absolute left-4 top-3.5 w-5 h-5 text-muted" />
-                                    <input
-                                        type="password"
-                                        className="input-premium pl-12"
-                                        placeholder="••••••••"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            
                             <button
-                                type="submit"
-                                disabled={loading}
-                                className="btn w-full flex items-center justify-center gap-3 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 mt-2"
+                                type="button"
+                                onClick={() => { setLoginMethod('wallet'); setError(''); }}
+                                className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all uppercase tracking-widest ${loginMethod === 'wallet' ? 'bg-primary-base text-white shadow-lg' : 'text-muted hover:text-white hover:bg-white/5'}`}
                             >
-                                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
-                                    <>
-                                        Access Dashboard
-                                        <ArrowRight size={20} />
-                                    </>
-                                )}
+                                Web3 Wallet
                             </button>
                         </div>
-                    )}
 
-                    {error && (
-                        <div className="text-danger text-xs font-bold text-center bg-red-500/10 p-3 rounded-xl border border-red-500/20">
-                            {error}
+                        <form onSubmit={handlePasswordLogin} className="flex flex-col gap-6">
+                            {loginMethod === 'wallet' ? (
+                                <div className="flex flex-col gap-6 items-center py-6">
+                                    <div className="w-16 h-16 bg-orange-500/10 rounded-full flex items-center justify-center mb-2 border border-orange-500/20">
+                                        <Wallet className="w-8 h-8 text-orange-400" />
+                                    </div>
+                                    <div className="text-center mb-2">
+                                        <h3 className="font-bold text-lg mb-1">Web3 Authentication</h3>
+                                        <p className="text-muted text-sm px-4">Connect your wallet and sign a message to securely access your account instantly.</p>
+                                    </div>
+                                    
+                                    <button
+                                        type="button"
+                                        onClick={handleDirectWalletLogin}
+                                        disabled={loading || isConnecting}
+                                        className="btn w-full flex items-center justify-center gap-3 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 shadow-glow-primary transition-all active:scale-[0.98]"
+                                    >
+                                        {loading || isConnecting ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+                                            <>
+                                                <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" className="w-6 h-6 mr-1" />
+                                                Continue with MetaMask
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-5">
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-xs font-bold text-muted uppercase tracking-widest ml-1">Email</label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-4 top-3.5 w-5 h-5 text-muted" />
+                                            <input
+                                                type="email"
+                                                className="input-premium pl-12"
+                                                placeholder="kartik.bhavar24@vit.edu"
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-xs font-bold text-muted uppercase tracking-widest ml-1">Password</label>
+                                        <div className="relative">
+                                            <Lock className="absolute left-4 top-3.5 w-5 h-5 text-muted" />
+                                            <input
+                                                type="password"
+                                                className="input-premium pl-12"
+                                                placeholder="••••••••"
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="btn w-full flex items-center justify-center gap-3 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 mt-2"
+                                    >
+                                        {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+                                            <>
+                                                Access Dashboard
+                                                <ArrowRight size={20} />
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            )}
+
+                            {error && (
+                                <div className="text-danger text-xs font-bold text-center bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+                                    {error}
+                                </div>
+                            )}
+                        </form>
+
+                        <div className="mt-8 text-center border-t border-subtle pt-6">
+                            <p className="text-muted text-xs font-bold uppercase tracking-widest mb-3">New to the ecosystem?</p>
+                            <Link to="/register" className="inline-flex items-center gap-2 text-primary-glow font-bold text-sm hover:opacity-80 transition-opacity">
+                                Create Digital Identity
+                                <ArrowRight size={16} />
+                            </Link>
                         </div>
-                    )}
-                </form>
+                    </div>
+                </div>
+            </div>
 
-                <div className="mt-8 text-center border-t border-subtle pt-6">
-                    <p className="text-muted text-xs font-bold uppercase tracking-widest mb-3">New to the ecosystem?</p>
-                    <Link to="/register" className="inline-flex items-center gap-2 text-primary-glow font-bold text-sm hover:opacity-80 transition-opacity">
-                        Create Digital Identity
-                        <ArrowRight size={16} />
-                    </Link>
+            {/* Right Panel: 60% Image */}
+            <div className="hidden lg:block lg:w-[60%] relative border-l border-white/5">
+                <div className="absolute inset-0 bg-black">
+                    <img 
+                        src="/login_hero.png" 
+                        alt="Futuristic Land Registry" 
+                        className="w-full h-full object-cover opacity-60" 
+                    />
+                </div>
+                {/* Overlays for depth and blend */}
+                <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-transparent to-transparent"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent"></div>
+                
+                {/* Floating Content / Details overlay on Image */}
+                <div className="absolute bottom-12 right-12 p-8 glass-panel max-w-sm rounded-3xl border border-white/10 shadow-2xl backdrop-blur-md hidden xl:block">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                            <Wallet className="text-blue-400 w-6 h-6" />
+                        </div>
+                        <div>
+                            <h4 className="text-white font-bold text-lg leading-tight">Web3 Secured</h4>
+                            <p className="text-muted text-sm">Blockchain-verified</p>
+                        </div>
+                    </div>
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                        Experience the next generation of property registry. Government-grade security powered by the Avalanche C-Chain network.
+                    </p>
                 </div>
             </div>
         </div>
