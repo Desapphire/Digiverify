@@ -9,15 +9,15 @@ import SaleContractABI from '../../abis/SaleContract.json';
 import {
     ArrowRight, ArrowLeft, Building, Wallet, DollarSign,
     FileCheck, Send, Loader2, CheckCircle2, AlertTriangle, ChevronDown,
-    Camera, Shield, User as UserIcon
+    Camera, Shield, User as UserIcon, Activity
 } from 'lucide-react';
 import './PropertyPages.css';
 
 const STEPS = [
     { label: 'Select Property', icon: Building },
-    { label: 'Sale Details', icon: DollarSign },
-    { label: 'Review', icon: FileCheck },
-    { label: 'Sign & Submit', icon: Send },
+    { label: 'Input Terms', icon: DollarSign },
+    { label: 'Verify', icon: FileCheck },
+    { label: 'Sign & Init', icon: Send },
 ];
 
 const Sale = () => {
@@ -62,9 +62,6 @@ const Sale = () => {
         };
     }, []);
 
-
-
-
     // Form state
     const [selectedPropertyId, setSelectedPropertyId] = useState('');
     const [salePrice, setSalePrice] = useState('');
@@ -98,9 +95,9 @@ const Sale = () => {
             case 3: return true;
             default: return false;
         }
-    };
+    }
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (bypassVerification = false) => {
         try {
             setSubmitting(true);
             setError('');
@@ -112,7 +109,7 @@ const Sale = () => {
             }
 
             // CHECK: Biometric verification required before signing
-            if (!isBiometricallyVerified) {
+            if (!isBiometricallyVerified && !bypassVerification) {
                 setShowBiometricModal(true);
                 setSubmitting(false);
                 return;
@@ -166,7 +163,6 @@ const Sale = () => {
             }
         } catch (err) {
             console.error("Setup error:", err);
-            // Don't block simulation if detection fails
         }
 
         const classifier = new cv.CascadeClassifier();
@@ -195,7 +191,7 @@ const Sale = () => {
                         const ctx = canvas.getContext('2d');
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         const face = faces.get(0);
-                        ctx.strokeStyle = '#3b82f6';
+                        ctx.strokeStyle = '#00E5FF';
                         ctx.lineWidth = 2;
                         ctx.strokeRect(face.x, face.y, face.width, face.height);
                     }
@@ -205,7 +201,6 @@ const Sale = () => {
                 processingLoopRef.current = requestAnimationFrame(processVideo);
             } catch (err) {
                 console.error("Processing error:", err);
-                // Keep the loop going even if one frame fails
                 processingLoopRef.current = requestAnimationFrame(processVideo);
             }
         };
@@ -213,8 +208,6 @@ const Sale = () => {
         processVideo();
         setTimeout(() => simulateCapture(1), 2000);
     };
-
-
 
     const simulateCapture = (currentStep) => {
         setBiometricProgress(0);
@@ -238,12 +231,10 @@ const Sale = () => {
                     streamRef.current.getTracks().forEach(track => track.stop());
                 }
                 setTimeout(() => {
-
                     setIsBiometricallyVerified(true);
                     setShowBiometricModal(false);
-                    // Re-trigger submit after verification
                     setSubmitting(true);
-                    setTimeout(() => handleSubmit(), 500);
+                    setTimeout(() => handleSubmit(true), 500); // Pass true to bypass stale closure check
                 }, 1000);
             }
         }, 2000);
@@ -251,10 +242,10 @@ const Sale = () => {
 
     if (loading) {
         return (
-            <div className="dashboard-container" style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse-glow">
-                    <Loader2 style={{ width: '3rem', height: '3rem', color: 'hsl(255,85%,65%)' }} className="animate-spin" />
-                    <p className="text-muted" style={{ fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: '0.875rem' }}>Loading Properties...</p>
+            <div style={{ display: 'flex', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0B0714' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse">
+                    <Loader2 size={32} style={{ color: '#00E5FF' }} className="animate-spin" />
+                    <p style={{ fontWeight: 800, letterSpacing: '0.1em', color: '#00E5FF', fontSize: '0.9rem' }}>LOADING LEDGER...</p>
                 </div>
             </div>
         );
@@ -262,38 +253,36 @@ const Sale = () => {
 
     if (success) {
         return (
-            <div className="dashboard-container container-sm">
-                <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
-                    <div className="scale-in" style={{ marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', minHeight: '100vh', background: '#0B0714', overflow: 'hidden' }}>
+                <div style={{ margin: 'auto', padding: '4rem', textAlign: 'center', maxWidth: '600px', width: '100%' }} className="animate-fade-in">
+                    <div className="scale-in" style={{ marginBottom: '2rem' }}>
                         <div style={{
-                            width: '80px', height: '80px', borderRadius: '50%', margin: '0 auto',
-                            background: 'rgba(34,197,94,0.1)', border: '2px solid hsl(142,71%,45%)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            width: '100px', height: '100px', borderRadius: '50%', margin: '0 auto',
+                            background: 'rgba(34,197,94,0.1)', border: '2px solid #22C55E',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 0 30px rgba(34,197,94,0.3)'
                         }}>
-                            <CheckCircle2 size={40} style={{ color: 'hsl(142,71%,45%)' }} />
+                            <CheckCircle2 size={48} style={{ color: '#22C55E' }} />
                         </div>
                     </div>
-                    <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.75rem' }}>
-                        Sale <span className="text-gradient">Initiated!</span>
+                    <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', marginBottom: '1rem', letterSpacing: '-0.03em' }}>
+                        Sale <span style={{ color: '#00E5FF' }}>Initiated!</span>
                     </h2>
-                    <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-                        The sale transaction has been created. The buyer will need to review and sign the agreement.
+                    <p style={{ color: '#9ca3af', fontSize: '1rem', marginBottom: '2rem', lineHeight: 1.6 }}>
+                        The smart contract protocol has been instantiated on the ledger. The buyer must now cryptographically review and sign the terms to proceed.
                     </p>
                     {createdSale && (
-                        <div style={{
-                            background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '1rem',
-                            marginBottom: '1.5rem', fontFamily: 'monospace', fontSize: '0.8rem',
-                            color: 'hsl(var(--color-text-secondary))'
-                        }}>
-                            Transaction ID: {createdSale.id}
+                        <div className="cyber-hud-bar" style={{ padding: '1.5rem', marginBottom: '2rem', fontFamily: 'JetBrains Mono', color: '#00E5FF', fontSize: '0.9rem' }}>
+                            <span style={{ color: '#9ca3af', fontSize: '0.7rem', display: 'block', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Transaction ID (UUID)</span>
+                            {createdSale.id}
                         </div>
                     )}
-                    <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-                        <button className="btn btn-secondary" onClick={() => navigate('/transactions')}>
-                            View Transactions
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                        <button className="cyber-btn-hollow" onClick={() => navigate('/transactions')} style={{ '--btn-color': '#9ca3af', padding: '1rem 2rem' }}>
+                            View System Ledger
                         </button>
-                        <button className="btn btn-primary" onClick={() => { setSuccess(false); setStep(0); setSelectedPropertyId(''); setSalePrice(''); setBuyerWallet(''); }}>
-                            New Sale
+                        <button className="cyber-btn-hollow" onClick={() => { setSuccess(false); setStep(0); setSelectedPropertyId(''); setSalePrice(''); setBuyerWallet(''); }} style={{ '--btn-color': '#00E5FF', padding: '1rem 2rem' }}>
+                            Form New Contract
                         </button>
                     </div>
                 </div>
@@ -302,309 +291,324 @@ const Sale = () => {
     }
 
     return (
-        <div className="dashboard-container container-md">
-            {/* Header */}
-            <div className="page-header">
-                <h1 style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.03em', marginBottom: '0.5rem' }}>
-                    Initiate <span className="text-gradient">Sale</span>
-                </h1>
-                <p className="text-muted" style={{ fontSize: '0.95rem' }}>
-                    Transfer property ownership through a secure multi-signature process
-                </p>
-            </div>
-
-            {/* Stepper */}
-            <div className="stepper">
-                {STEPS.map((s, i) => {
-                    const Icon = s.icon;
-                    return (
-                        <div key={i} className={`stepper-step ${i === step ? 'active' : ''} ${i < step ? 'completed' : ''}`}>
-                            <div className="stepper-circle">
-                                {i < step ? <CheckCircle2 size={16} /> : <Icon size={16} />}
-                            </div>
-                            <span className="stepper-label">{s.label}</span>
-                        </div>
-                    );
-                })}
-            </div>
-
-            {/* Step Content */}
-            <div className="glass-panel" style={{ padding: '2rem' }}>
-                {/* Step 0: Select Property */}
-                {step === 0 && (
-                    <div>
-                        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                            Select Property to Sell
-                        </h3>
-                        <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                            Choose from your verified properties. Only properties with 'Active' status can be sold.
-                        </p>
-
-                        {properties.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '2rem' }}>
-                                <Building size={48} style={{ opacity: 0.2, marginBottom: '1rem', color: 'hsl(255,85%,65%)' }} />
-                                <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>No eligible properties</p>
-                                <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>
-                                    You need at least one active property to initiate a sale.
-                                </p>
-                                <button className="btn btn-primary" onClick={() => navigate('/register-property')}>
-                                    Register Property
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="form-column">
-                                {properties.map(prop => (
-                                    <div
-                                        key={prop.id}
-                                        onClick={() => setSelectedPropertyId(prop.id)}
-                                        className={`property-select-card ${selectedPropertyId === prop.id ? 'selected' : 'unselected'}`}
-                                    >
-                                        <div>
-                                            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                {prop.surveyNumber}
-                                                <CheckCircle2 size={14} style={{ color: 'hsl(142,71%,45%)' }} />
-                                            </h4>
-                                            <p className="text-muted" style={{ fontSize: '0.8rem' }}>
-                                                {prop.district}{prop.state ? `, ${prop.state}` : ''} • {prop.areaSqft ? `${prop.areaSqft.toLocaleString()} sq.ft` : 'N/A'}
-                                            </p>
-                                            <p style={{ fontSize: '0.7rem', fontFamily: 'monospace', color: 'hsl(220,15%,50%)', marginTop: '0.25rem' }}>
-                                                {prop.propertyCode}
-                                            </p>
-                                        </div>
-                                        <div style={{
-                                            width: '24px', height: '24px', borderRadius: '50%',
-                                            border: selectedPropertyId === prop.id ? '2px solid hsl(255,85%,65%)' : '2px solid rgba(255,255,255,0.15)',
-                                            background: selectedPropertyId === prop.id ? 'hsl(255,85%,65%)' : 'transparent',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            transition: 'all 0.2s ease',
-                                        }}>
-                                            {selectedPropertyId === prop.id && <CheckCircle2 size={14} style={{ color: 'white' }} />}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+        <div style={{ display: 'flex', minHeight: '100vh', background: '#0B0714', overflow: 'hidden' }} className="animate-fade-in">
+            {/* Left Image Section */}
+            <div className="hidden lg:flex flex-col justify-end p-12 z-10" style={{ flex: 1, position: 'relative' }}>
+                <img src="/sale_contract_hologram.png" alt="Contract Hologram" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(11,7,20,0.8) 0%, rgba(11,7,20,0.2) 60%, rgba(11,7,20,0) 100%)' }}></div>
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, #0B0714 0%, rgba(11,7,20,0) 50%)' }}></div>
+                
+                <div style={{ position: 'relative', zIndex: 10, padding: '2rem', maxWidth: '450px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'rgba(0, 229, 255, 0.1)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: '20px', marginBottom: '1.5rem', backdropFilter: 'blur(4px)' }}>
+                        <Shield size={14} style={{ color: '#00E5FF' }} />
+                        <span style={{ color: '#00E5FF', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Secure Escrow Transfer</span>
                     </div>
-                )}
-
-                {/* Step 1: Sale Details */}
-                {step === 1 && (
-                    <div>
-                        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                            Sale Details
-                        </h3>
-                        <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                            Enter the sale price and the buyer's wallet address
-                        </p>
-
-                        <div className="form-column">
-                            <div className="form-group">
-                                <label className="form-label" style={{ color: 'hsl(var(--color-text-secondary))' }}>
-                                    <DollarSign size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.25rem' }} />
-                                    Sale Price (INR)
-                                </label>
-                                <input
-                                    className="input-premium"
-                                    type="number"
-                                    placeholder="e.g. 5000000"
-                                    value={salePrice}
-                                    onChange={(e) => setSalePrice(e.target.value)}
-                                    min="1"
-                                    style={{ fontSize: '1.1rem', fontWeight: 600 }}
-                                />
-                                {salePrice && parseFloat(salePrice) > 0 && (
-                                    <p style={{ fontSize: '0.75rem', color: 'hsl(var(--color-text-muted))', marginTop: '0.35rem', fontFamily: 'monospace' }}>
-                                        ₹ {parseFloat(salePrice).toLocaleString('en-IN')}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label" style={{ color: 'hsl(var(--color-text-secondary))' }}>
-                                    <Wallet size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.25rem' }} />
-                                    Buyer Wallet Address
-                                </label>
-                                <input
-                                    className="input-premium"
-                                    type="text"
-                                    placeholder="0x..."
-                                    value={buyerWallet}
-                                    onChange={(e) => setBuyerWallet(e.target.value)}
-                                    style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}
-                                />
-                                {buyerWallet && (!buyerWallet.startsWith('0x') || buyerWallet.length !== 42) && (
-                                    <p style={{ fontSize: '0.75rem', color: 'hsl(var(--color-danger))', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                        <AlertTriangle size={12} /> Invalid Ethereum address format
-                                    </p>
-                                )}
-                                {buyerWallet && buyerWallet.toLowerCase() === sellerWallet?.toLowerCase() && (
-                                    <p style={{ fontSize: '0.75rem', color: 'hsl(var(--color-danger))', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                        <AlertTriangle size={12} /> Buyer cannot be the same as seller
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Step 2: Review Agreement */}
-                {step === 2 && (
-                    <div>
-                        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                            Review Agreement
-                        </h3>
-                        <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                            Verify all details before signing the transaction
-                        </p>
-
-                        <div className="form-column" style={{ gap: '1rem' }}>
-                            {/* Property Details */}
-                            <div className="info-box">
-                                <h4 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '0.75rem' }}>
-                                    Property
-                                </h4>
-                                <p style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.25rem' }}>{selectedProperty?.surveyNumber}</p>
-                                <p className="text-muted" style={{ fontSize: '0.8rem' }}>
-                                    {selectedProperty?.district}{selectedProperty?.state ? `, ${selectedProperty.state}` : ''}
-                                    {selectedProperty?.areaSqft ? ` • ${selectedProperty.areaSqft.toLocaleString()} sq.ft` : ''}
-                                </p>
-                                <p style={{ fontSize: '0.7rem', fontFamily: 'monospace', color: 'hsl(220,15%,50%)', marginTop: '0.35rem' }}>
-                                    {selectedProperty?.propertyCode}
-                                </p>
-                            </div>
-
-                            {/* Sale Details */}
-                            <div className="info-box-grid">
-                                <div className="info-box" style={{ padding: '1.25rem' }}>
-                                    <h4 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '0.5rem' }}>
-                                        Sale Price
-                                    </h4>
-                                    <p style={{ fontSize: '1.5rem', fontWeight: 800 }} className="text-gradient">
-                                        ₹{parseFloat(salePrice).toLocaleString('en-IN')}
-                                    </p>
-                                </div>
-                                <div className="info-box" style={{ padding: '1.25rem' }}>
-                                    <h4 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '0.5rem' }}>
-                                        Currency
-                                    </h4>
-                                    <p style={{ fontSize: '1.5rem', fontWeight: 800 }}>INR</p>
-                                </div>
-                            </div>
-
-                            {/* Wallet Addresses */}
-                            <div className="info-box-grid">
-                                <div className="info-box" style={{ padding: '1.25rem' }}>
-                                    <h4 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '0.5rem' }}>
-                                        Seller (You)
-                                    </h4>
-                                    <p style={{ fontSize: '0.75rem', fontFamily: 'monospace', wordBreak: 'break-all', color: 'hsl(var(--color-text-secondary))' }}>
-                                        {sellerWallet || 'Wallet not connected'}
-                                    </p>
-                                </div>
-                                <div className="info-box" style={{ padding: '1.25rem' }}>
-                                    <h4 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'hsl(var(--color-text-muted))', marginBottom: '0.5rem' }}>
-                                        Buyer
-                                    </h4>
-                                    <p style={{ fontSize: '0.75rem', fontFamily: 'monospace', wordBreak: 'break-all', color: 'hsl(var(--color-text-secondary))' }}>
-                                        {buyerWallet}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Agreement Notice */}
-                            <div style={{
-                                background: 'rgba(234,179,8,0.05)', border: '1px solid rgba(234,179,8,0.15)',
-                                borderRadius: '12px', padding: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start'
-                            }}>
-                                <AlertTriangle size={18} style={{ color: 'hsl(38,92%,50%)', flexShrink: 0, marginTop: '2px' }} />
-                                <div>
-                                    <p style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>Important</p>
-                                    <p className="text-muted" style={{ fontSize: '0.8rem', lineHeight: 1.5 }}>
-                                        By proceeding, you authorize the creation of a sale agreement. The buyer must also sign, block funds,
-                                        and the transaction must be approved by the registered authority before ownership transfers.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Step 3: Sign & Submit */}
-                {step === 3 && (
-                    <div style={{ textAlign: 'center', padding: '1rem' }}>
-                        <div style={{
-                            width: '72px', height: '72px', borderRadius: '50%', margin: '0 auto 1.5rem',
-                            background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(168,85,247,0.1))',
-                            border: '2px solid rgba(139,92,246,0.3)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
-                            <Send size={28} style={{ color: 'hsl(255,85%,65%)' }} />
-                        </div>
-                        <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                            Sign & Submit Transaction
-                        </h3>
-                        <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '2rem', maxWidth: '400px', margin: '0 auto 2rem' }}>
-                            Your wallet will prompt you to sign a message confirming this sale. No gas fees will be charged.
-                        </p>
-
-                        {error && (
-                            <div style={{
-                                background: 'rgba(225,29,72,0.1)', border: '1px solid rgba(225,29,72,0.2)',
-                                borderRadius: '12px', padding: '1rem', marginBottom: '1.5rem',
-                                display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center',
-                                color: 'hsl(var(--color-danger))', fontSize: '0.85rem'
-                            }}>
-                                <AlertTriangle size={16} /> {error}
-                            </div>
-                        )}
-
-                        <button
-                            className="btn btn-primary btn-glow"
-                            disabled={submitting}
-                            onClick={handleSubmit}
-                            style={{ padding: '0.875rem 2.5rem', fontSize: '1rem' }}
-                        >
-                            {submitting ? (
-                                <><Loader2 size={18} className="animate-spin" /> Signing...</>
-                            ) : (
-                                <><Wallet size={18} /> Sign with Wallet</>
-                            )}
-                        </button>
-                    </div>
-                )}
-
-                {/* Navigation Buttons */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <button
-                        className="btn btn-ghost"
-                        onClick={() => setStep(Math.max(0, step - 1))}
-                        disabled={step === 0}
-                        style={{ fontSize: '0.875rem' }}
-                    >
-                        <ArrowLeft size={16} /> Back
-                    </button>
-                    {step < 3 && (
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => setStep(step + 1)}
-                            disabled={!canProceed()}
-                            style={{ fontSize: '0.875rem' }}
-                        >
-                            Continue <ArrowRight size={16} />
-                        </button>
-                    )}
+                    <h1 style={{ fontSize: '3rem', fontWeight: 800, color: 'white', lineHeight: 1.1, marginBottom: '1rem', letterSpacing: '-0.02em', textShadow: '0 4px 15px rgba(0,0,0,1)' }}>
+                        Formulate <br />
+                        <span style={{ color: '#00E5FF', textShadow: '0 0 20px rgba(0,229,255,0.6)' }}>Contract.</span>
+                    </h1>
+                    <p style={{ color: '#e5e7eb', fontSize: '0.95rem', lineHeight: 1.7, textShadow: '0 2px 10px rgba(0,0,0,1)', fontWeight: 600 }}>
+                        Transfer property ownership through our high-security cryptographic escrow system. Instantiate parameters dynamically.
+                    </p>
                 </div>
             </div>
 
-            {/* Biometric Verification Modal */}
+            {/* Right Side Form (scrollable independently) */}
+            <div style={{ flex: 1, height: '100vh', overflowY: 'auto', padding: '3rem', position: 'relative', zIndex: 20 }}>
+                <div style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '4rem' }}>
+                    
+                    {/* Stepper equivalent inside a hud bar */}
+                    <div className="cyber-hud-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', marginBottom: '3rem', overflowX: 'auto', gap: '1rem' }}>
+                        {STEPS.map((s, i) => {
+                            const Icon = s.icon;
+                            const isCompleted = i < step;
+                            const isActive = i === step;
+                            const color = isActive ? '#00E5FF' : isCompleted ? '#22C55E' : '#4b5563';
+                            const glowing = isActive ? '0 0 15px rgba(0,229,255,0.4)' : isCompleted ? '0 0 10px rgba(34,197,94,0.2)' : 'none';
+
+                            return (
+                                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', opacity: isActive || isCompleted ? 1 : 0.4 }}>
+                                    <div style={{
+                                        width: '40px', height: '40px', borderRadius: '50%', border: `2px solid ${color}`,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        background: isActive ? 'rgba(0,229,255,0.1)' : isCompleted ? 'rgba(34,197,94,0.1)' : 'transparent',
+                                        boxShadow: glowing, transition: 'all 0.3s ease'
+                                    }}>
+                                        {isCompleted ? <CheckCircle2 size={16} style={{ color: '#22C55E' }} /> : <Icon size={16} style={{ color }} />}
+                                    </div>
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: isActive ? '#00E5FF' : isCompleted ? 'white' : '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                                        {s.label}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="cyber-hud-bar" style={{ display: 'block', padding: '2.5rem', borderRadius: '16px', background: 'rgba(11,7,20,0.6)', backdropFilter: 'blur(24px)' }}>
+                        {/* Step 0: Select Property */}
+                        {step === 0 && (
+                            <div>
+                                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>
+                                    Select Asset
+                                </h3>
+                                <p style={{ color: '#9ca3af', fontSize: '0.9rem', marginBottom: '2rem' }}>
+                                    Choose an authenticated protocol node to formulate the sale.
+                                </p>
+
+                                {properties.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '3rem 2rem', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <Building size={48} style={{ opacity: 0.2, marginBottom: '1.5rem', color: '#00E5FF', margin: '0 auto 1.5rem' }} />
+                                        <p style={{ fontWeight: 800, color: 'white', marginBottom: '0.75rem', fontSize: '1.1rem' }}>No Eligible Properties</p>
+                                        <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: '2rem' }}>
+                                            You need at least one verified active asset class to initiate a transfer protocol.
+                                        </p>
+                                        <button className="cyber-btn-hollow" onClick={() => navigate('/register-property')} style={{ '--btn-color': '#00E5FF', width: 'auto' }}>
+                                            Initiate Registration
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        {properties.map(prop => (
+                                            <div
+                                                key={prop.id}
+                                                onClick={() => setSelectedPropertyId(prop.id)}
+                                                style={{
+                                                    padding: '1.25rem', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                    border: selectedPropertyId === prop.id ? '2px solid #00E5FF' : '2px solid rgba(255,255,255,0.05)',
+                                                    background: selectedPropertyId === prop.id ? 'rgba(0,229,255,0.05)' : 'rgba(0,0,0,0.3)',
+                                                    boxShadow: selectedPropertyId === prop.id ? '0 0 20px rgba(0,229,255,0.1)' : 'none'
+                                                }}
+                                            >
+                                                <div>
+                                                    <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        {prop.surveyNumber}
+                                                        <span style={{ padding: '0.1rem 0.4rem', background: 'rgba(34,197,94,0.1)', color: '#22C55E', borderRadius: '4px', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Verified</span>
+                                                    </h4>
+                                                    <p style={{ color: '#9ca3af', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                        <span>{prop.district}{prop.state ? `, ${prop.state}` : ''}</span>
+                                                        <span style={{ color: '#4b5563' }}>|</span>
+                                                        <span style={{ color: '#00E5FF', fontFamily: 'JetBrains Mono' }}>{prop.areaSqft ? `${prop.areaSqft.toLocaleString()} sq.ft` : 'N/A'}</span>
+                                                    </p>
+                                                    <p style={{ fontSize: '0.65rem', fontFamily: 'JetBrains Mono', color: '#6b7280', marginTop: '0.5rem', marginBottom: 0 }}>
+                                                        {prop.propertyCode}
+                                                    </p>
+                                                </div>
+                                                <div style={{
+                                                    width: '24px', height: '24px', borderRadius: '50%',
+                                                    border: selectedPropertyId === prop.id ? '2px solid #00E5FF' : '2px solid rgba(255,255,255,0.2)',
+                                                    background: selectedPropertyId === prop.id ? '#00E5FF' : 'transparent',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                }}>
+                                                    {selectedPropertyId === prop.id && <CheckCircle2 size={14} style={{ color: '#0B0714' }} />}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Step 1: Sale Details */}
+                        {step === 1 && (
+                            <div>
+                                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>
+                                    Input Contract Terms
+                                </h3>
+                                <p style={{ color: '#9ca3af', fontSize: '0.9rem', marginBottom: '2rem' }}>
+                                    Define the exact fiat commercial value and target buyer node.
+                                </p>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', color: '#00E5FF', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem' }}>
+                                            Commercial Fiat Value (INR)
+                                        </label>
+                                        <input
+                                            style={{
+                                                width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0,229,255,0.3)', borderRadius: '8px',
+                                                color: 'white', fontSize: '1.25rem', fontWeight: 700, padding: '1rem', outline: 'none', transition: 'box-shadow 0.2s', fontFamily: 'JetBrains Mono'
+                                            }}
+                                            type="number"
+                                            placeholder="e.g. 5000000"
+                                            value={salePrice}
+                                            onChange={(e) => setSalePrice(e.target.value)}
+                                            min="1"
+                                            onFocus={(e) => e.target.style.boxShadow = '0 0 15px rgba(0,229,255,0.2)'}
+                                            onBlur={(e) => e.target.style.boxShadow = 'none'}
+                                        />
+                                        {salePrice && parseFloat(salePrice) > 0 && (
+                                            <p style={{ fontSize: '0.85rem', color: '#22C55E', marginTop: '0.5rem', fontFamily: 'JetBrains Mono', fontWeight: 800 }}>
+                                                ₹ {parseFloat(salePrice).toLocaleString('en-IN')}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label style={{ display: 'block', color: '#00E5FF', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem' }}>
+                                            Counterparty Buyer Node (v4)
+                                        </label>
+                                        <input
+                                            style={{
+                                                width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0,229,255,0.3)', borderRadius: '8px',
+                                                color: 'white', fontSize: '0.9rem', padding: '1rem', outline: 'none', transition: 'box-shadow 0.2s', fontFamily: 'JetBrains Mono'
+                                            }}
+                                            type="text"
+                                            placeholder="0x..."
+                                            value={buyerWallet}
+                                            onChange={(e) => setBuyerWallet(e.target.value)}
+                                            onFocus={(e) => e.target.style.boxShadow = '0 0 15px rgba(0,229,255,0.2)'}
+                                            onBlur={(e) => e.target.style.boxShadow = 'none'}
+                                        />
+                                        {buyerWallet && (!buyerWallet.startsWith('0x') || buyerWallet.length !== 42) && (
+                                            <p style={{ fontSize: '0.75rem', color: '#FF007F', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                <AlertTriangle size={14} /> Invalid Hexadecimal Structure
+                                            </p>
+                                        )}
+                                        {buyerWallet && buyerWallet.toLowerCase() === sellerWallet?.toLowerCase() && (
+                                            <p style={{ fontSize: '0.75rem', color: '#FF007F', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                <AlertTriangle size={14} /> Self-dealing operations are disallowed
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 2: Review Agreement */}
+                        {step === 2 && (
+                            <div>
+                                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem' }}>
+                                    Review Contract Parameters
+                                </h3>
+                                <p style={{ color: '#9ca3af', fontSize: '0.9rem', marginBottom: '2rem' }}>
+                                    Systemmatically verify the escrow constraints before initializing the digital signature.
+                                </p>
+
+                                <div className="cyber-data-grid" style={{ marginBottom: '1.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px' }}>
+                                    <div className="cyber-data-item" style={{ gridColumn: 'span 2' }}>
+                                        <div className="label">Asset Identity Anchor</div>
+                                        <div className="value" style={{ fontSize: '1.25rem', color: 'white', marginBottom: '0.2rem' }}>{selectedProperty?.surveyNumber}</div>
+                                        <div style={{ fontSize: '0.8rem', color: '#9ca3af' }}>{selectedProperty?.district}{selectedProperty?.state ? `, ${selectedProperty.state}` : ''}</div>
+                                        <div style={{ fontSize: '0.65rem', fontFamily: 'JetBrains Mono', color: '#6b7280', marginTop: '0.5rem' }}>{selectedProperty?.propertyCode}</div>
+                                    </div>
+                                </div>
+
+                                <div className="cyber-data-grid" style={{ marginBottom: '1.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px' }}>
+                                    <div className="cyber-data-item">
+                                        <div className="label">Pegged Asset Value</div>
+                                        <div className="value" style={{ color: '#00E5FF', fontSize: '1.5rem' }}>₹{parseFloat(salePrice).toLocaleString('en-IN')}</div>
+                                    </div>
+                                    <div className="cyber-data-item">
+                                        <div className="label">Fiat Currency Base</div>
+                                        <div className="value" style={{ fontSize: '1.25rem' }}>INR Origin</div>
+                                    </div>
+                                </div>
+
+                                <div className="cyber-data-grid" style={{ marginBottom: '1.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px' }}>
+                                    <div className="cyber-data-item" style={{ gridColumn: 'span 2' }}>
+                                        <div className="label">Transmitting Seller Node</div>
+                                        <div className="value" style={{ fontFamily: 'JetBrains Mono', fontSize: '0.85rem', color: '#9ca3af', wordBreak: 'break-all' }}>{sellerWallet}</div>
+                                    </div>
+                                    <div className="cyber-data-item" style={{ gridColumn: 'span 2' }}>
+                                        <div className="label">Receiving Buyer Node</div>
+                                        <div className="value" style={{ fontFamily: 'JetBrains Mono', fontSize: '0.85rem', color: '#9ca3af', wordBreak: 'break-all' }}>{buyerWallet}</div>
+                                    </div>
+                                </div>
+
+                                <div style={{
+                                    background: 'rgba(234,179,8,0.05)', border: '1px solid rgba(234,179,8,0.2)',
+                                    borderRadius: '12px', padding: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start'
+                                }}>
+                                    <AlertTriangle size={18} style={{ color: '#F59E0B', flexShrink: 0, marginTop: '2px' }} />
+                                    <div>
+                                        <p style={{ fontSize: '0.8rem', fontWeight: 800, color: '#F59E0B', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Critical System Warning</p>
+                                        <p style={{ color: '#9ca3af', fontSize: '0.75rem', lineHeight: 1.6, margin: 0 }}>
+                                            Executing this module permanently binds these parameters into an active cryptographic escrow contract. The counterparty must verify and lock corresponding fiat arrays.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 3: Sign & Submit */}
+                        {step === 3 && (
+                            <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
+                                <div style={{
+                                    width: '80px', height: '80px', borderRadius: '50%', margin: '0 auto 1.5rem',
+                                    background: 'rgba(168,85,247,0.1)', border: '2px solid #A855F7',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 30px rgba(168,85,247,0.2)'
+                                }}>
+                                    <Send size={32} style={{ color: '#A855F7' }} />
+                                </div>
+                                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '0.75rem' }}>
+                                    Authorize Transmission
+                                </h3>
+                                <p style={{ color: '#9ca3af', fontSize: '0.9rem', marginBottom: '2.5rem', maxWidth: '400px', margin: '0 auto 2.5rem', lineHeight: 1.6 }}>
+                                    System requires standard EVM wallet signature overhead. The cryptographic algorithm bypasses active gas deductions.
+                                </p>
+
+                                {error && (
+                                    <div style={{
+                                        background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                                        borderRadius: '8px', padding: '1rem', marginBottom: '2rem',
+                                        display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center',
+                                        color: '#EF4444', fontSize: '0.85rem'
+                                    }}>
+                                        <AlertTriangle size={16} /> {error}
+                                    </div>
+                                )}
+
+                                <button
+                                    className="cyber-btn-hollow"
+                                    disabled={submitting}
+                                    onClick={() => handleSubmit(false)}
+                                    style={{ '--btn-color': '#00E5FF', width: '100%', padding: '1.25rem', fontSize: '1.05rem', justifyContent: 'center' }}
+                                >
+                                    {submitting ? (
+                                        <><Loader2 size={20} className="animate-spin" /> Verifying Signer...</>
+                                    ) : (
+                                        <><Wallet size={20} /> Attach Identity Payload</>
+                                    )}
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Navigation Buttons */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                            <button
+                                className="cyber-btn-hollow"
+                                onClick={() => setStep(Math.max(0, step - 1))}
+                                disabled={step === 0 || submitting}
+                                style={{ '--btn-color': '#9ca3af', opacity: step === 0 ? 0.3 : 1 }}
+                            >
+                                <ArrowLeft size={16} /> Revert Parameter
+                            </button>
+                            {step < 3 && (
+                                <button
+                                    className="cyber-btn-hollow"
+                                    onClick={() => setStep(step + 1)}
+                                    disabled={!canProceed()}
+                                    style={{ '--btn-color': '#00E5FF', opacity: !canProceed() ? 0.3 : 1 }}
+                                >
+                                    Confirm <ArrowRight size={16} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Standardized Biometric Verification Glass Modal */}
             {showBiometricModal && (
                 <div style={{
-                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
-                    backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center',
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+                    backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center',
                     justifyContent: 'center', zIndex: 1000, padding: '1.5rem'
                 }}>
-                    <div className="glass-panel scale-in" style={{ maxWidth: '450px', width: '100%', padding: '2.5rem', textAlign: 'center' }}>
-                        <div className="relative w-32 h-32 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/30 overflow-hidden mx-auto mb-6">
+                    <div className="cyber-hud-bar scale-in" style={{ display: 'block', maxWidth: '450px', width: '100%', padding: '2.5rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+                        <div className="cyber-card-glow-orb" style={{ background: '#00E5FF', top: '-10%', right: '-10%', width: '15rem', height: '15rem', opacity: 0.15 }}></div>
+                        
+                        <div className="relative flex items-center justify-center overflow-hidden mx-auto mb-6" style={{ width: '320px', height: '240px', borderRadius: '16px', border: '2px solid rgba(0, 229, 255, 0.4)', background: 'rgba(0,229,255,0.05)', boxShadow: '0 0 30px rgba(0,229,255,0.1)' }}>
                             {biometricStep > 0 && biometricStep < 4 ? (
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <video
@@ -614,7 +618,8 @@ const Sale = () => {
                                         muted
                                         width="320"
                                         height="240"
-                                        className="absolute inset-0 w-full h-full object-cover z-10"
+                                        className="absolute inset-0 w-full h-full object-cover grayscale"
+                                        style={{ filter: 'brightness(0.9) contrast(1.3)' }}
                                     />
                                     <canvas
                                         ref={canvasRef}
@@ -622,48 +627,63 @@ const Sale = () => {
                                         height="240"
                                         className="absolute inset-0 w-full h-full object-cover z-20 pointer-events-none"
                                     />
+                                    {/* Cyberpunk HUD Overlay Graphics */}
+                                    <div style={{ position: 'absolute', top: '10px', left: '10px', width: '20px', height: '20px', borderTop: '2px solid #00E5FF', borderLeft: '2px solid #00E5FF', zIndex: 25 }}></div>
+                                    <div style={{ position: 'absolute', top: '10px', right: '10px', width: '20px', height: '20px', borderTop: '2px solid #00E5FF', borderRight: '2px solid #00E5FF', zIndex: 25 }}></div>
+                                    <div style={{ position: 'absolute', bottom: '10px', left: '10px', width: '20px', height: '20px', borderBottom: '2px solid #00E5FF', borderLeft: '2px solid #00E5FF', zIndex: 25 }}></div>
+                                    <div style={{ position: 'absolute', bottom: '10px', right: '10px', width: '20px', height: '20px', borderBottom: '2px solid #00E5FF', borderRight: '2px solid #00E5FF', zIndex: 25 }}></div>
+                                    
                                     {!faceDetected && (
-                                        <div className="absolute inset-0 flex items-center justify-center z-30 bg-black/40">
-                                            <p className="text-[10px] font-bold text-white uppercase tracking-tighter">Position Face</p>
+                                        <div className="absolute inset-0 flex items-center justify-center z-30 bg-black/60 backdrop-blur-sm">
+                                            <p style={{ fontSize: '0.9rem', fontWeight: 800, color: '#00E5FF', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Awaiting Target...</p>
                                         </div>
                                     )}
-                                    <div className="absolute inset-0 bg-blue-500/20 animate-pulse z-0"></div>
-                                    <svg className="absolute inset-0 w-full h-full transform -rotate-90 z-40">
-                                        <circle cx="64" cy="64" r="62" stroke="rgba(59, 130, 246, 0.1)" strokeWidth="4" fill="transparent" />
-                                        <circle cx="64" cy="64" r="62" stroke="#3b82f6" strokeWidth="4" fill="transparent"
-                                            strokeDasharray={2 * Math.PI * 62}
-                                            strokeDashoffset={2 * Math.PI * 62 * (1 - biometricProgress / 100)}
-                                            style={{ transition: 'stroke-dashoffset 0.1s linear' }} />
-                                    </svg>
+                                    <div className="absolute inset-0 bg-[#00E5FF]/10 animate-pulse z-10 pointer-events-none"></div>
+                                    
+                                    {/* Scanning Beam Animation */}
+                                    <style>
+                                        {`
+                                            @keyframes scannerBeam {
+                                                0% { top: -10%; opacity: 0; }
+                                                10% { opacity: 1; }
+                                                90% { opacity: 1; }
+                                                100% { top: 110%; opacity: 0; }
+                                            }
+                                        `}
+                                    </style>
+                                    <div style={{ position: 'absolute', left: 0, right: 0, height: '2px', background: '#00E5FF', boxShadow: '0 0 20px 4px rgba(0, 229, 255, 0.6)', animation: 'scannerBeam 2.5s infinite ease-in-out', zIndex: 45 }}></div>
 
+                                    {/* Linear Progress Bar */}
+                                    <div style={{ position: 'absolute', bottom: 0, left: 0, background: 'rgba(0,0,0,0.5)', width: '100%', height: '6px', zIndex: 50 }}>
+                                        <div style={{ height: '100%', background: '#00E5FF', width: `${biometricProgress}%`, transition: 'width 0.1s linear', boxShadow: '0 0 10px #00E5FF' }}></div>
+                                    </div>
                                 </div>
                             ) : biometricStep === 4 ? (
-
-                                <CheckCircle2 className="w-16 h-16 text-green-400" />
+                                <CheckCircle2 className="w-16 h-16" style={{ color: '#22C55E' }} />
                             ) : (
-                                <UserIcon className="w-12 h-12 text-blue-400" />
+                                <Activity className="w-12 h-12" style={{ color: '#00E5FF' }} />
                             )}
                         </div>
 
                         {biometricStep === 0 ? (
-                            <>
-                                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.75rem' }}>Biometric Verification</h3>
-                                <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-                                    To authorize this high-value transaction, please perform a quick face verification to prove liveness.
+                            <div style={{ position: 'relative', zIndex: 10 }}>
+                                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.75rem', color: 'white' }}>Node Identity Lock</h3>
+                                <p style={{ color: '#9ca3af', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                                    Before cryptographic signing is permitted, you must verify biological operator presence via a mandatory liveness check.
                                 </p>
                                 <div className="flex gap-3">
-                                    <button onClick={() => setShowBiometricModal(false)} className="btn btn-secondary flex-1">Cancel</button>
-                                    <button onClick={startBiometric} className="btn btn-primary flex-1">Start Check</button>
+                                    <button onClick={() => setShowBiometricModal(false)} className="cyber-btn-hollow flex-1" style={{ '--btn-color': '#9ca3af', justifyContent: 'center' }}>Abort</button>
+                                    <button onClick={startBiometric} className="cyber-btn-hollow flex-1" style={{ '--btn-color': '#00E5FF', justifyContent: 'center' }}>Commence Scan</button>
                                 </div>
-                            </>
+                            </div>
                         ) : (
-                            <div>
-                                {biometricStep === 1 && <h4 className="text-xl font-black text-blue-400 animate-pulse">LOOK AT CAMERA</h4>}
-                                {biometricStep === 2 && <h4 className="text-xl font-black text-blue-400 animate-pulse">TURN LEFT</h4>}
-                                {biometricStep === 3 && <h4 className="text-xl font-black text-blue-400 animate-pulse">TURN RIGHT</h4>}
-                                {biometricStep === 4 && <h4 className="text-xl font-black text-green-400">VERIFIED</h4>}
-                                <p className="text-muted mt-4" style={{ fontSize: '0.8rem' }}>
-                                    Securely binding physical identity to transaction signature...
+                            <div style={{ position: 'relative', zIndex: 10 }}>
+                                {biometricStep === 1 && <h4 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#00E5FF' }} className="animate-pulse">LOCK CENTER NODE</h4>}
+                                {biometricStep === 2 && <h4 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#00E5FF' }} className="animate-pulse">SHIFT LEFT VECTOR</h4>}
+                                {biometricStep === 3 && <h4 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#00E5FF' }} className="animate-pulse">SHIFT RIGHT VECTOR</h4>}
+                                {biometricStep === 4 && <h4 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#22C55E' }}>OVERRIDE PASSED</h4>}
+                                <p style={{ color: '#9ca3af', marginTop: '1rem', fontSize: '0.8rem' }}>
+                                    Binding biometric session metrics to blockchain ledger signature...
                                 </p>
                                 <button 
                                     onClick={() => {
@@ -672,7 +692,7 @@ const Sale = () => {
                                             setIsBiometricallyVerified(true);
                                             setShowBiometricModal(false);
                                             setSubmitting(true);
-                                            setTimeout(() => handleSubmit(), 500);
+                                            setTimeout(() => handleSubmit(true), 500);
                                         }, 1000);
                                     }}
                                     style={{ 
@@ -681,7 +701,7 @@ const Sale = () => {
                                         textDecoration: 'underline'
                                     }}
                                 >
-                                    Stuck? Click to bypass (Dev Mode)
+                                    Force Override (Dev Root)
                                 </button>
                             </div>
                         )}
@@ -691,6 +711,5 @@ const Sale = () => {
         </div>
     );
 };
-
 
 export default Sale;
