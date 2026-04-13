@@ -1,5 +1,5 @@
 /**
- * Server Entry Point — Squrify Land Registry Backend
+ * Server Entry Point — Digiverify Land Registry Backend
  *
  * Production-ready Express server with:
  * - JWT wallet-based authentication
@@ -74,7 +74,7 @@ app.use('/api/ipfs', ipfsRoutes);
 app.get('/', (req, res) => {
     res.json({
         success: true,
-        message: 'Squrify Land Registry API — Government-Grade Blockchain System',
+        message: 'Digiverify Land Registry API — Government-Grade Blockchain System',
         version: '2.0.0',
         network: 'Avalanche Fuji C-Chain (Testnet)',
         chainId: env.BLOCKCHAIN.chainId,
@@ -173,7 +173,7 @@ const startServer = async () => {
         }
 
         const server = app.listen(env.PORT, () => {
-            console.log(`\n🚀 Squrify Land Registry API`);
+            console.log(`\n🚀 Digiverify Land Registry API`);
             console.log(`   Environment : ${env.NODE_ENV}`);
             console.log(`   Port        : ${env.PORT}`);
             console.log(`   Network     : Avalanche Fuji C-Chain`);

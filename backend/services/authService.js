@@ -41,7 +41,7 @@ const verifyAndAuthenticate = async (walletAddress, signature) => {
     }
 
     // Instead of using a DB nonce, we use the static message signed by the frontend
-    const expectedMessage = `Sign this message to authenticate with Squrify Land Registry.`;
+    const expectedMessage = `Sign this message to authenticate with Digiverify Land Registry.`;
     const recoveredAddress = verifySignature(expectedMessage, signature);
 
     if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
