@@ -103,7 +103,8 @@ cd frontend && npm install && npm start
 ---
 
 ## 📜 License
-ISC License. Distributed for development and educational purposes within the Digiverify ecosystem.
+
+Proprietary & Non-Commercial License. This software is provided for personal and educational use only within the Digiverify ecosystem. Commercial redistribution or resale is strictly prohibited and subject to legal action. Please refer to the [LICENSE](LICENSE) file for full terms and conditions.
 
 ---
 *Created with ❤️ by the Digiverify Engineering Team.*
