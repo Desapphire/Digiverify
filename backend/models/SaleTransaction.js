@@ -21,6 +21,7 @@ const mapSale = (row) => {
         onChainId: row.on_chain_id,
         status: row.status,
         expiryAt: row.expiry_at,
+        adminComments: row.admin_comments,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         // Joined Property Fields
@@ -101,12 +102,20 @@ const findActiveByProperty = async (propertyId) => {
     return mapSale(result.rows[0]);
 };
 
-const updateStatus = async (id, status, client = null) => {
+const updateStatus = async (id, status, adminComments = null, client = null) => {
     const db = client || pool;
-    const result = await db.query(
-        'UPDATE sale_transactions SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
-        [status, id]
-    );
+    let result;
+    if (adminComments !== null) {
+        result = await db.query(
+            'UPDATE sale_transactions SET status = $1, admin_comments = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
+            [status, adminComments, id]
+        );
+    } else {
+        result = await db.query(
+            'UPDATE sale_transactions SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+            [status, id]
+        );
+    }
     return mapSale(result.rows[0]);
 };
 

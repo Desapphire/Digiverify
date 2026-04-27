@@ -285,9 +285,17 @@ const UserDashboard = () => {
                                         {data?.kycStatus?.toUpperCase() || 'UNKNOWN'}
                                     </div>
                                     {data?.kycStatus !== 'approved' && data?.kycStatus !== 'verified' && (
-                                        <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', marginTop: '0.75rem', overflow: 'hidden' }}>
-                                            <div className="animate-pulse" style={{ height: '100%', width: data?.kycStatus === 'pending' ? '50%' : '10%', background: data?.kycStatus === 'pending' ? '#F59E0B' : '#EF4444' }}></div>
-                                        </div>
+                                        <>
+                                            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', marginTop: '0.75rem', overflow: 'hidden' }}>
+                                                <div className="animate-pulse" style={{ height: '100%', width: data?.kycStatus === 'pending' ? '50%' : '10%', background: data?.kycStatus === 'pending' ? '#F59E0B' : '#EF4444' }}></div>
+                                            </div>
+                                            {data?.kycStatus === 'rejected' && data?.adminComments && (
+                                                <div style={{ marginTop: '0.75rem', padding: '0.5rem', background: 'rgba(239,68,68,0.1)', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                                    <span style={{ fontSize: '0.55rem', fontWeight: 700, textTransform: 'uppercase', color: '#EF4444', display: 'block', marginBottom: '0.2rem' }}>Authority Note</span>
+                                                    <span style={{ fontSize: '0.7rem', color: '#fca5a5', lineHeight: 1.3, display: 'block' }}>{data.adminComments}</span>
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             </div>

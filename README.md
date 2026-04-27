@@ -1,4 +1,4 @@
-# Digiverify (Squrify)
+# Digiverify
 
 ![Digiverify Hero Banner](/assets/hero_banner.png)   
 
@@ -56,17 +56,31 @@ Transactions follow a strict on-chain multi-sig protocol requiring Buyer, Seller
 ## 💻 Technical Stack
 
 ### Backend
-- **Framework**: Node.js & Express
-- **Database**: PostgreSQL (pg)
-- **Blockchain Interface**: Ethers.js
-- **Security**: Bcrypt, Express Session, PGCrypto
-- **File System**: Multer + IPFS (via CID pinning)
+- **Runtime**: Node.js
+- **Framework**: Express 5
+- **Database**: PostgreSQL via `pg`
+- **Authentication & Security**: bcrypt, JSON Web Tokens, helmet, cors, express-rate-limit, express-session
+- **Blockchain Interface**: ethers.js
+- **Uploads & Documents**: multer, form-data, IPFS/Pinata-backed uploads
+- **Validation & Logging**: zod, morgan
 
 ### Frontend
-- **Library**: React.js
-- **Routing**: React Router v6
+- **Framework**: React 19 with Vite
+- **Routing**: React Router
 - **API Client**: Axios
-- **Web3**: Direct MetaMask integration for on-chain signing.
+- **Web3**: ethers.js with MetaMask-based signing flows
+- **UI Tooling**: framer-motion, lucide-react, Tailwind CSS, ESLint
+
+### Smart Contracts
+- **Tooling**: Hardhat
+- **Language**: Solidity 0.8.28
+- **Deployment Target**: Avalanche Fuji C-Chain
+- **Libraries**: OpenZeppelin Contracts
+
+### Python Tooling
+- **Admin CLI**: click, requests, rich, PyJWT, python-dotenv
+- **User CLI**: click, requests, rich, PyJWT, python-dotenv
+- **Automation**: `digiverify_cli.py` and `admin_workflow.py` for API-driven workflows
 
 ---
 

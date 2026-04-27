@@ -6,6 +6,7 @@ const router = express.Router();
 const {
     registerProperty, getProperty, getMyProperties,
     searchProperties, uploadDocument, getDocuments,
+    getPropertyFreezeOrders,
 } = require('../controllers/propertyController');
 const authenticate = require('../middlewares/authenticate');
 const authorize = require('../middlewares/authorize');
@@ -22,8 +23,11 @@ router.post(
 );
 router.get('/my', authenticate, getMyProperties);
 router.get('/search', authenticate, searchProperties);
-router.get('/:id', authenticate, getProperty);
+// ── Sub-resource routes MUST come before /:id to avoid param collision ──
+router.get('/:id/freeze-orders', authenticate, getPropertyFreezeOrders);
 router.post('/:id/documents', authenticate, uploadDocument);
 router.get('/:id/documents', authenticate, getDocuments);
+// Generic single-resource route last
+router.get('/:id', authenticate, getProperty);
 
 module.exports = router;

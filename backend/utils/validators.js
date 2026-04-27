@@ -119,6 +119,13 @@ const freezePropertySchema = z.object({
     }),
 });
 
+const reverseFreezeOrderSchema = z.object({
+    body: z.object({
+        courtOrderHash: ipfsHash,
+        reason: z.string().optional(),
+    }),
+});
+
 const forceTransferSchema = z.object({
     body: z.object({
         propertyId: uuid,
@@ -158,6 +165,7 @@ module.exports = {
     requestFundBlockSchema,
     confirmFundBlockSchema,
     freezePropertySchema,
+    reverseFreezeOrderSchema,
     forceTransferSchema,
     requestRecoverySchema,
     completeRecoverySchema,

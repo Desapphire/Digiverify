@@ -34,11 +34,13 @@ const SearchProperty = () => {
     const getStatusConfig = (status) => {
         const s = status?.toLowerCase() || 'pending';
         switch (s) {
+            case 'active':
             case 'verified':
-            case 'approved': return { color: '#00E5FF', bg: 'rgba(0,229,255,0.1)', label: 'Verified' };
+            case 'approved': return { color: '#00E5FF', bg: 'rgba(0,229,255,0.1)', label: s === 'active' ? 'Active' : 'Verified' };
             case 'pending': return { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', label: 'Pending Assessment' };
             case 'rejected': return { color: '#EF4444', bg: 'rgba(239,68,68,0.1)', label: 'Rejected' };
             case 'frozen': return { color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)', label: 'Frozen Asset' };
+            case 'under_dispute': return { color: '#EF4444', bg: 'rgba(239,68,68,0.1)', label: 'Disputed' };
             default: return { color: '#9ca3af', bg: 'rgba(255,255,255,0.05)', label: status || 'Unknown' };
         }
     };
@@ -173,8 +175,8 @@ const SearchProperty = () => {
                                                 </div>
                                                 <div className="cyber-data-item">
                                                     <div className="label">Encumbrance</div>
-                                                    <div className="value" style={{ color: prop.encumbranceStatus === 'clear' ? '#00E5FF' : '#9ca3af' }}>
-                                                        {prop.encumbranceStatus === 'clear' ? 'Clear' : 'Unspecified'}
+                                                    <div className="value" style={{ color: !prop.encumbranceStatus ? '#00E5FF' : '#FF007F' }}>
+                                                        {!prop.encumbranceStatus ? 'Clear' : 'Flagged'}
                                                     </div>
                                                 </div>
                                             </div>
