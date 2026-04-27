@@ -53,3 +53,23 @@ Desktop.ini
 # ─── Misc ─────────────────────────────────────────────────────────────────────
 *.pem
 .yarn-integrity
+
+# ─── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+
+# ─── AI Assistant Artifacts ───────────────────────────────────────────────────
+.gemini/
+.antigravity/
+*.resolved
+
+# ─── Temporary Files & Scripts ───────────────────────────────────────────────
+tmp/
+temp/
+tmp_*.js
+test_*.js
+search_result.txt
