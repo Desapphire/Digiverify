@@ -21,7 +21,9 @@ const mapProperty = (row) => {
         ownerWallet: row.owner_wallet,
         nftTokenId: row.nft_token_id,
         encumbranceStatus: row.encumbrance_status,
+        encumbranceReason: row.encumbrance_reason || null,
         status: row.status,
+        adminComments: row.admin_comments,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
@@ -91,12 +93,20 @@ const search = async ({ district, state, status, limit = 50, offset = 0 }) => {
     return result.rows.map(mapProperty);
 };
 
-const updateStatus = async (id, status, client = null) => {
+const updateStatus = async (id, status, adminComments = null, client = null) => {
     const db = client || pool;
-    const result = await db.query(
-        'UPDATE properties SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
-        [status, id]
-    );
+    let result;
+    if (adminComments !== null) {
+        result = await db.query(
+            'UPDATE properties SET status = $1, admin_comments = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
+            [status, adminComments, id]
+        );
+    } else {
+        result = await db.query(
+            'UPDATE properties SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+            [status, id]
+        );
+    }
     return mapProperty(result.rows[0]);
 };
 
@@ -110,11 +120,11 @@ const updateOwner = async (id, newOwnerWallet, client = null) => {
     return mapProperty(result.rows[0]);
 };
 
-const setEncumbrance = async (id, flag, client = null) => {
+const setEncumbrance = async (id, flag, reason = null, client = null) => {
     const db = client || pool;
     const result = await db.query(
-        'UPDATE properties SET encumbrance_status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
-        [flag, id]
+        'UPDATE properties SET encumbrance_status = $1, encumbrance_reason = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
+        [flag, flag ? (reason || null) : null, id]  // clear reason when unflagging
     );
     return mapProperty(result.rows[0]);
 };

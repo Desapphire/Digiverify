@@ -12,7 +12,7 @@ const AppError = require('../utils/AppError');
 /**
  * Approve a property registration.
  */
-const approveProperty = async (propertyId) => {
+const approveProperty = async (propertyId, reason = null) => {
     const property = await Property.findById(propertyId);
     if (!property) throw new AppError('Property not found.', 404);
 
@@ -21,7 +21,7 @@ const approveProperty = async (propertyId) => {
     }
 
     // 1. Update status in DB
-    const updatedProperty = await Property.updateStatus(propertyId, 'active');
+    const updatedProperty = await Property.updateStatus(propertyId, 'active', reason);
 
     // 2. Register Property on-chain (first step of blockchain lifecycle)
     console.log(`🔗 Registering property ${property.propertyCode} on-chain (authority approval) ...`);
@@ -51,7 +51,7 @@ const approveProperty = async (propertyId) => {
 /**
  * Reject a property registration.
  */
-const rejectProperty = async (propertyId) => {
+const rejectProperty = async (propertyId, reason = null) => {
     const property = await Property.findById(propertyId);
     if (!property) throw new AppError('Property not found.', 404);
 
@@ -59,13 +59,13 @@ const rejectProperty = async (propertyId) => {
         throw new AppError('Only pending or registered properties can be rejected.', 400);
     }
 
-    return Property.updateStatus(propertyId, 'rejected');
+    return Property.updateStatus(propertyId, 'rejected', reason);
 };
 
 /**
  * Approve a sale transaction (authority signature).
  */
-const approveSaleTransaction = async (saleId, authorityWallet, signatureHash) => {
+const approveSaleTransaction = async (saleId, authorityWallet, signatureHash, reason = null) => {
     const sale = await SaleTransaction.findById(saleId);
     if (!sale) throw new AppError('Sale transaction not found.', 404);
 
@@ -116,27 +116,27 @@ const approveSaleTransaction = async (saleId, authorityWallet, signatureHash) =>
         }
     }
 
-    const updatedSale = await saleService.approveSale(saleId, authorityWallet, finalSignatureHash);
+    const updatedSale = await saleService.approveSale(saleId, authorityWallet, finalSignatureHash, reason);
     return { sale: updatedSale, txHash };
 };
 
 /**
  * Reject a sale transaction.
  */
-const rejectSaleTransaction = async (saleId) => {
+const rejectSaleTransaction = async (saleId, reason = null) => {
     const sale = await SaleTransaction.findById(saleId);
     if (!sale) throw new AppError('Sale transaction not found.', 404);
     saleService.validateTransition(sale.status, 'cancelled');
-    return SaleTransaction.updateStatus(saleId, 'cancelled');
+    return SaleTransaction.updateStatus(saleId, 'cancelled', reason);
 };
 
 /**
  * Set encumbrance on a property.
  */
-const setEncumbrance = async (propertyId, flag) => {
+const setEncumbrance = async (propertyId, flag, reason = null) => {
     const property = await Property.findById(propertyId);
     if (!property) throw new AppError('Property not found.', 404);
-    return Property.setEncumbrance(propertyId, flag);
+    return Property.setEncumbrance(propertyId, flag, reason);
 };
 
 /**

@@ -73,24 +73,24 @@ const submitKyc = async (userId, kycDocumentHash) => {
 /**
  * Approve KYC (authority/super_admin only).
  */
-const approveKyc = async (userId) => {
+const approveKyc = async (userId, reason = null) => {
     const user = await User.findById(userId);
     if (!user) throw new AppError('User not found.', 404);
 
     // Blockchain anchoring (Mock/Placeholder for identity contract)
     console.log(`🔗 Anchoring KYC for user ${userId} (${user.walletAddress}) on-chain...`);
 
-    return User.updateKycStatus(userId, 'verified', null);
+    return User.updateKycStatus(userId, 'verified', null, reason);
 };
 
 
 /**
  * Reject KYC (authority/super_admin only).
  */
-const rejectKyc = async (userId) => {
+const rejectKyc = async (userId, reason = null) => {
     const user = await User.findById(userId);
     if (!user) throw new AppError('User not found.', 404);
-    return User.updateKycStatus(userId, 'rejected', null);
+    return User.updateKycStatus(userId, 'rejected', null, reason);
 };
 
 /**

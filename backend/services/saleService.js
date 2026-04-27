@@ -166,7 +166,7 @@ const signSale = async (saleId, signerWallet, signerRole, signatureHash) => {
 /**
  * Authority approves a sale.
  */
-const approveSale = async (saleId, authorityWallet, signatureHash) => {
+const approveSale = async (saleId, authorityWallet, signatureHash, reason = null) => {
     const sale = await SaleTransaction.findById(saleId);
     if (!sale) throw new AppError('Sale transaction not found.', 404);
 
@@ -185,7 +185,7 @@ const approveSale = async (saleId, authorityWallet, signatureHash) => {
         }, client);
 
         await SaleTransaction.setAuthoritySigned(saleId, client);
-        return SaleTransaction.updateStatus(saleId, SALE_STATUS.AUTHORITY_APPROVED, client);
+        return SaleTransaction.updateStatus(saleId, SALE_STATUS.AUTHORITY_APPROVED, reason, client);
     });
 };
 

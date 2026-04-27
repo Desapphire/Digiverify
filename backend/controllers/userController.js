@@ -19,8 +19,19 @@ const getMyNotifications = catchAsync(async (req, res) => {
     // Or where the actor is null (system events) but related to this user ID.
     const { pool } = require('../config/db');
     const result = await pool.query(
-        `SELECT * FROM audit_logs 
-         WHERE actor_user_id = $1 OR (entity_type = 'user' AND entity_id = $1)
+        `SELECT * FROM audit_logs
+         WHERE actor_user_id::text = $1::text
+            OR (entity_type = 'user' AND entity_id::text = $1::text)
+            OR (entity_type = 'property' AND entity_id::text IN (
+                SELECT id::text FROM properties WHERE owner_wallet = (
+                    SELECT wallet_address FROM users WHERE id::text = $1::text
+                )
+            ))
+            OR (entity_type = 'sale_transaction' AND entity_id::text IN (
+                SELECT id::text FROM sale_transactions
+                WHERE buyer_wallet = (SELECT wallet_address FROM users WHERE id::text = $1::text)
+                   OR seller_wallet = (SELECT wallet_address FROM users WHERE id::text = $1::text)
+            ))
          ORDER BY created_at DESC LIMIT 50`,
         [req.user.id]
     );
@@ -80,13 +91,15 @@ const submitKyc = catchAsync(async (req, res) => {
  * Approve KYC (authority only).
  */
 const approveKyc = catchAsync(async (req, res) => {
-    const user = await userService.approveKyc(req.params.id);
+    const reason = req.body?.reason?.trim() || null;
+    const user = await userService.approveKyc(req.params.id, reason);
 
     await auditService.log({
         actionType: AUDIT_ACTIONS.KYC_APPROVED,
         req,
         entityId: req.params.id,
         entityType: 'user',
+        metadata: { reason },
     });
 
     return res.status(200).json({
@@ -101,13 +114,15 @@ const approveKyc = catchAsync(async (req, res) => {
  * Reject KYC (authority only).
  */
 const rejectKyc = catchAsync(async (req, res) => {
-    const user = await userService.rejectKyc(req.params.id);
+    const reason = req.body?.reason?.trim() || null;
+    const user = await userService.rejectKyc(req.params.id, reason);
 
     await auditService.log({
         actionType: AUDIT_ACTIONS.KYC_REJECTED,
         req,
         entityId: req.params.id,
         entityType: 'user',
+        metadata: { reason },
     });
 
     return res.status(200).json({

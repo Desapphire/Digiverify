@@ -17,6 +17,10 @@ const SaleApproval = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedSale, setExpandedSale] = useState(null);
 
+    // Modal state for Action Reasoning
+    const [actionModal, setActionModal] = useState({ isOpen: false, type: '', saleId: null, error: '' });
+    const [actionReason, setActionReason] = useState('');
+
     const fetchSales = async () => {
         setLoading(true);
         try {
@@ -31,26 +35,32 @@ const SaleApproval = () => {
 
     useEffect(() => { fetchSales(); }, []);
 
-    const handleApprove = async (saleId) => {
-        setActionLoading(saleId);
-        try {
-            await adminService.approveSale(saleId);
-            fetchSales();
-        } catch (err) {
-            alert(err.response?.data?.message || 'Approval failed');
-        } finally {
-            setActionLoading(null);
-        }
+    const openActionModal = (saleId, type) => {
+        setActionModal({ isOpen: true, type, saleId, error: '' });
+        setActionReason('');
     };
 
-    const handleReject = async (saleId) => {
-        if (!window.confirm('Are you sure you want to reject this sale transaction?')) return;
+    const confirmAction = async () => {
+        const { saleId, type } = actionModal;
+        const trimmedReason = actionReason.trim();
+
+        if (!trimmedReason) {
+            setActionModal(prev => ({ ...prev, error: `A reason is required to ${type} this sale.` }));
+            return;
+        }
+
         setActionLoading(saleId);
+        setActionModal(prev => ({ ...prev, isOpen: false }));
+
         try {
-            await adminService.rejectSale(saleId);
+            if (type === 'approve') {
+                await adminService.approveSale(saleId, trimmedReason);
+            } else if (type === 'reject') {
+                await adminService.rejectSale(saleId, trimmedReason);
+            }
             fetchSales();
         } catch (err) {
-            alert(err.response?.data?.message || 'Rejection failed');
+            alert(err.response?.data?.message || 'Action failed');
         } finally {
             setActionLoading(null);
         }
@@ -237,12 +247,12 @@ const SaleApproval = () => {
                                         {/* Actions */}
                                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                                             {canApprove && (
-                                                <button onClick={() => handleApprove(tx.id)} disabled={isActing} style={{
+                                                <button onClick={() => openActionModal(tx.id, 'approve')} disabled={isActing} style={{
                                                     padding: '0.35rem 0.7rem', borderRadius: '0.5rem', fontSize: '0.7rem', fontWeight: 700,
                                                     background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)',
                                                     display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', opacity: isActing ? 0.5 : 1,
                                                 }}>
-                                                    {isActing ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />} Approve
+                                                    {isActing && actionModal.type === 'approve' ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />} Approve
                                                 </button>
                                             )}
                                             {canComplete && (
@@ -255,10 +265,10 @@ const SaleApproval = () => {
                                                 </button>
                                             )}
                                             {canReject && (
-                                                <button onClick={() => handleReject(tx.id)} disabled={isActing} className="btn btn-danger" style={{
+                                                <button onClick={() => openActionModal(tx.id, 'reject')} disabled={isActing} className="btn btn-danger" style={{
                                                     padding: '0.35rem 0.7rem', fontSize: '0.7rem', opacity: isActing ? 0.5 : 1,
                                                 }}>
-                                                    <XCircle size={12} /> Reject
+                                                    {isActing && actionModal.type === 'reject' ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />} Reject
                                                 </button>
                                             )}
                                         </div>
@@ -311,6 +321,50 @@ const SaleApproval = () => {
                 <ShieldCheck size={14} style={{ color: '#ef4444' }} />
                 All sale approvals are cryptographically signed and logged on-chain.
             </div>
+
+            {/* Action Reasoning Modal */}
+            {actionModal.isOpen && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem'
+                }}>
+                    <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '1.5rem' }}>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '1rem', color: 'white', textTransform: 'capitalize' }}>
+                            {actionModal.type} Sale
+                        </h3>
+                        <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: '1.25rem' }}>
+                            Please provide a reason or note for this decision. This is required for auditing purposes.
+                        </p>
+                        <textarea
+                            value={actionReason}
+                            onChange={(e) => setActionReason(e.target.value)}
+                            placeholder="Enter reasoning..."
+                            className="input-premium"
+                            style={{ width: '100%', minHeight: 100, marginBottom: '1rem', resize: 'vertical' }}
+                        />
+                        {actionModal.error && (
+                            <div style={{ color: '#ef4444', fontSize: '0.8rem', marginBottom: '1rem' }}>
+                                {actionModal.error}
+                            </div>
+                        )}
+                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                            <button
+                                onClick={() => setActionModal({ isOpen: false, type: '', saleId: null, error: '' })}
+                                className="btn btn-secondary"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmAction}
+                                className={actionModal.type === 'approve' ? 'btn btn-primary' : 'btn btn-danger'}
+                                disabled={!actionReason.trim()}
+                            >
+                                Confirm Action
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
