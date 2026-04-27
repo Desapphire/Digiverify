@@ -6,6 +6,7 @@ export const propertyService = {
     getMyProperties: () => api.get('/properties/my'),
     searchProperties: (query) => api.get('/properties/search', { params: { q: query } }),
     getPropertyById: (id) => api.get(`/properties/${id}`),
+    getFreezeOrders: (id) => api.get(`/properties/${id}/freeze-orders`),
     uploadDocument: (id, documentHash) => api.post(`/properties/${id}/documents`, { documentHash }),
     getDocuments: (id) => api.get(`/properties/${id}/documents`),
     

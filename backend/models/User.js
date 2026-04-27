@@ -22,6 +22,7 @@ const mapUser = (row) => {
         faceIdHash: row.face_id_hash,
         birthdate: row.birthdate,
         isActive: row.is_active,
+        adminComments: row.admin_comments,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
@@ -100,12 +101,21 @@ const updateNonceById = async (userId, nonce) => {
     return mapUser(result.rows[0]);
 };
 
-const updateKycStatus = async (id, kycStatus, kycDocumentHash) => {
-    const result = await pool.query(
-        `UPDATE users SET kyc_status = $1, kyc_document_hash = COALESCE($2, kyc_document_hash), updated_at = NOW()
-     WHERE id = $3 RETURNING *`,
-        [kycStatus, kycDocumentHash, id]
-    );
+const updateKycStatus = async (id, kycStatus, kycDocumentHash, adminComments = null) => {
+    let result;
+    if (adminComments !== null) {
+        result = await pool.query(
+            `UPDATE users SET kyc_status = $1, kyc_document_hash = COALESCE($2, kyc_document_hash), admin_comments = $3, updated_at = NOW()
+         WHERE id = $4 RETURNING *`,
+            [kycStatus, kycDocumentHash, adminComments, id]
+        );
+    } else {
+        result = await pool.query(
+            `UPDATE users SET kyc_status = $1, kyc_document_hash = COALESCE($2, kyc_document_hash), updated_at = NOW()
+         WHERE id = $3 RETURNING *`,
+            [kycStatus, kycDocumentHash, id]
+        );
+    }
     return mapUser(result.rows[0]);
 };
 

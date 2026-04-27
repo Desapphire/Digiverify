@@ -20,15 +20,19 @@ DO $$ BEGIN
   ALTER TABLE users ADD COLUMN IF NOT EXISTS face_verified BOOLEAN NOT NULL DEFAULT FALSE;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_comments TEXT;
 
   -- Make password nullable (wallet-only users don't need it)
   ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
 
   -- properties table migrations
   ALTER TABLE properties ADD COLUMN IF NOT EXISTS nft_token_id VARCHAR(66);
+  ALTER TABLE properties ADD COLUMN IF NOT EXISTS encumbrance_reason TEXT;
+  ALTER TABLE properties ADD COLUMN IF NOT EXISTS admin_comments TEXT;
 
   -- sale_transactions table migrations
   ALTER TABLE sale_transactions ADD COLUMN IF NOT EXISTS on_chain_id VARCHAR(66);
+  ALTER TABLE sale_transactions ADD COLUMN IF NOT EXISTS admin_comments TEXT;
 
   -- audit_logs table migrations
   ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_id UUID;

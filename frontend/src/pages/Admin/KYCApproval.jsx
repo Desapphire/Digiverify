@@ -16,6 +16,10 @@ const KYCApproval = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedUser, setExpandedUser] = useState(null);
 
+    // Modal state for Action Reasoning
+    const [actionModal, setActionModal] = useState({ isOpen: false, type: '', userId: null, error: '' });
+    const [actionReason, setActionReason] = useState('');
+
     const fetchUsers = async () => {
         setLoading(true);
         try {
@@ -32,26 +36,32 @@ const KYCApproval = () => {
         fetchUsers();
     }, [filter]);
 
-    const handleApprove = async (userId) => {
-        setActionLoading(userId);
-        try {
-            await adminService.approveKyc(userId);
-            setUsers(prev => prev.filter(u => u.id !== userId));
-        } catch (err) {
-            alert(err.response?.data?.message || 'Approval failed');
-        } finally {
-            setActionLoading(null);
-        }
+    const openActionModal = (userId, type) => {
+        setActionModal({ isOpen: true, type, userId, error: '' });
+        setActionReason('');
     };
 
-    const handleReject = async (userId) => {
-        if (!window.confirm('Are you sure you want to reject this KYC?')) return;
+    const confirmAction = async () => {
+        const { userId, type } = actionModal;
+        const trimmedReason = actionReason.trim();
+
+        if (!trimmedReason && type === 'reject') {
+            setActionModal(prev => ({ ...prev, error: 'A reason is required to reject KYC.' }));
+            return;
+        }
+
         setActionLoading(userId);
+        setActionModal(prev => ({ ...prev, isOpen: false }));
+
         try {
-            await adminService.rejectKyc(userId);
+            if (type === 'approve') {
+                await adminService.approveKyc(userId, trimmedReason);
+            } else {
+                await adminService.rejectKyc(userId, trimmedReason);
+            }
             setUsers(prev => prev.filter(u => u.id !== userId));
         } catch (err) {
-            alert(err.response?.data?.message || 'Rejection failed');
+            alert(err.response?.data?.message || 'Action failed');
         } finally {
             setActionLoading(null);
         }
@@ -218,7 +228,7 @@ const KYCApproval = () => {
                                         {u.kycStatus === 'pending' && (
                                             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                                                 <button
-                                                    onClick={() => handleApprove(u.id)}
+                                                    onClick={() => openActionModal(u.id, 'approve')}
                                                     disabled={isActing}
                                                     style={{
                                                         padding: '0.35rem 0.75rem', borderRadius: '0.5rem',
@@ -229,11 +239,11 @@ const KYCApproval = () => {
                                                         opacity: isActing ? 0.5 : 1, transition: 'all 0.2s',
                                                     }}
                                                 >
-                                                    {isActing ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                                                    {isActing && actionModal.type === 'approve' ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                                                     Approve
                                                 </button>
                                                 <button
-                                                    onClick={() => handleReject(u.id)}
+                                                    onClick={() => openActionModal(u.id, 'reject')}
                                                     disabled={isActing}
                                                     className="btn btn-danger"
                                                     style={{
@@ -241,7 +251,7 @@ const KYCApproval = () => {
                                                         opacity: isActing ? 0.5 : 1,
                                                     }}
                                                 >
-                                                    <XCircle size={13} /> Reject
+                                                    {isActing && actionModal.type === 'reject' ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />} Reject
                                                 </button>
                                             </div>
                                         )}
@@ -320,6 +330,50 @@ const KYCApproval = () => {
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Action Reasoning Modal */}
+            {actionModal.isOpen && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem'
+                }}>
+                    <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '1.5rem' }}>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '1rem', color: 'white' }}>
+                            {actionModal.type === 'approve' ? 'Approve KYC' : 'Reject KYC'}
+                        </h3>
+                        <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: '1.25rem' }}>
+                            Please provide a reason for this decision. {actionModal.type === 'reject' && 'This is required for rejections to inform the user.'}
+                        </p>
+                        <textarea
+                            value={actionReason}
+                            onChange={(e) => setActionReason(e.target.value)}
+                            placeholder="Enter reasoning..."
+                            className="input-premium"
+                            style={{ width: '100%', minHeight: 100, marginBottom: '1rem', resize: 'vertical' }}
+                        />
+                        {actionModal.error && (
+                            <div style={{ color: '#ef4444', fontSize: '0.8rem', marginBottom: '1rem' }}>
+                                {actionModal.error}
+                            </div>
+                        )}
+                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                            <button
+                                onClick={() => setActionModal({ isOpen: false, type: '', userId: null, error: '' })}
+                                className="btn btn-secondary"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmAction}
+                                className={actionModal.type === 'approve' ? 'btn btn-primary' : 'btn btn-danger'}
+                                disabled={actionModal.type === 'reject' && !actionReason.trim()}
+                            >
+                                Confirm {actionModal.type === 'approve' ? 'Approval' : 'Rejection'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

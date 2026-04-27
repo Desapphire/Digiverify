@@ -19,6 +19,10 @@ const PropertyVerification = () => {
     const [propDocs, setPropDocs] = useState({});
     const [docsLoading, setDocsLoading] = useState({});
 
+    // Modal state for Action Reasoning
+    const [actionModal, setActionModal] = useState({ isOpen: false, type: '', propId: null, error: '' });
+    const [actionReason, setActionReason] = useState('');
+
     const fetchProperties = async () => {
         setLoading(true);
         try {
@@ -57,39 +61,34 @@ const PropertyVerification = () => {
         fetchProperties();
     }, [filter]);
 
-    const handleApprove = async (propId) => {
-        setActionLoading(propId);
-        try {
-            await adminService.approveProperty(propId);
-            fetchProperties();
-        } catch (err) {
-            alert(err.response?.data?.message || 'Approval failed');
-        } finally {
-            setActionLoading(null);
-        }
+    const openActionModal = (propId, type) => {
+        setActionModal({ isOpen: true, type, propId, error: '' });
+        setActionReason('');
     };
 
-    const handleReject = async (propId) => {
-        if (!window.confirm('Are you sure you want to reject this property registration?')) return;
-        setActionLoading(propId);
-        try {
-            await adminService.rejectProperty(propId);
-            fetchProperties();
-        } catch (err) {
-            alert(err.response?.data?.message || 'Rejection failed');
-        } finally {
-            setActionLoading(null);
-        }
-    };
+    const confirmAction = async () => {
+        const { propId, type } = actionModal;
+        const trimmedReason = actionReason.trim();
 
-    const handleSetEncumbrance = async (propId) => {
-        if (!window.confirm('Mark this property as encumbered?')) return;
+        if (!trimmedReason && type !== 'approve') {
+            setActionModal(prev => ({ ...prev, error: `A reason is required to ${type} this property.` }));
+            return;
+        }
+
         setActionLoading(propId);
+        setActionModal(prev => ({ ...prev, isOpen: false }));
+
         try {
-            await adminService.setEncumbrance(propId, true);
+            if (type === 'approve') {
+                await adminService.approveProperty(propId, trimmedReason);
+            } else if (type === 'reject') {
+                await adminService.rejectProperty(propId, trimmedReason);
+            } else if (type === 'encumber') {
+                await adminService.setEncumbrance(propId, true, trimmedReason);
+            }
             fetchProperties();
         } catch (err) {
-            alert(err.response?.data?.message || 'Failed to set encumbrance');
+            alert(err.response?.data?.message || 'Action failed');
         } finally {
             setActionLoading(null);
         }
@@ -273,7 +272,7 @@ const PropertyVerification = () => {
                                         {p.status === 'pending' && (
                                             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                                                 <button
-                                                    onClick={() => handleApprove(p.id)}
+                                                    onClick={() => openActionModal(p.id, 'approve')}
                                                     disabled={isActing}
                                                     style={{
                                                         padding: '0.35rem 0.75rem', borderRadius: '0.5rem',
@@ -284,11 +283,11 @@ const PropertyVerification = () => {
                                                         opacity: isActing ? 0.5 : 1,
                                                     }}
                                                 >
-                                                    {isActing ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                                                    {isActing && actionModal.type === 'approve' ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                                                     Approve & Mint
                                                 </button>
                                                 <button
-                                                    onClick={() => handleReject(p.id)}
+                                                    onClick={() => openActionModal(p.id, 'reject')}
                                                     disabled={isActing}
                                                     style={{
                                                         padding: '0.35rem 0.75rem', borderRadius: '0.5rem',
@@ -299,7 +298,7 @@ const PropertyVerification = () => {
                                                         opacity: isActing ? 0.5 : 1,
                                                     }}
                                                 >
-                                                    {isActing ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
+                                                    {isActing && actionModal.type === 'reject' ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
                                                     Reject
                                                 </button>
                                             </div>
@@ -308,7 +307,7 @@ const PropertyVerification = () => {
                                         {p.status === 'active' && !p.encumbranceStatus && (
                                             <div onClick={(e) => e.stopPropagation()}>
                                                 <button
-                                                    onClick={() => handleSetEncumbrance(p.id)}
+                                                    onClick={() => openActionModal(p.id, 'encumber')}
                                                     disabled={isActing}
                                                     style={{
                                                         padding: '0.35rem 0.75rem', borderRadius: '0.5rem',
@@ -319,7 +318,7 @@ const PropertyVerification = () => {
                                                         opacity: isActing ? 0.5 : 1,
                                                     }}
                                                 >
-                                                    <AlertTriangle size={13} /> Encumber
+                                                    {isActing && actionModal.type === 'encumber' ? <Loader2 size={13} className="animate-spin" /> : <AlertTriangle size={13} />} Encumber
                                                 </button>
                                             </div>
                                         )}
@@ -434,6 +433,50 @@ const PropertyVerification = () => {
                 <ShieldCheck size={14} style={{ color: '#ef4444' }} />
                 Property verification confirmed via on-chain survey registry.
             </div>
+
+            {/* Action Reasoning Modal */}
+            {actionModal.isOpen && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem'
+                }}>
+                    <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '1.5rem' }}>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '1rem', color: 'white', textTransform: 'capitalize' }}>
+                            {actionModal.type} Property
+                        </h3>
+                        <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: '1.25rem' }}>
+                            Please provide a reason or note for this decision. {actionModal.type !== 'approve' && 'This is required.'}
+                        </p>
+                        <textarea
+                            value={actionReason}
+                            onChange={(e) => setActionReason(e.target.value)}
+                            placeholder="Enter reasoning..."
+                            className="input-premium"
+                            style={{ width: '100%', minHeight: 100, marginBottom: '1rem', resize: 'vertical' }}
+                        />
+                        {actionModal.error && (
+                            <div style={{ color: '#ef4444', fontSize: '0.8rem', marginBottom: '1rem' }}>
+                                {actionModal.error}
+                            </div>
+                        )}
+                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                            <button
+                                onClick={() => setActionModal({ isOpen: false, type: '', propId: null, error: '' })}
+                                className="btn btn-secondary"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmAction}
+                                className={actionModal.type === 'approve' ? 'btn btn-primary' : 'btn btn-danger'}
+                                disabled={actionModal.type !== 'approve' && !actionReason.trim()}
+                            >
+                                Confirm Action
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

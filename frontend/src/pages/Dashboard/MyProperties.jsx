@@ -43,12 +43,13 @@ const MyProperties = () => {
 
     const getStatusConfig = (status) => statusConfig[status] || statusConfig.pending;
 
-    // Filter and search
+    // Filter and search — also matches propertyCode (e.g. "MA-2026-00006")
     const filtered = properties.filter(p => {
         if (filter !== 'all' && p.status !== filter) return false;
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
             return (p.surveyNumber?.toLowerCase().includes(q) ||
+                p.propertyCode?.toLowerCase().includes(q) ||
                 p.district?.toLowerCase().includes(q) ||
                 p.state?.toLowerCase().includes(q) ||
                 p.addressLine?.toLowerCase().includes(q) ||
@@ -160,9 +161,16 @@ const MyProperties = () => {
                                 
                                 <div>
                                     <div className="flex justify-between items-start mb-4">
-                                        <h3 className="text-xl font-bold tracking-tight text-white mb-1">
-                                            {prop.surveyNumber}
-                                        </h3>
+                                        <div>
+                                            <h3 className="text-xl font-bold tracking-tight text-white mb-1">
+                                                {prop.surveyNumber}
+                                            </h3>
+                                            {prop.propertyCode && (
+                                                <p style={{ fontSize: '0.7rem', fontFamily: 'JetBrains Mono, monospace', color: prop.status === 'frozen' ? '#3B82F6' : 'rgba(255,255,255,0.35)', marginTop: '0.1rem' }}>
+                                                    {prop.propertyCode}
+                                                </p>
+                                            )}
+                                        </div>
                                         <div 
                                             className="cyber-badge" 
                                             style={{ 
@@ -189,8 +197,8 @@ const MyProperties = () => {
                                         </div>
                                         <div className="cyber-data-item">
                                             <div className="label">Encumbrance</div>
-                                            <div className="value" style={{ color: prop.encumbranceStatus === 'clear' ? '#00E5FF' : '#FF007F' }}>
-                                                {prop.encumbranceStatus === 'clear' ? 'Clear' : 'Flagged'}
+                                            <div className="value" style={{ color: !prop.encumbranceStatus ? '#00E5FF' : '#FF007F' }}>
+                                                {!prop.encumbranceStatus ? 'Clear' : 'Flagged'}
                                             </div>
                                         </div>
                                     </div>
@@ -206,6 +214,53 @@ const MyProperties = () => {
                                             >
                                                 Digital Title #{prop.nftTokenId} <ExternalLink size={12} />
                                             </a>
+                                        </div>
+                                    )}
+
+                                    {/* Frozen / Dispute Alert Banner */}
+                                    {prop.status === 'frozen' && (
+                                        <div style={{
+                                            marginTop: '0.75rem',
+                                            padding: '0.6rem 0.85rem',
+                                            borderRadius: '8px',
+                                            background: 'rgba(59,130,246,0.08)',
+                                            border: '1px solid rgba(59,130,246,0.25)',
+                                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                        }}>
+                                            <Lock size={12} style={{ color: '#3B82F6', flexShrink: 0 }} />
+                                            <span style={{ fontSize: '0.72rem', color: '#93c5fd', fontWeight: 600, lineHeight: 1.4 }}>
+                                                Property frozen by court order — all transfers suspended.
+                                            </span>
+                                        </div>
+                                    )}
+                                    {prop.status === 'under_dispute' && (
+                                        <div style={{
+                                            marginTop: '0.75rem',
+                                            padding: '0.6rem 0.85rem',
+                                            borderRadius: '8px',
+                                            background: 'rgba(239,68,68,0.07)',
+                                            border: '1px solid rgba(239,68,68,0.2)',
+                                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                        }}>
+                                            <AlertTriangle size={12} style={{ color: '#EF4444', flexShrink: 0 }} />
+                                            <span style={{ fontSize: '0.72rem', color: '#fca5a5', fontWeight: 600, lineHeight: 1.4 }}>
+                                                Property under active legal dispute.
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {prop.adminComments && (
+                                        <div style={{
+                                            marginTop: '0.75rem',
+                                            padding: '0.6rem 0.85rem',
+                                            borderRadius: '8px',
+                                            background: 'rgba(245,158,11,0.05)',
+                                            border: '1px solid rgba(245,158,11,0.2)',
+                                        }}>
+                                            <span style={{ fontSize: '0.55rem', fontWeight: 700, textTransform: 'uppercase', color: '#F59E0B', display: 'block', marginBottom: '0.2rem' }}>Administration Note</span>
+                                            <span style={{ fontSize: '0.72rem', color: '#fcd34d', lineHeight: 1.4, display: 'block' }}>
+                                                {prop.adminComments}
+                                            </span>
                                         </div>
                                     )}
                                 </div>

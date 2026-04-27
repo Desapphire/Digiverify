@@ -4,6 +4,7 @@
 
 const propertyService = require('../services/propertyService');
 const auditService = require('../services/auditService');
+const { pool } = require('../config/db');
 const { AUDIT_ACTIONS } = require('../config/constants');
 const catchAsync = require('../utils/catchAsync');
 
@@ -106,4 +107,22 @@ const getDocuments = catchAsync(async (req, res) => {
     });
 });
 
-module.exports = { registerProperty, getProperty, getMyProperties, searchProperties, uploadDocument, getDocuments };
+/**
+ * GET /api/properties/:id/freeze-orders
+ * Returns active court freeze orders for a property (public to owner and admins).
+ */
+const getPropertyFreezeOrders = catchAsync(async (req, res) => {
+    const result = await pool.query(
+        `SELECT cfo.id, cfo.court_order_hash, cfo.case_number, cfo.reason,
+                cfo.is_active, cfo.frozen_at AS created_at,
+                u.name AS court_officer_name, u.email AS court_officer_email
+         FROM court_freeze_orders cfo
+         LEFT JOIN users u ON u.id = cfo.court_user_id
+         WHERE cfo.property_id = $1
+         ORDER BY cfo.frozen_at DESC`,
+        [req.params.id]
+    );
+    return res.status(200).json({ success: true, data: result.rows });
+});
+
+module.exports = { registerProperty, getProperty, getMyProperties, searchProperties, uploadDocument, getDocuments, getPropertyFreezeOrders };

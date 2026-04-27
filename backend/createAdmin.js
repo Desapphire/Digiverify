@@ -12,7 +12,7 @@ const ADMIN = {
     email: 'admin@digiverify.com',
     password: 'Admin@123',            // Change this!
     role: 'super_admin',
-    walletAddress: '0x0000000000000000000000000000000000000001',
+    walletAddress: '0x0000000000000000000000000000000000000002',
 };
 
 (async () => {
