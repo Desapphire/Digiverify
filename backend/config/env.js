@@ -54,7 +54,7 @@ const env = {
     // Rate Limiting
     RATE_LIMIT: {
         windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000, // 15 min
-        max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100,
+        max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 500,   // 500 req/window per IP (raised from 100)
     },
 
     // Encryption

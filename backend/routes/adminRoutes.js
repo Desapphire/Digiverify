@@ -54,6 +54,7 @@ const authorize = require('../middlewares/authorize');
 const validate = require('../middlewares/validate');
 const {
     freezePropertySchema,
+    reverseFreezeOrderSchema,
     forceTransferSchema,
     completeRecoverySchema,
     confirmFundBlockSchema
@@ -74,8 +75,74 @@ router.put('/property/:id/encumbrance', setEncumbrance);
 
 // --- Property Legal Actions (Court) ---
 router.post('/property/freeze', validate(freezePropertySchema), freezeProperty);
-router.post('/property/reverse-freeze/:freezeOrderId', reverseFreezeOrder);
+router.post('/property/reverse-freeze/:freezeOrderId', validate(reverseFreezeOrderSchema), reverseFreezeOrder);
 router.post('/property/force-transfer', validate(forceTransferSchema), forceTransfer);
+
+// --- Property Ledger History ---
+router.get('/property/:id/history', catchAsync(async (req, res) => {
+    const { pool: dbPool } = require('../config/db');
+    const propertyId = req.params.id;
+    let events = [];
+
+    // 1. Sale Transactions
+    const sales = await dbPool.query(
+        'SELECT * FROM sale_transactions WHERE property_id = $1 ORDER BY created_at DESC', [propertyId]
+    );
+    sales.rows.forEach(sale => {
+        events.push({
+            id: `sale-${sale.id}`,
+            eventType: sale.status === 'completed' ? 'SALE_COMPLETED' : 'SALE_INITIATED',
+            timestamp: sale.created_at,
+            data: {
+                saleId: sale.id,
+                price: sale.sale_price,
+                buyer: sale.buyer_wallet,
+                seller: sale.seller_wallet,
+                status: sale.status
+            }
+        });
+    });
+
+    // 2. Court Freeze Orders
+    const freezes = await dbPool.query(
+        'SELECT * FROM court_freeze_orders WHERE property_id = $1 ORDER BY frozen_at DESC', [propertyId]
+    );
+    freezes.rows.forEach(freeze => {
+        events.push({
+            id: `freeze-${freeze.id}`,
+            eventType: freeze.reason?.startsWith('FORCE_TRANSFER') ? 'COURT_FORCE_TRANSFER' : 'COURT_FREEZE',
+            timestamp: freeze.frozen_at,
+            data: {
+                freezeOrderId: freeze.id,
+                reason: freeze.reason,
+                caseNumber: freeze.case_number,
+                isActive: freeze.is_active
+            }
+        });
+    });
+
+    // 3. Court Reversals
+    const reversals = await dbPool.query(
+        'SELECT * FROM court_reversals WHERE property_id = $1 ORDER BY reversed_at DESC', [propertyId]
+    );
+    reversals.rows.forEach(rev => {
+        events.push({
+            id: `reversal-${rev.id}`,
+            eventType: 'COURT_REVERSAL',
+            timestamp: rev.reversed_at,
+            data: {
+                reversalId: rev.id,
+                reason: rev.reason,
+                previousOwner: rev.previous_owner_wallet
+            }
+        });
+    });
+
+    // Sort all events descending by timestamp
+    events.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    res.json({ success: true, data: events });
+}));
 
 // --- User KYC Management ---
 router.get('/users', listUsers);

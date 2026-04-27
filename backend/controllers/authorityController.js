@@ -11,13 +11,15 @@ const catchAsync = require('../utils/catchAsync');
  * PUT /api/authority/property/:id/approve
  */
 const approveProperty = catchAsync(async (req, res) => {
-    const { property, txHash } = await authorityService.approveProperty(req.params.id);
+    const reason = req.body?.reason?.trim() || null;
+    const { property, txHash } = await authorityService.approveProperty(req.params.id, reason);
 
     await auditService.log({
         actionType: AUDIT_ACTIONS.PROPERTY_APPROVED,
         req,
         entityId: req.params.id,
         entityType: 'property',
+        metadata: { reason },
     });
 
     return res.status(200).json({
@@ -32,13 +34,15 @@ const approveProperty = catchAsync(async (req, res) => {
  * PUT /api/authority/property/:id/reject
  */
 const rejectProperty = catchAsync(async (req, res) => {
-    const property = await authorityService.rejectProperty(req.params.id);
+    const reason = req.body?.reason?.trim() || null;
+    const property = await authorityService.rejectProperty(req.params.id, reason);
 
     await auditService.log({
         actionType: AUDIT_ACTIONS.PROPERTY_REJECTED,
         req,
         entityId: req.params.id,
         entityType: 'property',
+        metadata: { reason },
     });
 
     return res.status(200).json({
@@ -54,11 +58,13 @@ const rejectProperty = catchAsync(async (req, res) => {
 const approveSale = catchAsync(async (req, res) => {
     // Ensure req.body is defined to avoid crashes
     const signatureHash = (req.body && req.body.signatureHash) || null;
+    const reason = req.body?.reason?.trim() || null;
 
     const { sale, txHash } = await authorityService.approveSaleTransaction(
         req.params.id,
         req.user.walletAddress,
-        signatureHash
+        signatureHash,
+        reason
     );
 
     await auditService.log({
@@ -66,6 +72,7 @@ const approveSale = catchAsync(async (req, res) => {
         req,
         entityId: req.params.id,
         entityType: 'sale_transaction',
+        metadata: { reason },
     });
 
     return res.status(200).json({
@@ -80,14 +87,15 @@ const approveSale = catchAsync(async (req, res) => {
  * POST /api/authority/sale/:id/reject
  */
 const rejectSale = catchAsync(async (req, res) => {
-    const sale = await authorityService.rejectSaleTransaction(req.params.id);
+    const reason = req.body?.reason?.trim() || null;
+    const sale = await authorityService.rejectSaleTransaction(req.params.id, reason);
 
     await auditService.log({
         actionType: AUDIT_ACTIONS.SALE_CANCELLED,
         req,
         entityId: req.params.id,
         entityType: 'sale_transaction',
-        metadata: { rejectedByAuthority: true },
+        metadata: { rejectedByAuthority: true, reason },
     });
 
     return res.status(200).json({
@@ -102,7 +110,8 @@ const rejectSale = catchAsync(async (req, res) => {
  */
 const setEncumbrance = catchAsync(async (req, res) => {
     const flag = req.body?.encumbrance === true;
-    const property = await authorityService.setEncumbrance(req.params.id, flag);
+    const reason = req.body?.reason?.trim() || null;
+    const property = await authorityService.setEncumbrance(req.params.id, flag, reason);
     const actionType = flag ? AUDIT_ACTIONS.ENCUMBRANCE_SET : AUDIT_ACTIONS.ENCUMBRANCE_CLEARED;
 
     await auditService.log({
@@ -110,6 +119,7 @@ const setEncumbrance = catchAsync(async (req, res) => {
         req,
         entityId: req.params.id,
         entityType: 'property',
+        metadata: flag && reason ? { reason } : undefined,
     });
 
     return res.status(200).json({

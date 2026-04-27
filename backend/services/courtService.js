@@ -59,15 +59,22 @@ const freezeProperty = async ({ propertyId, courtOrderHash, caseNumber, reason }
 /**
  * Reverse a court freeze.
  */
-const reverseFreezeOrder = async (freezeOrderId, { reversalOrderHash, reason }, courtUserId) => {
-    // Get the freeze order
+const reverseFreezeOrder = async (propertyOrFreezeId, { courtOrderHash, reversalOrderHash, reason }, courtUserId) => {
+    // Accept either field name from the frontend
+    const orderHash = reversalOrderHash || courtOrderHash;
+
+    // The frontend sends the property ID (not the freeze order UUID).
+    // Find the most recent active freeze order for this property.
     const freezeResult = await pool.query(
-        'SELECT * FROM court_freeze_orders WHERE id = $1 LIMIT 1',
-        [freezeOrderId]
+        `SELECT * FROM court_freeze_orders
+         WHERE (id = $1 OR property_id = $1) AND is_active = TRUE
+         ORDER BY frozen_at DESC LIMIT 1`,
+        [propertyOrFreezeId]
     );
     const freezeOrder = freezeResult.rows[0];
-    if (!freezeOrder) throw new AppError('Freeze order not found.', 404);
-    if (!freezeOrder.is_active) throw new AppError('This freeze order is already reversed.', 400);
+    if (!freezeOrder) throw new AppError('No active freeze order found for this property.', 404);
+
+    const freezeOrderId = freezeOrder.id; // use the real freeze order UUID from here on
 
     return withTransaction(async (client) => {
         // Deactivate freeze order
@@ -87,7 +94,7 @@ const reverseFreezeOrder = async (freezeOrderId, { reversalOrderHash, reason }, 
             `INSERT INTO court_reversals
        (freeze_order_id, property_id, court_user_id, reversal_order_hash, previous_owner_wallet, reason)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-            [freezeOrderId, freezeOrder.property_id, courtUserId, reversalOrderHash,
+            [freezeOrderId, freezeOrder.property_id, courtUserId, orderHash,
                 property?.ownerWallet || null, reason || null]
         );
 

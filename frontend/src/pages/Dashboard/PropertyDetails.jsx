@@ -8,7 +8,7 @@ import {
     MapPin, Building, FileText, Activity, ArrowLeft, Loader2,
     CheckCircle2, ShieldAlert, DollarSign, ExternalLink, Copy,
     Clock, Hash, Wallet, Shield, Lock, ArrowUpRight, ArrowDownLeft,
-    AlertTriangle, Globe
+    AlertTriangle, Globe, Gavel, XCircle
 } from 'lucide-react';
 import './PropertyPages.css';
 
@@ -21,6 +21,7 @@ const PropertyDetails = () => {
     const [property, setProperty] = useState(null);
     const [documents, setDocuments] = useState([]);
     const [transactions, setTransactions] = useState([]);
+    const [freezeOrders, setFreezeOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [saleForm, setSaleForm] = useState({ buyerWallet: '', price: '' });
@@ -37,9 +38,17 @@ const PropertyDetails = () => {
                     propertyService.getDocuments(id),
                     saleService.getTransactionsByProperty(id),
                 ]);
-                setProperty(propRes.data.data);
+                const propData = propRes.data.data;
+                setProperty(propData);
                 setDocuments(docRes.data.data || []);
                 setTransactions(txRes.data.data || []);
+                // Fetch freeze orders if property is frozen or under dispute
+                if (propData?.status === 'frozen' || propData?.status === 'under_dispute') {
+                    try {
+                        const frozenRes = await propertyService.getFreezeOrders(id);
+                        setFreezeOrders(frozenRes.data.data || []);
+                    } catch (_) { /* non-critical */ }
+                }
             } catch (err) {
                 setError('Failed to load property details');
                 console.error(err);
@@ -170,7 +179,7 @@ const PropertyDetails = () => {
                                     <div className="cyber-badge-dot" style={{ background: sc.color, boxShadow: `0 0 5px ${sc.color}` }}></div>
                                     {property.status?.toUpperCase()}
                                 </div>
-                                {property.encumbranceStatus && property.encumbranceStatus !== 'clear' && (
+                                {property.encumbranceStatus && (
                                     <div className="cyber-badge" style={{ '--badge-color': '#EF4444', '--badge-bg': 'rgba(239,68,68,0.1)', '--badge-border': 'rgba(239,68,68,0.3)' }}>
                                         <Shield size={12} style={{ marginRight: '0.2rem' }} /> ENCUMBERED
                                     </div>
@@ -183,7 +192,7 @@ const PropertyDetails = () => {
                             <div className="cyber-data-item">
                                 <p className="label">Property Record ID</p>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                    <p className="value" style={{ color: '#00E5FF' }}>{property.id.slice(0, 12)}...</p>
+                                    <p className="value" style={{ color: '#00E5FF', wordBreak: 'break-all' }}>{property.id}</p>
                                     <button onClick={() => handleCopy(property.id, 'id')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied === 'id' ? '#00E5FF' : '#9ca3af', padding: 0 }}>
                                         {copied === 'id' ? <CheckCircle2 size={14} /> : <Copy size={14} />}
                                     </button>
@@ -305,17 +314,160 @@ const PropertyDetails = () => {
                             </div>
                         )}
 
-                        {/* Status info */}
+                        {/* ── Court Freeze / Dispute Panel ── */}
+                        {(property.status === 'frozen' || property.status === 'under_dispute') && (
+                            <div className="cyber-hud-bar" style={{
+                                padding: '1.75rem',
+                                borderLeft: `4px solid ${property.status === 'frozen' ? '#3B82F6' : '#EF4444'}`,
+                                position: 'relative', overflow: 'hidden',
+                            }}>
+                                <div className="cyber-card-glow-orb" style={{
+                                    background: property.status === 'frozen' ? '#3B82F6' : '#EF4444',
+                                    opacity: 0.06, top: '-2rem', right: '-2rem', width: '10rem', height: '10rem',
+                                }} />
+                                <div style={{ position: 'relative', zIndex: 10 }}>
+                                    <h4 style={{
+                                        fontSize: '1rem', fontWeight: 800, marginBottom: '0.4rem',
+                                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                        color: property.status === 'frozen' ? '#60a5fa' : '#f87171',
+                                    }}>
+                                        <Gavel size={18} />
+                                        {property.status === 'frozen' ? 'Court Freeze Order Active' : 'Property Under Legal Dispute'}
+                                    </h4>
+                                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                                        {property.status === 'frozen'
+                                            ? 'This property has been frozen by a judicial court order. All transfers and sales are suspended until the freeze is lifted.'
+                                            : 'This property is currently under an active legal dispute. Operations may be restricted.'}
+                                    </p>
+
+                                    {freezeOrders.length === 0 ? (
+                                        <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.08)' }}>
+                                            <p style={{ fontSize: '0.8rem', color: '#6b7280', textAlign: 'center' }}>Freeze order details are being retrieved...</p>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                            {freezeOrders.map((order, i) => (
+                                                <div key={order.id} style={{
+                                                    padding: '1rem 1.25rem',
+                                                    background: order.is_active ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.02)',
+                                                    border: `1px solid ${order.is_active ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                                                    borderRadius: '10px',
+                                                }}>
+                                                    {/* Status + Order number */}
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af' }}>
+                                                            Order #{freezeOrders.length - i}
+                                                        </span>
+                                                        <span style={{
+                                                            fontSize: '0.6rem', fontWeight: 700, padding: '2px 8px', borderRadius: '9999px',
+                                                            background: order.is_active ? 'rgba(59,130,246,0.12)' : 'rgba(34,197,94,0.08)',
+                                                            border: `1px solid ${order.is_active ? 'rgba(59,130,246,0.3)' : 'rgba(34,197,94,0.25)'}`,
+                                                            color: order.is_active ? '#60a5fa' : '#22c55e',
+                                                        }}>
+                                                            {order.is_active ? 'ACTIVE' : 'REVERSED'}
+                                                        </span>
+                                                    </div>
+
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                                                        {order.case_number && (
+                                                            <div>
+                                                                <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6b7280', marginBottom: '0.2rem' }}>Case Number</p>
+                                                                <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'white', fontFamily: 'JetBrains Mono, monospace' }}>{order.case_number}</p>
+                                                            </div>
+                                                        )}
+                                                        <div>
+                                                            <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6b7280', marginBottom: '0.2rem' }}>Issued On</p>
+                                                            <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'white' }}>{new Date(order.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                                        </div>
+                                                        {order.court_officer_name && (
+                                                            <div style={{ gridColumn: '1 / -1' }}>
+                                                                <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6b7280', marginBottom: '0.2rem' }}>Issuing Court Officer</p>
+                                                                <p style={{ fontSize: '0.82rem', color: '#d1d5db' }}>{order.court_officer_name}</p>
+                                                            </div>
+                                                        )}
+                                                        {order.reason && (
+                                                            <div style={{ gridColumn: '1 / -1' }}>
+                                                                <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6b7280', marginBottom: '0.2rem' }}>Reason</p>
+                                                                <p style={{ fontSize: '0.82rem', color: '#d1d5db', lineHeight: 1.5 }}>{order.reason}</p>
+                                                            </div>
+                                                        )}
+                                                        {order.court_order_hash && (
+                                                            <div style={{ gridColumn: '1 / -1' }}>
+                                                                <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6b7280', marginBottom: '0.3rem' }}>Court Order Document</p>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                                    <code style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', color: '#60a5fa', wordBreak: 'break-all', flex: 1, lineHeight: 1.5 }}>
+                                                                        {order.court_order_hash}
+                                                                    </code>
+                                                                    <a
+                                                                        href={`https://gateway.pinata.cloud/ipfs/${order.court_order_hash}`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: '#60a5fa', textDecoration: 'none', whiteSpace: 'nowrap', background: 'rgba(59,130,246,0.1)', padding: '0.3rem 0.6rem', borderRadius: '6px', border: '1px solid rgba(59,130,246,0.25)' }}
+                                                                    >
+                                                                        <ExternalLink size={11} /> View Order
+                                                                    </a>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Legal Standing Panel */}
                         <div className="cyber-hud-bar" style={{ padding: '1.25rem' }}>
-                            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Legal Encumbrance Status</p>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <div className="cyber-badge-dot" style={{
-                                    background: (!property.encumbranceStatus || property.encumbranceStatus === 'clear') ? '#00E5FF' : '#EF4444',
-                                    boxShadow: `0 0 8px ${(!property.encumbranceStatus || property.encumbranceStatus === 'clear') ? '#00E5FF' : '#EF4444'}`
-                                }}></div>
-                                <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'white' }}>
-                                    {(!property.encumbranceStatus || property.encumbranceStatus === 'clear') ? 'Clear Record — No Encumbrances' : property.encumbranceStatus?.toUpperCase()}
-                                </span>
+                            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', marginBottom: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Legal Standing</p>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+
+                                {/* Frozen */}
+                                {property.status === 'frozen' && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.75rem', borderRadius: '8px', background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                                        <Lock size={13} style={{ color: '#3B82F6', flexShrink: 0 }} />
+                                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#93c5fd' }}>Court Freeze Active — Transfers Suspended</span>
+                                    </div>
+                                )}
+
+                                {/* Under Dispute */}
+                                {property.status === 'under_dispute' && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.75rem', borderRadius: '8px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                        <AlertTriangle size={13} style={{ color: '#EF4444', flexShrink: 0 }} />
+                                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#fca5a5' }}>Under Active Legal Dispute</span>
+                                    </div>
+                                )}
+
+                                {/* Encumbrance */}
+                                {property.encumbranceStatus ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.75rem', borderRadius: '8px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                            <Shield size={13} style={{ color: '#EF4444', flexShrink: 0 }} />
+                                            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#fca5a5' }}>Encumbrance Flagged</span>
+                                        </div>
+                                        {property.encumbranceReason && (
+                                            <div style={{ padding: '0.5rem 0.75rem', borderRadius: '6px', background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)' }}>
+                                                <p style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#6b7280', marginBottom: '0.2rem' }}>Reason</p>
+                                                <p style={{ fontSize: '0.8rem', color: '#fca5a5', lineHeight: 1.5 }}>{property.encumbranceReason}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.75rem', borderRadius: '8px', background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.12)' }}>
+                                        <div className="cyber-badge-dot" style={{ background: '#00E5FF', boxShadow: '0 0 6px #00E5FF', flexShrink: 0 }}></div>
+                                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>No Encumbrances on Record</span>
+                                    </div>
+                                )}
+
+                                {/* All clear summary */}
+                                {!property.encumbranceStatus && property.status !== 'frozen' && property.status !== 'under_dispute' && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.75rem', borderRadius: '8px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}>
+                                        <CheckCircle2 size={13} style={{ color: '#22c55e', flexShrink: 0 }} />
+                                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#86efac' }}>Clear Record — No Legal Restrictions</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

@@ -92,6 +92,12 @@ const DashboardHome = () => {
         if (prop.status === 'rejected') {
             notifications.push({ id: `${prop.id}-rejected`, type: 'danger', icon: XCircle, text: `Property registration rejected — Survey #${prop.surveyNumber}`, time: prop.updatedAt || prop.createdAt });
         }
+        if (prop.status === 'frozen') {
+            notifications.push({ id: `${prop.id}-frozen`, type: 'danger', icon: AlertTriangle, text: `${prop.propertyCode || 'Property'} (Survey #${prop.surveyNumber}) frozen by court order — all transfers suspended.`, time: prop.updatedAt || prop.createdAt });
+        }
+        if (prop.status === 'under_dispute') {
+            notifications.push({ id: `${prop.id}-dispute`, type: 'warning', icon: AlertTriangle, text: `${prop.propertyCode || 'Property'} (Survey #${prop.surveyNumber}) is under active legal dispute.`, time: prop.updatedAt || prop.createdAt });
+        }
     });
 
     if (user?.kycStatus === 'pending') {
@@ -273,11 +279,11 @@ const DashboardHome = () => {
                                     </div>
                                     <div>
                                         <span className="cyber-badge" style={{ 
-                                            '--badge-color': (prop.status === 'active' || prop.status === 'verified') ? '#00E5FF' : (prop.status === 'rejected') ? '#EF4444' : '#F59E0B',
+                                            '--badge-color': (prop.status === 'active' || prop.status === 'verified') ? '#00E5FF' : prop.status === 'frozen' ? '#3B82F6' : prop.status === 'under_dispute' ? '#EF4444' : (prop.status === 'rejected') ? '#EF4444' : '#F59E0B',
                                             '--badge-bg': 'transparent',
                                             padding: 0
                                         }}>
-                                            {prop.status?.toUpperCase()}
+                                            {prop.status?.replace('_', ' ').toUpperCase()}
                                         </span>
                                     </div>
                                 </div>
