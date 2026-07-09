@@ -12,7 +12,7 @@ const AppError = require('../utils/AppError');
 /**
  * Register a new user with wallet address.
  */
-const register = async ({ walletAddress, name, email, password, phone, governmentId, role, birthdate }) => {
+const register = async ({ walletAddress, name, email, password, phone, governmentId, governmentIdType, houseNumber, locality, city, pinCode, state, country, role, birthdate }) => {
     // Check uniqueness
     const existingWallet = await User.findByWallet(walletAddress);
     if (existingWallet) {
@@ -41,6 +41,13 @@ const register = async ({ walletAddress, name, email, password, phone, governmen
         password: hashedPassword,
         phone,
         governmentIdHash,
+        governmentIdType,
+        houseNumber,
+        locality,
+        city,
+        pinCode,
+        state,
+        country,
         role: role || 'user',
         authNonce,
         birthdate,
@@ -121,7 +128,7 @@ const bindFaceId = async (userId, faceIdHash) => {
 /**
  * Update user profile (email, phone).
  */
-const updateProfile = async (userId, { email, phone, walletAddress }) => {
+const updateProfile = async (userId, { email, phone, houseNumber, locality, city, pinCode, state, country, walletAddress }) => {
     const user = await User.findById(userId);
     if (!user) throw new AppError('User not found.', 404);
 
@@ -142,7 +149,16 @@ const updateProfile = async (userId, { email, phone, walletAddress }) => {
         await User.updateWallet(userId, walletAddress);
     }
 
-    return User.updateProfile(userId, { email: email || null, phone: phone || null });
+    return User.updateProfile(userId, { 
+        email: email || null, 
+        phone: phone || null, 
+        houseNumber: houseNumber || null, 
+        locality: locality || null, 
+        city: city || null, 
+        pinCode: pinCode || null, 
+        state: state || null, 
+        country: country || null 
+    });
 };
 
 
