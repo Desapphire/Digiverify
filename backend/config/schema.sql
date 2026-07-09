@@ -17,6 +17,14 @@ DO $$ BEGIN
   ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_nonce VARCHAR(64);
   ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_status VARCHAR(20) NOT NULL DEFAULT 'pending';
   ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_document_hash VARCHAR(128);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS birthdate DATE;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS government_id_type VARCHAR(30) CHECK (government_id_type IN ('Aadhar', 'Passport', 'Voter ID', 'Driving License'));
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS house_number VARCHAR(256);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS locality VARCHAR(256);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(128);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS pin_code VARCHAR(20);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS state VARCHAR(128);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(128);
   ALTER TABLE users ADD COLUMN IF NOT EXISTS face_verified BOOLEAN NOT NULL DEFAULT FALSE;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
@@ -53,17 +61,25 @@ CREATE TABLE IF NOT EXISTS users (
     email               VARCHAR(255) NOT NULL UNIQUE,
     phone               VARCHAR(20),
     government_id_hash  VARCHAR(256),             -- AES-encrypted government ID
+    government_id_type  VARCHAR(30) CHECK (government_id_type IN ('Aadhar', 'Passport', 'Voter ID', 'Driving License')),
+    house_number        VARCHAR(256),
+    locality            VARCHAR(256),
+    city                VARCHAR(128),
+    pin_code            VARCHAR(20),
+    state               VARCHAR(128),
+    country             VARCHAR(128),
     password            TEXT,                     -- Legacy; nullable for wallet-only users
     role                VARCHAR(20) NOT NULL DEFAULT 'user'
                             CHECK (role IN (
-                                'user','authority','court',
-                                'bank_admin','super_admin'
+                                 'user','authority','court',
+                                 'bank_admin','super_admin'
                             )),
     auth_nonce          VARCHAR(64),              -- Current nonce for wallet signing
     kyc_status          VARCHAR(20) NOT NULL DEFAULT 'pending'
                             CHECK (kyc_status IN ('pending','verified','rejected')),
     kyc_document_hash   VARCHAR(128),             -- IPFS hash of KYC docs
     face_verified       BOOLEAN NOT NULL DEFAULT FALSE,
+    birthdate           DATE,
     is_active           BOOLEAN NOT NULL DEFAULT TRUE,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()

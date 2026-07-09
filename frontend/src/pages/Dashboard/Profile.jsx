@@ -18,6 +18,12 @@ const UserDashboard = () => {
     const [editMode, setEditMode] = useState(false);
     const [editEmail, setEditEmail] = useState('');
     const [editPhone, setEditPhone] = useState('');
+    const [editHouseNumber, setEditHouseNumber] = useState('');
+    const [editLocality, setEditLocality] = useState('');
+    const [editCity, setEditCity] = useState('');
+    const [editPinCode, setEditPinCode] = useState('');
+    const [editState, setEditState] = useState('');
+    const [editCountry, setEditCountry] = useState('');
     const [profileSaving, setProfileSaving] = useState(false);
     const [profileMsg, setProfileMsg] = useState({ type: '', text: '' });
 
@@ -90,6 +96,12 @@ const UserDashboard = () => {
     const startEdit = () => {
         setEditEmail(profile?.email || '');
         setEditPhone(profile?.phone || '');
+        setEditHouseNumber(profile?.houseNumber || '');
+        setEditLocality(profile?.locality || '');
+        setEditCity(profile?.city || '');
+        setEditPinCode(profile?.pinCode || '');
+        setEditState(profile?.state || '');
+        setEditCountry(profile?.country || '');
         setEditMode(true);
         setProfileMsg({ type: '', text: '' });
     };
@@ -106,6 +118,12 @@ const UserDashboard = () => {
             const payload = {};
             if (editEmail && editEmail !== profile?.email) payload.email = editEmail;
             if (editPhone && editPhone !== profile?.phone) payload.phone = editPhone;
+            if (editHouseNumber !== profile?.houseNumber) payload.houseNumber = editHouseNumber;
+            if (editLocality !== profile?.locality) payload.locality = editLocality;
+            if (editCity !== profile?.city) payload.city = editCity;
+            if (editPinCode !== profile?.pinCode) payload.pinCode = editPinCode;
+            if (editState !== profile?.state) payload.state = editState;
+            if (editCountry !== profile?.country) payload.country = editCountry;
 
             if (Object.keys(payload).length === 0) {
                 setProfileMsg({ type: 'info', text: 'No changes to save.' });
@@ -210,6 +228,18 @@ const UserDashboard = () => {
                                 <span className="value" style={{ color: '#00E5FF', textTransform: 'uppercase' }}>{data?.role || 'user'}</span>
                             </div>
                             <div className="cyber-data-item">
+                                <span className="label">Govt ID Type</span>
+                                <span className="value">{data?.governmentIdType || 'Not Provided'}</span>
+                            </div>
+                            <div className="cyber-data-item" style={{ gridColumn: 'span 2' }}>
+                                <span className="label">Registered Address</span>
+                                <span className="value">
+                                    {data?.houseNumber || data?.locality || data?.city || data?.pinCode || data?.state || data?.country ? (
+                                        `${data.houseNumber || ''}, ${data.locality || ''}, ${data.city || ''} - ${data.pinCode || ''}, ${data.state || ''}, ${data.country || ''}`.replace(/^, /, '').replace(/,\s*,/g, ',')
+                                    ) : 'Not Provided'}
+                                </span>
+                            </div>
+                            <div className="cyber-data-item">
                                 <span className="label">Initialization Date</span>
                                 <span className="value">{data?.createdAt ? new Date(data.createdAt).toLocaleDateString() : '—'}</span>
                             </div>
@@ -243,6 +273,70 @@ const UserDashboard = () => {
                                         style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
                                         placeholder="+000 000 000"
                                     />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>House No. & Street Name</label>
+                                    <input
+                                        type="text"
+                                        value={editHouseNumber}
+                                        onChange={(e) => setEditHouseNumber(e.target.value)}
+                                        style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
+                                        placeholder="Flat 302, Cyber Tower"
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>Locality / Area</label>
+                                    <input
+                                        type="text"
+                                        value={editLocality}
+                                        onChange={(e) => setEditLocality(e.target.value)}
+                                        style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
+                                        placeholder="Madhapur"
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>City</label>
+                                        <input
+                                            type="text"
+                                            value={editCity}
+                                            onChange={(e) => setEditCity(e.target.value)}
+                                            style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
+                                            placeholder="Hyderabad"
+                                        />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>PIN Code</label>
+                                        <input
+                                            type="text"
+                                            value={editPinCode}
+                                            onChange={(e) => setEditPinCode(e.target.value)}
+                                            style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
+                                            placeholder="500081"
+                                        />
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>State</label>
+                                        <input
+                                            type="text"
+                                            value={editState}
+                                            onChange={(e) => setEditState(e.target.value)}
+                                            style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
+                                            placeholder="Telangana"
+                                        />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>Country</label>
+                                        <input
+                                            type="text"
+                                            value={editCountry}
+                                            onChange={(e) => setEditCountry(e.target.value)}
+                                            style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
+                                            placeholder="India"
+                                        />
+                                    </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                                     <button className="cyber-btn-hollow" onClick={handleSaveProfile} disabled={profileSaving} style={{ '--btn-color': '#00E5FF' }}>

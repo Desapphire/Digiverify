@@ -20,6 +20,13 @@ const Register = () => {
         birthdate: '',
         phone: '',
         governmentId: '',
+        governmentIdType: '',
+        houseNumber: '',
+        locality: '',
+        city: '',
+        pinCode: '',
+        state: '',
+        country: '',
         faceIdHash: ''
     });
 
@@ -49,6 +56,13 @@ const Register = () => {
                 birthdate: formData.birthdate,
                 phone: formData.phone || undefined,
                 governmentId: formData.governmentId || undefined,
+                governmentIdType: formData.governmentIdType || undefined,
+                houseNumber: formData.houseNumber || undefined,
+                locality: formData.locality || undefined,
+                city: formData.city || undefined,
+                pinCode: formData.pinCode || undefined,
+                state: formData.state || undefined,
+                country: formData.country || undefined,
                 walletAddress: account,
                 role: 'user'
             };
@@ -114,7 +128,7 @@ const Register = () => {
                             </h1>
                             <p className="text-muted text-sm font-medium">Digital Verification System</p>
                         </div>
-
+ 
                         {/* Premium Web3 Progress Stepper using index.css */}
                         <div className="stepper" style={{ marginBottom: '2.5rem' }}>
                             <div className={`stepper-step ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
@@ -127,13 +141,13 @@ const Register = () => {
                                 <div className="stepper-circle">3</div>
                             </div>
                         </div>
-
+ 
                         {error && (
                             <div className="mb-6 p-4 rounded-xl text-danger text-sm font-bold text-center" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                                 {error}
                             </div>
                         )}
-
+ 
                         <form onSubmit={(e) => { e.preventDefault(); if (step === 3) handleRegister(e); }} style={{ width: '100%' }}>
                             {step === 1 && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -144,7 +158,7 @@ const Register = () => {
                                             <input type="text" name="name" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="E.g. Akhil Soni" value={formData.name} onChange={handleChange} required />
                                         </div>
                                     </div>
-
+ 
                                     <div style={{ display: 'flex', gap: '1rem' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
                                             <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Birthdate</label>
@@ -182,7 +196,7 @@ const Register = () => {
                                             </div>
                                         </div>
                                     </div>
-
+ 
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Email Account</label>
                                         <div className="relative">
@@ -190,7 +204,7 @@ const Register = () => {
                                             <input type="email" name="email" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="rashi.bora24@vit.edu" value={formData.email} onChange={handleChange} required />
                                         </div>
                                     </div>
-
+ 
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Secure Password</label>
                                         <div className="relative">
@@ -198,12 +212,77 @@ const Register = () => {
                                             <input type="password" name="password" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="Min 8 characters" value={formData.password} onChange={handleChange} required />
                                         </div>
                                     </div>
+ 
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                                            <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Govt ID Type <span style={{ opacity: 0.5 }}>(Opt)</span></label>
+                                            <div className="relative">
+                                                <IdCard className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
+                                                <select name="governmentIdType" className="input-premium cursor-pointer" style={{ paddingLeft: '3rem', width: '100%', height: '3.1rem', appearance: 'none', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: formData.governmentIdType ? 'white' : '#6b7280' }} value={formData.governmentIdType} onChange={handleChange}>
+                                                    <option value="" style={{ background: '#050505' }}>Select ID Type</option>
+                                                    <option value="Aadhar" style={{ background: '#050505' }}>Aadhar</option>
+                                                    <option value="Passport" style={{ background: '#050505' }}>Passport</option>
+                                                    <option value="Voter ID" style={{ background: '#050505' }}>Voter ID</option>
+                                                    <option value="Driving License" style={{ background: '#050505' }}>Driving License</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                                            <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Govt ID Number <span style={{ opacity: 0.5 }}>(Opt)</span></label>
+                                            <div className="relative">
+                                                <IdCard className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
+                                                <input type="text" name="governmentId" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="ID Number" value={formData.governmentId} onChange={handleChange} />
+                                            </div>
+                                        </div>
+                                    </div>
+ 
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>House No., Street Name <span style={{ opacity: 0.5 }}>(Opt)</span></label>
+                                        <div className="relative">
+                                            <Wallet className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
+                                            <input type="text" name="houseNumber" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="E.g. Flat 302, Cyber Tower" value={formData.houseNumber} onChange={handleChange} />
+                                        </div>
+                                    </div>
 
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Govt ID Number <span style={{ opacity: 0.5 }}>(Opt)</span></label>
+                                        <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Locality / Area <span style={{ opacity: 0.5 }}>(Opt)</span></label>
                                         <div className="relative">
-                                            <IdCard className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
-                                            <input type="text" name="governmentId" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="UID / SSN / Passport" value={formData.governmentId} onChange={handleChange} />
+                                            <Wallet className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
+                                            <input type="text" name="locality" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="E.g. Madhapur" value={formData.locality} onChange={handleChange} />
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                                            <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>City <span style={{ opacity: 0.5 }}>(Opt)</span></label>
+                                            <div className="relative">
+                                                <Wallet className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
+                                                <input type="text" name="city" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="E.g. Hyderabad" value={formData.city} onChange={handleChange} />
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                                            <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>PIN Code <span style={{ opacity: 0.5 }}>(Opt)</span></label>
+                                            <div className="relative">
+                                                <Wallet className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
+                                                <input type="text" name="pinCode" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="E.g. 500081" value={formData.pinCode} onChange={handleChange} />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                                            <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>State <span style={{ opacity: 0.5 }}>(Opt)</span></label>
+                                            <div className="relative">
+                                                <Wallet className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
+                                                <input type="text" name="state" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="E.g. Telangana" value={formData.state} onChange={handleChange} />
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                                            <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Country <span style={{ opacity: 0.5 }}>(Opt)</span></label>
+                                            <div className="relative">
+                                                <Wallet className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
+                                                <input type="text" name="country" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="E.g. India" value={formData.country} onChange={handleChange} />
+                                            </div>
                                         </div>
                                     </div>
 

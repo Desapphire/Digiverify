@@ -700,7 +700,7 @@ const PropertyInvestigation = () => {
                                 onClick={submitForceTransfer}
                                 disabled={!forceNewOwner.trim() || !forceReason.trim() || !forceHash || actionLoading === forceTransferModal?.propId}
                                 style={{
-                                    padding: '0.85rem', borderRadius: '10px', border: 'none',
+                                    padding: '0.85rem', borderRadius: '10px',
                                     background: (forceNewOwner.trim() && forceReason.trim() && forceHash) ? 'rgba(168,85,247,0.15)' : 'rgba(255,255,255,0.04)',
                                     color: (forceNewOwner.trim() && forceReason.trim() && forceHash) ? '#d8b4fe' : '#6b7280',
                                     fontWeight: 700, fontSize: '0.88rem', cursor: (forceNewOwner.trim() && forceReason.trim() && forceHash) ? 'pointer' : 'not-allowed',
