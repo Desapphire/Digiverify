@@ -8,25 +8,39 @@ const { pool } = require('../config/db');
 const { AUDIT_ACTIONS } = require('../config/constants');
 const catchAsync = require('../utils/catchAsync');
 
+const tempStorage = require('../utils/tempStorage');
+
 /**
  * POST /api/properties
  */
 const registerProperty = catchAsync(async (req, res) => {
-    const { property, txHash } = await propertyService.registerProperty(req.body, req.user.walletAddress, req.user.id);
+    const uploadedList = [];
+    try {
+        // Resolve any temporary local cache hashes in the payload to real Pinata IPFS hashes
+        await tempStorage.resolveAllHashes(req.body, uploadedList);
 
-    await auditService.log({
-        actionType: AUDIT_ACTIONS.PROPERTY_REGISTERED,
-        req,
-        entityId: property.id,
-        entityType: 'property',
-    });
+        const { property, txHash } = await propertyService.registerProperty(req.body, req.user.walletAddress, req.user.id);
 
-    return res.status(201).json({
-        success: true,
-        message: 'Property registered and queued for approval.',
-        data: property,
-        blockchainTxHash: txHash
-    });
+        await auditService.log({
+            actionType: AUDIT_ACTIONS.PROPERTY_REGISTERED,
+            req,
+            entityId: property.id,
+            entityType: 'property',
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: 'Property registered and queued for approval.',
+            data: property,
+            blockchainTxHash: txHash
+        });
+    } catch (err) {
+        // Rollback: unpin files from Pinata if the registration failed
+        for (const hash of uploadedList) {
+            await tempStorage.unpinFromPinata(hash);
+        }
+        throw err;
+    }
 });
 
 /**

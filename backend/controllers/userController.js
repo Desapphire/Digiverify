@@ -64,26 +64,37 @@ const register = catchAsync(async (req, res) => {
     });
 });
 
+const tempStorage = require('../utils/tempStorage');
+
 /**
  * POST /api/users/kyc
  * Submit KYC document hash.
  */
 const submitKyc = catchAsync(async (req, res) => {
-    const user = await userService.submitKyc(req.user.id, req.body.kycDocumentHash);
+    const uploadedList = [];
+    try {
+        await tempStorage.resolveAllHashes(req.body, uploadedList);
+        const user = await userService.submitKyc(req.user.id, req.body.kycDocumentHash);
 
-    await auditService.log({
-        actionType: AUDIT_ACTIONS.KYC_SUBMITTED,
-        req,
-        entityId: req.user.id,
-        entityType: 'user',
-        metadata: { kycDocumentHash: req.body.kycDocumentHash },
-    });
+        await auditService.log({
+            actionType: AUDIT_ACTIONS.KYC_SUBMITTED,
+            req,
+            entityId: req.user.id,
+            entityType: 'user',
+            metadata: { kycDocumentHash: req.body.kycDocumentHash },
+        });
 
-    return res.status(200).json({
-        success: true,
-        message: 'KYC documents submitted for review.',
-        data: user,
-    });
+        return res.status(200).json({
+            success: true,
+            message: 'KYC documents submitted for review.',
+            data: user,
+        });
+    } catch (err) {
+        for (const hash of uploadedList) {
+            await tempStorage.unpinFromPinata(hash);
+        }
+        throw err;
+    }
 });
 
 /**

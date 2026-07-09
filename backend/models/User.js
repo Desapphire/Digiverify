@@ -14,6 +14,13 @@ const mapUser = (row) => {
         email: row.email,
         phone: row.phone,
         governmentIdHash: row.government_id_hash,
+        governmentIdType: row.government_id_type,
+        houseNumber: row.house_number,
+        locality: row.locality,
+        city: row.city,
+        pinCode: row.pin_code,
+        state: row.state,
+        country: row.country,
         role: row.role,
         authNonce: row.auth_nonce,
         kycStatus: row.kyc_status,
@@ -69,15 +76,19 @@ const findAll = async (limit = 50, offset = 0) => {
 };
 
 const create = async ({
-    walletAddress, name, email, password, phone, governmentIdHash, role, authNonce, birthdate,
+    walletAddress, name, email, password, phone, governmentIdHash, governmentIdType,
+    houseNumber, locality, city, pinCode, state, country, role, authNonce, birthdate,
 }) => {
     const id = crypto.randomUUID();
     const normalizedWallet = walletAddress ? walletAddress.toLowerCase() : null;
     const result = await pool.query(
-        `INSERT INTO users (id, wallet_address, name, email, password, phone, government_id_hash, role, auth_nonce, birthdate)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `INSERT INTO users (id, wallet_address, name, email, password, phone, government_id_hash, government_id_type,
+         house_number, locality, city, pin_code, state, country, role, auth_nonce, birthdate)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
      RETURNING *`,
-        [id, normalizedWallet, name, email, password || null, phone || null, governmentIdHash || null, role || 'user', authNonce || null, birthdate || null]
+        [id, normalizedWallet, name, email, password || null, phone || null, governmentIdHash || null, governmentIdType || null,
+         houseNumber || null, locality || null, city || null, pinCode || null, state || null, country || null,
+         role || 'user', authNonce || null, birthdate || null]
     );
     return mapUser(result.rows[0]);
 };
@@ -147,11 +158,20 @@ const updateFaceIdHash = async (id, faceIdHash) => {
     return mapUser(result.rows[0]);
 };
 
-const updateProfile = async (id, { email, phone }) => {
+const updateProfile = async (id, { email, phone, houseNumber, locality, city, pinCode, state, country }) => {
     const result = await pool.query(
-        `UPDATE users SET email = COALESCE($1, email), phone = COALESCE($2, phone), updated_at = NOW()
-     WHERE id = $3 RETURNING *`,
-        [email, phone, id]
+        `UPDATE users SET 
+            email = COALESCE($1, email), 
+            phone = COALESCE($2, phone), 
+            house_number = COALESCE($3, house_number), 
+            locality = COALESCE($4, locality), 
+            city = COALESCE($5, city), 
+            pin_code = COALESCE($6, pin_code), 
+            state = COALESCE($7, state), 
+            country = COALESCE($8, country), 
+            updated_at = NOW()
+     WHERE id = $9 RETURNING *`,
+        [email, phone, houseNumber, locality, city, pinCode, state, country, id]
     );
     return mapUser(result.rows[0]);
 };
