@@ -29,16 +29,29 @@ const registerUserSchema = z.object({
         name: z.string().min(2).max(128),
         email: z.string().email(),
         password: z.string().min(6),
-        phone: z.string().min(7).max(20).optional(),
-        governmentId: z.string().min(4).max(50).optional(),
-        governmentIdType: z.enum(['Aadhar', 'Passport', 'Voter ID', 'Driving License']).optional(),
-        houseNumber: z.string().max(256).optional(),
-        locality: z.string().max(256).optional(),
-        city: z.string().max(128).optional(),
-        pinCode: z.string().max(20).optional(),
-        state: z.string().max(128).optional(),
-        country: z.string().max(128).optional(),
-        birthdate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').optional(),
+        phone: z.string().min(7, 'Phone number must be at least 7 characters').max(20),
+        governmentId: z.string().min(4, 'Government ID must be at least 4 characters').max(50),
+        governmentIdType: z.enum(['Aadhar', 'Passport', 'Voter ID', 'Driving License']),
+        houseNumber: z.string().min(1, 'House number and street name are required').max(256),
+        locality: z.string().min(1, 'Locality/Area is required').max(256),
+        city: z.string().min(1, 'City is required').max(128),
+        pinCode: z.string().min(1, 'PIN code is required').max(20),
+        state: z.string().min(1, 'State is required').max(128),
+        country: z.string().min(1, 'Country is required').max(128),
+        birthdate: z.string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)')
+            .refine((val) => {
+                const birthDate = new Date(val);
+                const today = new Date();
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const monthDiff = today.getMonth() - birthDate.getMonth();
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                }
+                return age >= 18;
+            }, {
+                message: 'You must be at least 18 years old to register.'
+            }),
         role: z.enum(ALL_ROLES).optional(),
     }),
 });
