@@ -567,7 +567,7 @@ const PropertyInvestigation = () => {
                                 onClick={submitEncumbrance}
                                 disabled={!encumbranceReason.trim() || actionLoading === encumbranceModal?.propId}
                                 style={{
-                                    padding: '0.85rem', borderRadius: '10px', border: 'none',
+                                    padding: '0.85rem', borderRadius: '10px',
                                     background: encumbranceReason.trim() ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.04)',
                                     color: encumbranceReason.trim() ? '#f87171' : '#6b7280',
                                     fontWeight: 700, fontSize: '0.88rem', cursor: encumbranceReason.trim() ? 'pointer' : 'not-allowed',

@@ -13,7 +13,7 @@
 [![React](https://img.shields.io/badge/Frontend-React_19_/_Vite-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Database](https://img.shields.io/badge/Database-PostgreSQL_16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Storage](https://img.shields.io/badge/Storage-IPFS_/_Pinata-65C2CB?style=for-the-badge&logo=ipfs&logoColor=white)](https://ipfs.tech/)
-[![License](https://img.shields.io/badge/License-Proprietary_/_Non--Commercial-orange?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge)](LICENSE)
 
 </div>
 
@@ -316,7 +316,13 @@ npm run deploy:fuji
 
 ## License
 
-**Proprietary & Non-Commercial License.** This software is developed for research, educational, and demonstration purposes. Commercial resale, redistribution, or deployment without authorization is prohibited. Refer to the [LICENSE](LICENSE) file for complete terms.
+This project is licensed under the **Apache License, Version 2.0**. You may obtain a copy of the License in the [LICENSE](LICENSE) file or at:
+
+```
+http://www.apache.org/licenses/LICENSE-2.0
+```
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the [LICENSE](LICENSE) for specific language governing permissions and limitations under the License.
 
 ---
 
