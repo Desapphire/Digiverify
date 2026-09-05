@@ -73,3 +73,4 @@ temp/
 tmp_*.js
 test_*.js
 search_result.txt
+echo ML_Model/Makaan_Properties_Buy.csv >> .gitignore
