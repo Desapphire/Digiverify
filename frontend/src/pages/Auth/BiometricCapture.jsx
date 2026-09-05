@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Camera, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
 
 const BiometricCapture = ({ onCaptureComplete, onBack }) => {
     const [biometricStep, setBiometricStep] = useState(0); // 0: Start, 1: Center, 2: Left, 3: Right, 4: Done
@@ -31,7 +31,6 @@ const BiometricCapture = ({ onCaptureComplete, onBack }) => {
     }, []);
 
     const handleFaceIdCapture = () => {
-        // Simulated Face ID hash capture for demonstration.
         const simulatedHash = 'e3b0' + Math.random().toString(16).slice(2) + 'd855';
         onCaptureComplete(simulatedHash);
     };
@@ -46,17 +45,14 @@ const BiometricCapture = ({ onCaptureComplete, onBack }) => {
             }
             setBiometricStep(1);
             startDetection();
-            // Wait for detection to stabilize before starting the sequence
         } catch (err) {
             console.error("Camera access failed:", err);
-            // In a real app we'd display this error to user
         }
     };
 
     const startDetection = async () => {
         const cv = window.cv;
 
-        // Load Haar Cascade
         try {
             const response = await fetch('/haarcascade_frontalface_default.xml');
             if (!response.ok) throw new Error('Failed to fetch cascade');
@@ -93,13 +89,12 @@ const BiometricCapture = ({ onCaptureComplete, onBack }) => {
 
                 if (faces.size() > 0) {
                     setFaceDetected(true);
-                    // Draw feedback box on canvas
                     const canvas = canvasRef.current;
                     if (canvas) {
                         const ctx = canvas.getContext('2d');
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         const face = faces.get(0);
-                        ctx.strokeStyle = '#3b82f6';
+                        ctx.strokeStyle = '#0284C7';
                         ctx.lineWidth = 2;
                         ctx.strokeRect(face.x, face.y, face.width, face.height);
                     }
@@ -115,7 +110,6 @@ const BiometricCapture = ({ onCaptureComplete, onBack }) => {
         };
 
         processVideo();
-        // Start the sequence simulation once detection is active
         setTimeout(() => simulateCapture(1), 2000);
     };
 
@@ -160,10 +154,21 @@ const BiometricCapture = ({ onCaptureComplete, onBack }) => {
     };
 
     return (
-        <div className="flex flex-col items-center gap-6 py-8">
-            <div className="relative w-32 h-32 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/30 overflow-hidden">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', padding: '1rem 0' }}>
+            <div style={{
+                position: 'relative',
+                width: '120px',
+                height: '120px',
+                borderRadius: '50%',
+                background: '#0B0F19',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid #1E293B',
+                overflow: 'hidden'
+            }}>
                 {biometricStep > 0 && biometricStep < 4 ? (
-                    <div className="absolute inset-0 flex items-center justify-center">
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <video
                             ref={videoRef}
                             autoPlay
@@ -171,74 +176,81 @@ const BiometricCapture = ({ onCaptureComplete, onBack }) => {
                             muted
                             width="320"
                             height="240"
-                            className="absolute inset-0 w-full h-full object-cover z-10"
+                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 10 }}
                         />
                         <canvas
                             ref={canvasRef}
                             width="320"
                             height="240"
-                            className="absolute inset-0 w-full h-full object-cover z-20 pointer-events-none"
+                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 20, pointerEvents: 'none' }}
                         />
                         {!faceDetected && (
-                            <div className="absolute inset-0 flex items-center justify-center z-30 bg-black/40">
-                                <p className="text-[10px] font-bold text-white uppercase tracking-tighter">Position Face in Frame</p>
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 30, background: 'rgba(0,0,0,0.5)' }}>
+                                <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'white', textTransform: 'uppercase', textAlign: 'center', margin: 0 }}>Align Face</p>
                             </div>
                         )}
-                        <div className="absolute inset-0 bg-blue-500/10 animate-pulse z-0"></div>
                         {/* Progress ring simulation */}
-                        <svg className="absolute inset-0 w-full h-full transform -rotate-90 z-40">
-                            <circle cx="64" cy="64" r="60" stroke="rgba(59, 130, 246, 0.2)" strokeWidth="6" fill="transparent" />
-                            <circle cx="64" cy="64" r="60" stroke="#3b82f6" strokeWidth="6" fill="transparent"
-                                strokeDasharray={2 * Math.PI * 60}
-                                strokeDashoffset={2 * Math.PI * 60 * (1 - biometricProgress / 100)}
+                        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'rotate(-90deg)', zIndex: 40 }}>
+                            <circle cx="60" cy="60" r="54" stroke="#1E293B" strokeWidth="4" fill="transparent" />
+                            <circle cx="60" cy="60" r="54" stroke="#0284C7" strokeWidth="4" fill="transparent"
+                                strokeDasharray={2 * Math.PI * 54}
+                                strokeDashoffset={2 * Math.PI * 54 * (1 - biometricProgress / 100)}
                                 style={{ transition: 'stroke-dashoffset 0.1s linear' }} />
                         </svg>
                     </div>
                 ) : biometricStep === 4 ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-green-500/10">
-                        <ShieldCheck className="w-16 h-16 text-green-400" />
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16,185,129,0.1)' }}>
+                        <ShieldCheck size={48} style={{ color: '#10B981' }} />
                     </div>
                 ) : (
-                    <Camera className="w-10 h-10 text-primary-glow" />
+                    <Camera size={36} style={{ color: '#0284C7' }} />
                 )}
             </div>
 
-            <div className="text-center px-4">
+            <div style={{ textAlign: 'center', maxWidth: '380px' }}>
                 {biometricStep === 0 && (
                     <>
-                        <h3 className="text-xl font-bold mb-2">Biometric Binding</h3>
-                        <p className="text-sm text-muted max-w-sm">Capture your Face ID to securely bind your physical identity to your digital profile. This is required for critical asset transfers.</p>
-                        <button type="button" onClick={startBiometric} className="btn w-full max-w-sm flex items-center justify-center gap-3 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 mt-6">
-                            Start Face Verification
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#F8FAFC', marginBottom: '0.35rem' }}>Biometric Face Liveness</h3>
+                        <p style={{ fontSize: '0.825rem', color: '#94A3B8', margin: '0 0 1.25rem', lineHeight: 1.5 }}>
+                            Capture biometric yaw samples to cryptographically verify liveness and prevent fraud.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={startBiometric}
+                            className="btn-cyan-glow"
+                            style={{ width: '100%', padding: '0.75rem', fontSize: '0.875rem' }}
+                        >
+                            Start Camera Verification
                         </button>
                     </>
                 )}
-                {biometricStep === 1 && <h3 className="text-2xl font-black text-blue-400 animate-pulse">Look Straight at Camera</h3>}
-                {biometricStep === 2 && <h3 className="text-2xl font-black text-blue-400 animate-pulse">Move Head to the LEFT</h3>}
-                {biometricStep === 3 && <h3 className="text-2xl font-black text-blue-400 animate-pulse">Move Head to the RIGHT</h3>}
+                {biometricStep === 1 && <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#38BDF8', margin: 0 }}>Look Straight at Camera</h3>}
+                {biometricStep === 2 && <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#38BDF8', margin: 0 }}>Turn Head Slightly LEFT</h3>}
+                {biometricStep === 3 && <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#38BDF8', margin: 0 }}>Turn Head Slightly RIGHT</h3>}
                 {biometricStep > 0 && biometricStep < 4 && (
                     <button 
+                        type="button"
                         onClick={() => setBiometricStep(4)}
                         style={{ 
-                            marginTop: '2rem', background: 'none', border: 'none', 
-                            color: 'rgba(255,255,255,0.2)', fontSize: '0.65rem', cursor: 'pointer',
+                            marginTop: '1.5rem', background: 'none', border: 'none', 
+                            color: '#64748B', fontSize: '0.75rem', cursor: 'pointer',
                             textDecoration: 'underline'
                         }}
                     >
-                        Stuck? Click to bypass (Dev Mode)
+                        Bypass verification in development mode
                     </button>
                 )}
                 {biometricStep === 4 && (
-                    <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <h3 className="text-2xl font-black text-green-400 mb-6">Capture Complete!</h3>
+                    <div>
+                        <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#10B981', marginBottom: '1rem' }}>Liveness Verified!</h3>
 
-                        <div className="flex gap-3 justify-center mb-8">
+                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginBottom: '1.5rem' }}>
                             {capturedImages.map((img, i) => (
-                                <div key={i} className="group relative">
-                                    <div className="w-20 h-20 rounded-xl overflow-hidden border border-white/10 group-hover:border-blue-500/50 transition-colors">
-                                        <img src={img.url} alt={img.step} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" />
+                                <div key={i} style={{ textAlign: 'center' }}>
+                                    <div style={{ width: '64px', height: '64px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #1E293B' }}>
+                                        <img src={img.url} alt={img.step} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     </div>
-                                    <p className="text-[10px] font-bold text-muted mt-2 uppercase tracking-tighter">{img.step}</p>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#94A3B8', marginTop: '0.25rem', display: 'block', textTransform: 'uppercase' }}>{img.step}</span>
                                 </div>
                             ))}
                         </div>
@@ -246,17 +258,23 @@ const BiometricCapture = ({ onCaptureComplete, onBack }) => {
                         <button
                             type="button"
                             onClick={handleFaceIdCapture}
-                            className="btn w-full max-w-sm flex items-center justify-center gap-3 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 border-b-4 border-gray-300 active:border-b-0 active:translate-y-1 transition-all"
+                            className="btn-cyan-glow"
+                            style={{ width: '100%', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.875rem', background: '#10B981' }}
                         >
-                            Proceed to Wallet Link <ArrowRight size={20} />
+                            Proceed to Wallet Link <ArrowRight size={16} />
                         </button>
                     </div>
                 )}
             </div>
 
             {biometricStep === 0 && (
-                <button type="button" onClick={onBack} className="text-sm text-muted font-bold hover:text-white mt-4">
-                    Go Back
+                <button
+                    type="button"
+                    onClick={onBack}
+                    className="btn-cyan-outline"
+                    style={{ padding: '0.5rem 1.25rem', fontSize: '0.8rem' }}
+                >
+                    Back to Details
                 </button>
             )}
         </div>

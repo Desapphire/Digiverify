@@ -29,6 +29,13 @@ DO $$ BEGIN
   ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
   ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_comments TEXT;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS father_spouse_name VARCHAR(128);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS pan_number VARCHAR(10);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS nominee_name VARCHAR(128);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS nominee_wallet VARCHAR(42);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS domicile_state VARCHAR(64);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(20);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language VARCHAR(10) DEFAULT 'en';
 
   -- Make password nullable (wallet-only users don't need it)
   ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
@@ -80,6 +87,14 @@ CREATE TABLE IF NOT EXISTS users (
     kyc_document_hash   VARCHAR(128),             -- IPFS hash of KYC docs
     face_verified       BOOLEAN NOT NULL DEFAULT FALSE,
     birthdate           DATE,
+    father_spouse_name  VARCHAR(128),
+    pan_number          VARCHAR(10),
+    nominee_name        VARCHAR(128),
+    nominee_wallet      VARCHAR(42),
+    domicile_state      VARCHAR(64),
+    emergency_contact_phone VARCHAR(20),
+    preferred_language  VARCHAR(10) DEFAULT 'en',
+    admin_comments      TEXT,
     is_active           BOOLEAN NOT NULL DEFAULT TRUE,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()

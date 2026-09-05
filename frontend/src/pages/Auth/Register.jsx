@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../../services/auth.service';
-import { User, Mail, Lock, Calendar, Phone, IdCard, Loader2, ArrowRight, ShieldCheck, Camera, UserPlus, Wallet } from 'lucide-react';
+import { User, Mail, Lock, Calendar, Phone, IdCard, Loader2, ArrowRight, ShieldCheck, Camera, UserPlus, Wallet, MapPin } from 'lucide-react';
 import { useWeb3 } from '../../context/Web3Context';
+import DigiVerifyLogo from '../../components/DigiVerifyLogo';
 import BiometricCapture from './BiometricCapture';
 
 const Register = () => {
@@ -36,10 +37,8 @@ const Register = () => {
 
     const handleFaceIdCapture = (hash) => {
         setFormData({ ...formData, faceIdHash: hash });
-        setStep(3); // Proceed to submit
+        setStep(3);
     };
-
-
 
     const handleRegister = async (e) => {
         e.preventDefault();
@@ -68,21 +67,12 @@ const Register = () => {
             };
 
             await authService.register(payload);
-            console.log("Registration API successful");
-
-            // Login to obtain JWT token for authenticated requests
             await login(formData.email, formData.password);
-            console.log("Login API successful");
 
-            // Bind Face ID after successful login
             if (formData.faceIdHash) {
-                console.log("Binding Face ID...");
                 await authService.bindFaceId(formData.faceIdHash);
-                console.log("Face ID bound");
             }
 
-            // After registration, Face ID binding, and login, navigate to dashboard
-            console.log("Navigating to dashboard");
             navigate('/dashboard');
         } catch (err) {
             console.error("Registration flow failed:", err);
@@ -93,281 +83,295 @@ const Register = () => {
     };
 
     return (
-        <>
-            <style>
-                {`
-                    .register-layout-container { display: flex; width: 100%; min-height: 100vh; background-color: #050505; overflow: hidden; }
-                    .register-left-panel { width: 100%; display: flex; align-items: center; justify-content: center; padding: 1.5rem; position: relative; z-index: 10; max-height: 100vh; overflow-y: auto; }
-                    .register-right-panel { display: none; position: relative; overflow: hidden; border-left: 1px solid rgba(255,255,255,0.05); }
-                    @media (min-width: 1024px) {
-                        .register-left-panel { width: 45%; padding: 3rem; }
-                        .register-right-panel { display: block; width: 55%; }
-                    }
-                    .hero-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.6; }
-                    .hero-overlay-x { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to right, #050505 0%, transparent 100%); }
-                    .hero-overlay-y { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, #050505 0%, transparent 30%); }
-                    .hero-card { position: absolute; bottom: 3rem; right: 3rem; max-width: 350px; padding: 1.5rem; border-radius: 24px; background: rgba(20, 15, 35, 0.4); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
-                    .register-max-w { width: 100%; max-width: 480px; margin: auto; }
-                    
-                    /* Custom scrollbar for left panel if content is too tall */
-                    .register-left-panel::-webkit-scrollbar { width: 6px; }
-                    .register-left-panel::-webkit-scrollbar-track { background: transparent; }
-                    .register-left-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-                    .register-left-panel::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-                `}
-            </style>
-            <div className="register-layout-container">
-                <div className="register-left-panel">
-                    <div className="glass-panel register-max-w p-6 md:p-10 relative z-10">
-                        <div className="flex flex-col items-center mb-8 text-center">
-                            <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-6 shadow-glow-primary" style={{ backgroundColor: '#2563eb' }}>
-                                <UserPlus className="text-white w-8 h-8" />
-                            </div>
-                            <h1 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontSize: '1.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                                Create <span className="text-gradient">Identity</span>
-                            </h1>
-                            <p className="text-muted text-sm font-medium">Digital Verification System</p>
-                        </div>
- 
-                        {/* Premium Web3 Progress Stepper using index.css */}
-                        <div className="stepper" style={{ marginBottom: '2.5rem' }}>
-                            <div className={`stepper-step ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
-                                <div className="stepper-circle">1</div>
-                            </div>
-                            <div className={`stepper-step ${step >= 2 ? 'active' : ''} ${step > 2 ? 'completed' : ''}`}>
-                                <div className="stepper-circle">2</div>
-                            </div>
-                            <div className={`stepper-step ${step >= 3 ? 'active' : ''}`}>
-                                <div className="stepper-circle">3</div>
-                            </div>
-                        </div>
- 
-                        {error && (
-                            <div className="mb-6 p-4 rounded-xl text-danger text-sm font-bold text-center" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                                {error}
-                            </div>
-                        )}
- 
-                        <form onSubmit={(e) => { e.preventDefault(); if (step === 3) handleRegister(e); }} style={{ width: '100%' }}>
-                            {step === 1 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Full Legal Name</label>
-                                        <div className="relative">
-                                            <User className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
-                                            <input type="text" name="name" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="E.g. Akhil Soni" value={formData.name} onChange={handleChange} required />
-                                        </div>
-                                    </div>
- 
-                                    <div style={{ display: 'flex', gap: '1rem' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                                            <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Birthdate</label>
-                                            <div className="relative">
-                                                <Calendar className="absolute text-muted pointer-events-none" style={{ left: '1rem', top: '50%', transform: 'translateY(-50%)', width: '1.2rem', height: '1.2rem' }} />
-                                                <input
-                                                    type={formData.birthdate ? "date" : "text"}
-                                                    onFocus={(e) => {
-                                                        e.target.type = 'date';
-                                                        try { e.target.showPicker(); } catch (err) { }
-                                                    }}
-                                                    onBlur={(e) => {
-                                                        if (!e.target.value) e.target.type = 'text';
-                                                    }}
-                                                    name="birthdate"
-                                                    className="input-premium cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full"
-                                                    style={{ paddingLeft: '3rem', width: '100%', color: formData.birthdate ? 'white' : 'inherit' }}
-                                                    placeholder="DD/MM/YYYY"
-                                                    value={formData.birthdate}
-                                                    onChange={handleChange}
-                                                    onClick={(e) => {
-                                                        if (e.target.type === 'date' && e.target.showPicker) {
-                                                            try { e.target.showPicker(); } catch (err) { }
-                                                        }
-                                                    }}
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                                            <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Phone</label>
-                                            <div className="relative">
-                                                <Phone className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
-                                                <input type="tel" name="phone" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="+91 638 659 5285" value={formData.phone} onChange={handleChange} required />
-                                            </div>
-                                        </div>
-                                    </div>
- 
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Email Account</label>
-                                        <div className="relative">
-                                            <Mail className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
-                                            <input type="email" name="email" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="rashi.bora24@vit.edu" value={formData.email} onChange={handleChange} required />
-                                        </div>
-                                    </div>
- 
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Secure Password</label>
-                                        <div className="relative">
-                                            <Lock className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
-                                            <input type="password" name="password" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="Min 8 characters" value={formData.password} onChange={handleChange} required />
-                                        </div>
-                                    </div>
- 
-                                    <div style={{ display: 'flex', gap: '1rem' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                                            <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Govt ID Type</label>
-                                            <div className="relative">
-                                                <IdCard className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
-                                                <select name="governmentIdType" className="input-premium cursor-pointer" style={{ paddingLeft: '3rem', width: '100%', height: '3.1rem', appearance: 'none', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: formData.governmentIdType ? 'white' : '#6b7280' }} value={formData.governmentIdType} onChange={handleChange} required>
-                                                    <option value="" style={{ background: '#050505' }}>Select ID Type</option>
-                                                    <option value="Aadhar" style={{ background: '#050505' }}>Aadhar</option>
-                                                    <option value="Passport" style={{ background: '#050505' }}>Passport</option>
-                                                    <option value="Voter ID" style={{ background: '#050505' }}>Voter ID</option>
-                                                    <option value="Driving License" style={{ background: '#050505' }}>Driving License</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                                            <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Govt ID Number</label>
-                                            <div className="relative">
-                                                <IdCard className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
-                                                <input type="text" name="governmentId" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="ID Number" value={formData.governmentId} onChange={handleChange} required />
-                                            </div>
-                                        </div>
-                                    </div>
- 
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>House No., Street Name</label>
-                                        <div className="relative">
-                                            <Wallet className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
-                                            <input type="text" name="houseNumber" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="E.g. Flat 302, Cyber Tower" value={formData.houseNumber} onChange={handleChange} required />
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Locality / Area</label>
-                                        <div className="relative">
-                                            <Wallet className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
-                                            <input type="text" name="locality" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="E.g. Madhapur" value={formData.locality} onChange={handleChange} required />
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'flex', gap: '1rem' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                                            <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>City</label>
-                                            <div className="relative">
-                                                <Wallet className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
-                                                <input type="text" name="city" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="E.g. Hyderabad" value={formData.city} onChange={handleChange} required />
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                                            <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>PIN Code</label>
-                                            <div className="relative">
-                                                <Wallet className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
-                                                <input type="text" name="pinCode" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="E.g. 500081" value={formData.pinCode} onChange={handleChange} required />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'flex', gap: '1rem' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                                            <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>State</label>
-                                            <div className="relative">
-                                                <Wallet className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
-                                                <input type="text" name="state" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="E.g. Telangana" value={formData.state} onChange={handleChange} required />
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                                            <label className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Country</label>
-                                            <div className="relative">
-                                                <Wallet className="absolute text-muted" style={{ left: '1rem', top: '0.875rem', width: '1.2rem', height: '1.2rem' }} />
-                                                <input type="text" name="country" className="input-premium" style={{ paddingLeft: '3rem', width: '100%' }} placeholder="E.g. India" value={formData.country} onChange={handleChange} required />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div style={{ marginTop: '1rem' }}>
-                                        <button type="button" onClick={() => setStep(2)} className="btn w-full flex items-center justify-center gap-3" style={{ backgroundColor: 'white', color: 'black', fontWeight: 900, fontSize: '0.95rem', padding: '1rem 0', borderRadius: '1rem', boxShadow: '0 4px 14px rgba(255,255,255,0.1)' }}>
-                                            Continue to Biometrics <ArrowRight style={{ width: '18px', height: '18px' }} />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {step === 2 && (
-                                <div className="flex flex-col items-center gap-6 py-8">
-                                    <BiometricCapture
-                                        onCaptureComplete={handleFaceIdCapture}
-                                        onBack={() => setStep(1)}
-                                    />
-                                </div>
-                            )}
-
-                            {step === 3 && (
-                                <div className="flex flex-col gap-8">
-                                    <div className="p-6 rounded-2xl border border-subtle" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                                        <h3 className="text-sm font-bold text-muted uppercase tracking-widest mb-4">Final Step: Link Web3 Wallet</h3>
-                                        {!account ? (
-                                            <button type="button" onClick={connectWallet} disabled={isConnecting} className="btn w-full flex items-center justify-center gap-3" style={{ padding: '1rem 0', borderRadius: '1rem', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px dashed rgba(255,255,255,0.2)', color: 'white' }}>
-                                                <Wallet style={{ width: '20px', height: '20px', color: '#60a5fa' }} />
-                                                {isConnecting ? 'Waiting for MetaMask...' : 'Click to Connect MetaMask'}
-                                            </button>
-                                        ) : (
-                                            <div className="flex items-center gap-4 p-4 rounded-xl" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
-                                                <ShieldCheck style={{ width: '32px', height: '32px', color: 'hsl(var(--color-success))', flexShrink: 0 }} />
-                                                <div className="overflow-hidden">
-                                                    <p className="text-xs font-bold text-success uppercase tracking-wider mb-1">Wallet Linked</p>
-                                                    <p className="text-sm font-mono text-white/80 truncate">{account}</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="flex gap-4" style={{ display: 'flex', gap: '1rem' }}>
-                                        <button type="button" onClick={() => setStep(2)} className="btn" style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', color: 'white', borderRadius: '1rem' }}>Back</button>
-                                        <button type="submit" disabled={!account || loading} className="btn flex items-center justify-center gap-3" style={{ flex: 2, backgroundColor: 'white', color: 'black', fontWeight: 900, borderRadius: '1rem' }}>
-                                            {loading ? <Loader2 className="animate-spin" style={{ width: '24px', height: '24px' }} /> : 'Deploy Identity'}
-                                            {!loading && <ArrowRight style={{ width: '20px', height: '20px' }} />}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </form>
-
-                        {step === 1 && (
-                            <div className="mt-8 text-center border-t border-subtle pt-6">
-                                <p className="text-muted text-xs font-bold uppercase tracking-widest mb-3">Already have an identity?</p>
-                                <Link to="/login" className="inline-flex items-center gap-2 text-primary-glow font-bold text-sm hover:opacity-80 transition-opacity">
-                                    Login Now
-                                    <ArrowRight size={16} />
-                                </Link>
-                            </div>
-                        )}
+        <div style={{
+            minHeight: '100vh',
+            background: '#090D16',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '2rem 1.5rem'
+        }}>
+            <div className="digi-card" style={{
+                width: '100%',
+                maxWidth: '560px',
+                padding: '2.5rem',
+                background: '#0F172A',
+                border: '1px solid #1E293B',
+                borderRadius: '16px',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+            }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '1.75rem' }}>
+                    <div style={{ marginBottom: '1.25rem' }}>
+                        <DigiVerifyLogo />
                     </div>
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#F8FAFC', margin: 0, letterSpacing: '-0.02em' }}>
+                        Create Citizen Identity
+                    </h1>
+                    <p style={{ fontSize: '0.825rem', color: '#94A3B8', marginTop: '0.35rem', margin: 0 }}>
+                        Decentralized Land Registry & Multi-Sig Verification
+                    </p>
                 </div>
 
-                <div className="register-right-panel">
-                    <img src="/login_hero.png" alt="Futuristic Land Registry" className="hero-img" />
-                    <div className="hero-overlay-x"></div>
-                    <div className="hero-overlay-y"></div>
-
-                    <div className="hero-card">
-                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
-                            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(59,130,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(59,130,246,0.3)', marginRight: '1rem' }}>
-                                <Wallet style={{ color: '#60a5fa', width: '24px', height: '24px' }} />
+                {/* Stepper */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '1rem',
+                    marginBottom: '2rem'
+                }}>
+                    {[
+                        { num: 1, label: 'Identity' },
+                        { num: 2, label: 'Biometrics' },
+                        { num: 3, label: 'Web3 Wallet' }
+                    ].map((s, idx) => (
+                        <React.Fragment key={s.num}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <div style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    borderRadius: '50%',
+                                    background: step === s.num ? '#0284C7' : step > s.num ? 'rgba(16,185,129,0.2)' : '#1E293B',
+                                    color: step === s.num ? '#FFFFFF' : step > s.num ? '#10B981' : '#64748B',
+                                    border: step === s.num ? '1px solid #38BDF8' : step > s.num ? '1px solid #10B981' : '1px solid #334155',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700
+                                }}>
+                                    {step > s.num ? '✓' : s.num}
+                                </div>
+                                <span style={{
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    color: step === s.num ? '#F8FAFC' : '#64748B'
+                                }}>
+                                    {s.label}
+                                </span>
                             </div>
+                            {idx < 2 && (
+                                <div style={{
+                                    width: '24px',
+                                    height: '1px',
+                                    background: step > s.num ? '#10B981' : '#1E293B'
+                                }} />
+                            )}
+                        </React.Fragment>
+                    ))}
+                </div>
+
+                {error && (
+                    <div style={{
+                        padding: '0.75rem 1rem',
+                        borderRadius: '8px',
+                        marginBottom: '1.5rem',
+                        background: 'rgba(239,68,68,0.1)',
+                        border: '1px solid rgba(239,68,68,0.25)',
+                        color: '#EF4444',
+                        fontSize: '0.825rem',
+                        fontWeight: 500,
+                        textAlign: 'center'
+                    }}>
+                        {error}
+                    </div>
+                )}
+
+                <form onSubmit={(e) => { e.preventDefault(); if (step === 3) handleRegister(e); }}>
+                    {step === 1 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div>
-                                <h4 style={{ margin: 0, color: 'white', fontSize: '1.125rem', fontWeight: 700 }}>Web3 Secured</h4>
-                                <p style={{ margin: 0, color: 'hsl(var(--color-text-muted))', fontSize: '0.875rem' }}>Blockchain-verified</p>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.35rem' }}>Full Legal Name</label>
+                                <div style={{ position: 'relative' }}>
+                                    <User size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
+                                    <input type="text" name="name" className="input-premium" style={{ paddingLeft: '2.4rem', width: '100%', fontSize: '0.85rem' }} placeholder="E.g. Rajesh Sharma" value={formData.name} onChange={handleChange} required />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.35rem' }}>Birthdate</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <Calendar size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
+                                        <input
+                                            type="date"
+                                            name="birthdate"
+                                            className="input-premium"
+                                            style={{ paddingLeft: '2.4rem', width: '100%', fontSize: '0.85rem', color: formData.birthdate ? '#F8FAFC' : '#64748B' }}
+                                            value={formData.birthdate}
+                                            onChange={handleChange}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.35rem' }}>Phone Number</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <Phone size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
+                                        <input type="tel" name="phone" className="input-premium" style={{ paddingLeft: '2.4rem', width: '100%', fontSize: '0.85rem' }} placeholder="+91 98765 43210" value={formData.phone} onChange={handleChange} required />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.35rem' }}>Email Address</label>
+                                <div style={{ position: 'relative' }}>
+                                    <Mail size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
+                                    <input type="email" name="email" className="input-premium" style={{ paddingLeft: '2.4rem', width: '100%', fontSize: '0.85rem' }} placeholder="user@example.com" value={formData.email} onChange={handleChange} required />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.35rem' }}>Password</label>
+                                <div style={{ position: 'relative' }}>
+                                    <Lock size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
+                                    <input type="password" name="password" className="input-premium" style={{ paddingLeft: '2.4rem', width: '100%', fontSize: '0.85rem' }} placeholder="Min 8 characters" value={formData.password} onChange={handleChange} required />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.35rem' }}>Govt ID Type</label>
+                                    <select name="governmentIdType" className="input-premium" style={{ width: '100%', fontSize: '0.85rem', background: '#0B0F19' }} value={formData.governmentIdType} onChange={handleChange} required>
+                                        <option value="">Select Type</option>
+                                        <option value="Aadhar">Aadhaar</option>
+                                        <option value="Passport">Passport</option>
+                                        <option value="Voter ID">Voter ID</option>
+                                        <option value="Driving License">Driving License</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.35rem' }}>Govt ID Number</label>
+                                    <input type="text" name="governmentId" className="input-premium font-mono" style={{ width: '100%', fontSize: '0.85rem' }} placeholder="ID Number" value={formData.governmentId} onChange={handleChange} required />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.35rem' }}>City</label>
+                                    <input type="text" name="city" className="input-premium" style={{ width: '100%', fontSize: '0.85rem' }} placeholder="E.g. Hyderabad" value={formData.city} onChange={handleChange} required />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.35rem' }}>State</label>
+                                    <input type="text" name="state" className="input-premium" style={{ width: '100%', fontSize: '0.85rem' }} placeholder="E.g. Telangana" value={formData.state} onChange={handleChange} required />
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setStep(2)}
+                                className="btn-cyan-glow"
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    marginTop: '0.5rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    fontSize: '0.875rem'
+                                }}
+                            >
+                                Continue to Biometric Liveness <ArrowRight size={16} />
+                            </button>
+                        </div>
+                    )}
+
+                    {step === 2 && (
+                        <div style={{ padding: '0.5rem 0' }}>
+                            <BiometricCapture
+                                onCaptureComplete={handleFaceIdCapture}
+                                onBack={() => setStep(1)}
+                            />
+                        </div>
+                    )}
+
+                    {step === 3 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <div style={{
+                                background: '#0B0F19',
+                                border: '1px solid #1E293B',
+                                borderRadius: '12px',
+                                padding: '1.25rem',
+                                textAlign: 'center'
+                            }}>
+                                <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#F8FAFC', marginBottom: '0.4rem' }}>
+                                    Link Avalanche Web3 Wallet
+                                </h3>
+                                <p style={{ color: '#94A3B8', fontSize: '0.8rem', marginBottom: '1.25rem' }}>
+                                    Your property deed NFTs and multi-sig smart contracts will be held by this public address.
+                                </p>
+
+                                {!account ? (
+                                    <button
+                                        type="button"
+                                        onClick={connectWallet}
+                                        disabled={isConnecting}
+                                        className="btn-cyan-outline"
+                                        style={{ width: '100%', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.875rem' }}
+                                    >
+                                        <Wallet size={16} style={{ color: '#38BDF8' }} />
+                                        {isConnecting ? 'Connecting MetaMask...' : 'Connect MetaMask Wallet'}
+                                    </button>
+                                ) : (
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem',
+                                        padding: '0.75rem 1rem',
+                                        borderRadius: '8px',
+                                        background: 'rgba(16,185,129,0.1)',
+                                        border: '1px solid rgba(16,185,129,0.3)',
+                                        textAlign: 'left'
+                                    }}>
+                                        <ShieldCheck size={24} style={{ color: '#10B981', flexShrink: 0 }} />
+                                        <div style={{ overflow: 'hidden' }}>
+                                            <p style={{ fontSize: '0.7rem', fontWeight: 700, color: '#10B981', textTransform: 'uppercase', margin: 0 }}>Wallet Linked</p>
+                                            <p style={{ fontSize: '0.8rem', fontFamily: 'JetBrains Mono', color: '#F8FAFC', margin: '0.2rem 0 0', textOverflow: 'ellipsis', overflow: 'hidden' }}>{account}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setStep(2)}
+                                    className="btn-cyan-outline"
+                                    style={{ flex: 1, padding: '0.75rem', fontSize: '0.85rem' }}
+                                >
+                                    Back
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={!account || loading}
+                                    className="btn-cyan-glow"
+                                    style={{ flex: 2, padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.875rem' }}
+                                >
+                                    {loading ? <Loader2 size={18} className="animate-spin" /> : (
+                                        <>
+                                            Deploy Identity
+                                            <ArrowRight size={16} />
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         </div>
-                        <p style={{ color: '#d1d5db', fontSize: '0.875rem', lineHeight: 1.6, margin: 0 }}>
-                            Experience the next generation of property registry. Government-grade security powered by the Avalanche C-Chain network.
+                    )}
+                </form>
+
+                {step === 1 && (
+                    <div style={{ marginTop: '1.75rem', borderTop: '1px solid #1E293B', paddingTop: '1.25rem', textAlign: 'center' }}>
+                        <p style={{ color: '#94A3B8', fontSize: '0.8rem', margin: 0 }}>
+                            Already have an identity registered?{' '}
+                            <Link to="/login" style={{ color: '#38BDF8', fontWeight: 600, textDecoration: 'none' }}>
+                                Sign In
+                            </Link>
                         </p>
                     </div>
-                </div>
+                )}
             </div>
-        </>
+        </div>
     );
 };
 

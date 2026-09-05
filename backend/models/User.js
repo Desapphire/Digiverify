@@ -28,6 +28,13 @@ const mapUser = (row) => {
         faceVerified: row.face_verified,
         faceIdHash: row.face_id_hash,
         birthdate: row.birthdate,
+        fatherSpouseName: row.father_spouse_name,
+        panNumber: row.pan_number,
+        nomineeName: row.nominee_name,
+        nomineeWallet: row.nominee_wallet,
+        domicileState: row.domicile_state,
+        emergencyContactPhone: row.emergency_contact_phone,
+        preferredLanguage: row.preferred_language || 'en',
         isActive: row.is_active,
         adminComments: row.admin_comments,
         createdAt: row.created_at,
@@ -158,7 +165,10 @@ const updateFaceIdHash = async (id, faceIdHash) => {
     return mapUser(result.rows[0]);
 };
 
-const updateProfile = async (id, { email, phone, houseNumber, locality, city, pinCode, state, country }) => {
+const updateProfile = async (id, { 
+    email, phone, houseNumber, locality, city, pinCode, state, country,
+    fatherSpouseName, panNumber, nomineeName, nomineeWallet, domicileState, emergencyContactPhone, preferredLanguage 
+}) => {
     const result = await pool.query(
         `UPDATE users SET 
             email = COALESCE($1, email), 
@@ -168,10 +178,21 @@ const updateProfile = async (id, { email, phone, houseNumber, locality, city, pi
             city = COALESCE($5, city), 
             pin_code = COALESCE($6, pin_code), 
             state = COALESCE($7, state), 
-            country = COALESCE($8, country), 
+            country = COALESCE($8, country),
+            father_spouse_name = COALESCE($9, father_spouse_name),
+            pan_number = COALESCE($10, pan_number),
+            nominee_name = COALESCE($11, nominee_name),
+            nominee_wallet = COALESCE($12, nominee_wallet),
+            domicile_state = COALESCE($13, domicile_state),
+            emergency_contact_phone = COALESCE($14, emergency_contact_phone),
+            preferred_language = COALESCE($15, preferred_language),
             updated_at = NOW()
-     WHERE id = $9 RETURNING *`,
-        [email, phone, houseNumber, locality, city, pinCode, state, country, id]
+     WHERE id = $16 RETURNING *`,
+        [
+            email, phone, houseNumber, locality, city, pinCode, state, country,
+            fatherSpouseName, panNumber, nomineeName, nomineeWallet, domicileState, emergencyContactPhone, preferredLanguage,
+            id
+        ]
     );
     return mapUser(result.rows[0]);
 };

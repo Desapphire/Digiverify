@@ -2,23 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { adminService } from '../../services/admin.service';
+import { WaveChart } from '../../components/WaveChart';
+import { TopNavbar } from '../../components/TopNavbar';
 import {
     Activity, ShieldCheck, Clock, CheckCircle2,
     XCircle, AlertTriangle, UserCheck, Key, Landmark, Users,
-    Building2, Loader2, RefreshCcw
+    Building2, Loader2, RefreshCcw, ArrowRight, Eye, Shield
 } from 'lucide-react';
 
 const AdminDashboard = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
 
-    const [activeTab, setActiveTab] = useState('kyc');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [actionLoading, setActionLoading] = useState(null);
 
     // Real data state
     const [kycRequests, setKycRequests] = useState([]);
-    const [pendingProperties, setPendingProperties] = useState([]);
+    const [properties, setProperties] = useState([]);
     const [sales, setSales] = useState([]);
     const [fundBlocks, setFundBlocks] = useState([]);
     const [recoveries, setRecoveries] = useState([]);
@@ -36,12 +38,12 @@ const AdminDashboard = () => {
             ]);
 
             if (kycRes.status === 'fulfilled') setKycRequests(kycRes.value.data?.data || []);
-            if (propRes.status === 'fulfilled') setPendingProperties(propRes.value.data?.data || []);
+            if (propRes.status === 'fulfilled') setProperties(propRes.value.data?.data || []);
             if (salesRes.status === 'fulfilled') setSales(salesRes.value.data?.data || []);
             if (fundRes.status === 'fulfilled') setFundBlocks(fundRes.value.data?.data || []);
             if (recoveryRes.status === 'fulfilled') setRecoveries(recoveryRes.value.data?.data || []);
         } catch (err) {
-            setError('Failed to load dashboard data.');
+            setError('Failed to load live dashboard data.');
         } finally {
             setLoading(false);
         }
@@ -51,344 +53,244 @@ const AdminDashboard = () => {
         fetchDashboardData();
     }, []);
 
-    // Compute stats from real data
-    const pendingSales = sales.filter(s => !s.authoritySigned && s.status !== 'completed' && s.status !== 'cancelled');
-    const stats = [
-        { label: 'Pending KYC', value: kycRequests.length, icon: UserCheck, color: 'hsl(38,92%,50%)' },
-        { label: 'Property Verifications', value: pendingProperties.length, icon: Building2, color: 'hsl(255,85%,65%)' },
-        { label: 'Sale Approvals', value: pendingSales.length, icon: Clock, color: 'hsl(280,80%,60%)' },
-        { label: 'Wallet Recovery', value: recoveries.length, icon: Key, color: 'hsl(142,71%,45%)' },
-    ];
+    // Derived dynamic stats from actual database records
+    const verifiedTitlesCount = properties.filter(p => p.status === 'verified' || p.status === 'active').length;
+    const pendingReviewsCount = properties.filter(p => p.status === 'pending_verification' || p.status === 'pending').length;
+    const activeMultiSigCount = sales.filter(s => s.status !== 'completed' && s.status !== 'cancelled').length;
+    const completedSalesCount = sales.filter(s => s.status === 'completed').length;
+    const onChainSettlements = sales.length > 0 
+        ? `${((completedSalesCount / sales.length) * 100).toFixed(1)}%`
+        : '100%';
 
-    const TABS = [
-        { key: 'kyc', label: 'KYC', icon: UserCheck, count: kycRequests.length },
-        { key: 'property', label: 'Properties', icon: Building2, count: pendingProperties.length },
-        { key: 'sale', label: 'Sales', icon: Clock, count: pendingSales.length },
-        { key: 'fund', label: 'Fund Blocks', icon: Landmark, count: fundBlocks.length },
-        { key: 'recovery', label: 'Recovery', icon: Key, count: recoveries.length },
-    ];
-
-    const StatCard = ({ icon: Icon, label, value, color }) => (
-        <div className="glass-panel relative overflow-hidden p-6 cursor-pointer" style={{ cursor: 'default' }}>
-            <div style={{ background: color, position: 'absolute', inset: 0, opacity: 0.08, zIndex: 0 }}></div>
-            <div className="relative z-10 flex flex-col gap-2">
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="p-2 rounded-lg" style={{ border: `1px solid ${color}30`, background: `${color}10` }}>
-                        <Icon size={20} style={{ color }} />
-                    </div>
-                    <span className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>{label}</span>
-                </div>
-                <p style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'white' }}>{value}</p>
-            </div>
-        </div>
-    );
-
-    const shortenWallet = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '—';
-
-    const EmptyState = ({ icon: Icon, message, color = 'rgba(255,255,255,0.3)' }) => (
-        <div className="flex flex-col items-center justify-center" style={{ padding: '3rem 0', opacity: 0.6 }}>
-            <Icon size={40} style={{ marginBottom: '1rem', color }} />
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>{message}</p>
-        </div>
-    );
-
-    const handleApproveKyc = async (userId) => {
+    const handleQuickApprove = async (sale) => {
+        if (!sale?.id) return;
+        setActionLoading(sale.id);
         try {
-            await adminService.approveKyc(userId);
+            await adminService.approveSale(sale.id, 'Approved via Command Center Dashboard');
             fetchDashboardData();
         } catch (err) {
             alert(err.response?.data?.message || 'Approval failed');
-        }
-    };
-
-    const handleRejectKyc = async (userId) => {
-        try {
-            await adminService.rejectKyc(userId);
-            fetchDashboardData();
-        } catch (err) {
-            alert(err.response?.data?.message || 'Rejection failed');
-        }
-    };
-
-    const handleApproveProperty = async (propertyId) => {
-        try {
-            await adminService.approveProperty(propertyId);
-            fetchDashboardData();
-        } catch (err) {
-            alert(err.response?.data?.message || 'Approval failed');
+        } finally {
+            setActionLoading(null);
         }
     };
 
     if (loading) {
         return (
-            <div className="dashboard-container flex items-center justify-center" style={{ minHeight: '60vh' }}>
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 size={40} className="animate-spin" style={{ color: 'hsl(0,85%,60%)' }} />
-                    <p className="text-muted text-sm font-bold">Loading command center...</p>
+            <div style={{ display: 'flex', height: '100vh', width: '100%', alignItems: 'center', justifyContent: 'center', background: '#090D16' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse">
+                    <Loader2 size={36} style={{ color: '#00E5FF' }} className="animate-spin" />
+                    <p style={{ fontWeight: 700, letterSpacing: '0.05em', color: '#00E5FF', fontSize: '0.88rem' }}>Loading Command Dashboard...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="dashboard-container">
-            {/* Header */}
-            <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-                <div>
-                    <h1 className="dashboard-title">
-                        Authority <span className="text-gradient">Command Center</span>
-                    </h1>
-                    <p className="text-muted mt-2" style={{ fontSize: '0.95rem' }}>
-                        Live data — Oversee verifications, sales, and approvals.
-                    </p>
+        <div style={{ minHeight: '100vh', background: '#090D16', color: '#FFFFFF' }} className="animate-fade-in">
+            {/* Top Navbar Header */}
+            <TopNavbar 
+                title="Dashboard" 
+                subtitle="Live on-chain status & multi-sig settlement overview"
+                showLogo={false} 
+                showNetwork={false}
+                showNotifications={true}
+                showProfile={true}
+                customRight={
+                    <button 
+                        onClick={fetchDashboardData}
+                        className="btn-dark-pill"
+                        style={{ fontSize: '0.78rem' }}
+                        title="Refresh live data"
+                    >
+                        <RefreshCcw size={14} /> Refresh
+                    </button>
+                }
+            />
+
+            <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+                {error && (
+                    <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '12px', padding: '0.75rem 1rem', marginBottom: '1.5rem', color: '#f87171', fontSize: '0.85rem', fontWeight: 600 }}>
+                        {error}
+                    </div>
+                )}
+
+                {/* ─── 4 Top Stat Cards ─── */}
+                <div 
+                    style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
+                        gap: '1.25rem',
+                        marginBottom: '1.5rem' 
+                    }}
+                >
+                    {/* Card 1: Verified Land Titles */}
+                    <div className="digi-stat-card">
+                        <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#94A3B8' }}>
+                            Verified Land Titles
+                        </span>
+                        <p style={{ fontSize: '2.4rem', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', margin: 0, marginTop: '0.5rem' }}>
+                            {verifiedTitlesCount}
+                        </p>
+                    </div>
+
+                    {/* Card 2: Pending Surveyor Reviews */}
+                    <div className="digi-stat-card">
+                        <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#94A3B8' }}>
+                            Pending Surveyor Reviews
+                        </span>
+                        <p style={{ fontSize: '2.4rem', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', margin: 0, marginTop: '0.5rem' }}>
+                            {pendingReviewsCount}
+                        </p>
+                    </div>
+
+                    {/* Card 3: Active Multi-Sig Sales */}
+                    <div className="digi-stat-card">
+                        <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#94A3B8' }}>
+                            Active Multi-Sig Sales
+                        </span>
+                        <p style={{ fontSize: '2.4rem', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', margin: 0, marginTop: '0.5rem' }}>
+                            {activeMultiSigCount}
+                        </p>
+                    </div>
+
+                    {/* Card 4: On-Chain Settlements */}
+                    <div className="digi-stat-card">
+                        <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#94A3B8' }}>
+                            On-Chain Settlements
+                        </span>
+                        <p style={{ fontSize: '2.4rem', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', margin: 0, marginTop: '0.5rem' }}>
+                            {onChainSettlements}
+                        </p>
+                    </div>
                 </div>
-                <button onClick={fetchDashboardData} className="btn btn-secondary" style={{ gap: '0.5rem' }}>
-                    <RefreshCcw size={16} /> Refresh
-                </button>
-            </div>
 
-            {error && (
-                <div style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '12px', padding: '0.75rem 1rem', marginBottom: '1.5rem', color: '#f87171', fontSize: '0.85rem', fontWeight: 600 }}>
-                    {error}
-                </div>
-            )}
-
-            {/* Quick Stats Grid */}
-            <div className="stats-grid mb-8">
-                {stats.map((stat, idx) => (
-                    <StatCard key={idx} {...stat} />
-                ))}
-            </div>
-
-            {/* Central Control Panel */}
-            <div className="glass-panel p-6">
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '1rem' }}>
-                    {TABS.map(tab => {
-                        const TabIcon = tab.icon;
-                        const isActive = activeTab === tab.key;
-                        return (
-                            <button
-                                key={tab.key}
-                                onClick={() => setActiveTab(tab.key)}
-                                className={`flex items-center gap-2`}
-                                style={{
-                                    padding: '0.5rem 1rem',
-                                    borderRadius: '0.5rem',
-                                    fontSize: '0.82rem',
-                                    fontWeight: 700,
-                                    border: isActive ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(255,255,255,0.05)',
-                                    background: isActive ? 'rgba(220,38,38,0.12)' : 'rgba(0,0,0,0.2)',
-                                    color: isActive ? '#fca5a5' : 'rgba(255,255,255,0.4)',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
-                                }}
-                            >
-                                <TabIcon size={15} />
-                                {tab.label}
-                                <span style={{
-                                    marginLeft: '4px',
-                                    padding: '1px 6px',
-                                    borderRadius: '9999px',
-                                    fontSize: '0.65rem',
-                                    fontWeight: 800,
-                                    background: isActive ? 'rgba(220,38,38,0.2)' : 'rgba(255,255,255,0.06)',
-                                    color: isActive ? 'white' : 'rgba(255,255,255,0.3)',
-                                }}>
-                                    {tab.count}
-                                </span>
-                            </button>
-                        );
-                    })}
+                {/* ─── Middle Section: Glowing Dual-Wave Chart Card ─── */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <WaveChart height={170} />
                 </div>
 
-                <div style={{ minHeight: '300px' }}>
-                    {/* ─── KYC TAB ─── */}
-                    {activeTab === 'kyc' && (
-                        <div>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '1rem' }}>Pending KYC Approvals</h3>
-                            {kycRequests.length === 0 ? (
-                                <EmptyState icon={UserCheck} message="No pending KYC verifications." color="hsl(38,92%,50%)" />
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    {kycRequests.map(u => (
-                                        <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <div className="flex items-center gap-4">
-                                                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(234,179,8,0.15), rgba(245,158,11,0.1))', border: '1px solid rgba(234,179,8,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
-                                                    <Users size={18} />
-                                                </div>
-                                                <div>
-                                                    <p style={{ fontWeight: 700, color: 'white', fontSize: '0.88rem' }}>{u.name || 'Unknown'}</p>
-                                                    <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace', marginTop: 2 }}>{shortenWallet(u.walletAddress)}</p>
-                                                    {u.email && <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{u.email}</p>}
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => handleApproveKyc(u.id)} className="btn btn-success" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', background: 'rgba(34,197,94,0.1)', color: 'hsl(142,71%,45%)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '0.5rem' }}>
-                                                    <CheckCircle2 size={14} /> Approve
-                                                </button>
-                                                <button onClick={() => handleRejectKyc(u.id)} className="btn btn-danger" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
-                                                    <XCircle size={14} /> Reject
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                {/* ─── Bottom Section: Recent Land Transactions Table ─── */}
+                <div 
+                    className="digi-card p-6"
+                    style={{
+                        background: 'linear-gradient(180deg, rgba(13, 20, 36, 0.95) 0%, rgba(9, 13, 22, 0.98) 100%)',
+                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                        borderRadius: '16px',
+                        overflow: 'hidden'
+                    }}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
+                            Recent Land Transactions
+                        </h3>
+                        <button 
+                            onClick={() => navigate('/authority/sales')} 
+                            style={{ background: 'none', border: 'none', color: '#00E5FF', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                        >
+                            View All Approvals <ArrowRight size={14} />
+                        </button>
+                    </div>
 
-                    {/* ─── PROPERTY TAB ─── */}
-                    {activeTab === 'property' && (
-                        <div>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '1rem' }}>Pending Property Verifications</h3>
-                            {pendingProperties.length === 0 ? (
-                                <EmptyState icon={Building2} message="No pending property verifications." color="hsl(255,85%,65%)" />
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    {pendingProperties.map(p => (
-                                        <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <div>
-                                                <p style={{ fontWeight: 700, color: 'white', fontSize: '0.88rem' }}>
-                                                    {p.propertyCode || 'No Code'} — Survey: {p.surveyNumber}
-                                                </p>
-                                                <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
-                                                    {p.district || '—'}, {p.state || '—'} · {p.areaSqft ? `${p.areaSqft} sqft` : '—'}
-                                                </p>
-                                                <p style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', marginTop: 2 }}>
-                                                    Owner: {shortenWallet(p.ownerWallet)}
-                                                </p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => handleApproveProperty(p.id)} className="btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', background: 'rgba(34,197,94,0.1)', color: 'hsl(142,71%,45%)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '0.5rem' }}>
-                                                    <CheckCircle2 size={14} /> Approve
-                                                </button>
-                                                <button onClick={() => navigate(`/authority/property/${p.id}`)} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
-                                                    Review
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 600, color: '#64748B' }}>Property ID</th>
+                                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 600, color: '#64748B' }}>Owner Wallet</th>
+                                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 600, color: '#64748B' }}>Boundary / District</th>
+                                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 600, color: '#64748B' }}>ASBA Fund Lock</th>
+                                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 600, color: '#64748B' }}>Multi-Sig Signatures</th>
+                                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 600, color: '#64748B', textAlign: 'right' }}>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sales.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748B', fontSize: '0.88rem' }}>
+                                            No land transactions recorded on-chain yet.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    sales.slice(0, 10).map((s, idx) => {
+                                        const propCode = s.propertyCode ? `DV-${s.propertyCode}` : (s.propertyId ? `DV-${s.propertyId.slice(0, 6)}` : `DV-#${idx + 1}`);
+                                        const sellerShort = s.sellerWallet ? `${s.sellerWallet.slice(0, 6)}...${s.sellerWallet.slice(-4)}` : 'Pending';
+                                        const boundary = s.district ? `${s.district}` : 'Cadastral Parcel';
+                                        const sigCount = (s.sellerSigned ? 1 : 0) + (s.buyerSigned ? 1 : 0) + (s.authoritySigned ? 1 : 0);
 
-                    {/* ─── SALES TAB ─── */}
-                    {activeTab === 'sale' && (
-                        <div>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '1rem' }}>Sale Transactions</h3>
-                            {sales.length === 0 ? (
-                                <EmptyState icon={Activity} message="No sale transactions found." color="hsl(280,80%,60%)" />
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    {sales.map(tx => (
-                                        <div key={tx.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <div className="flex items-center gap-4">
-                                                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa' }}>
-                                                    <Activity size={18} />
-                                                </div>
-                                                <div>
-                                                    <p style={{ fontWeight: 700, color: 'white', fontSize: '0.88rem' }}>
-                                                        Sale #{tx.id.slice(0, 8)}
-                                                    </p>
-                                                    <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace', marginTop: 2 }}>
-                                                        {shortenWallet(tx.sellerWallet)} → {shortenWallet(tx.buyerWallet)}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-4 items-center">
-                                                <div style={{ textAlign: 'right' }}>
-                                                    <span style={{ fontWeight: 700, color: '#a78bfa' }}>₹{tx.salePrice?.toLocaleString()}</span>
-                                                    <div style={{ marginTop: 4, display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                                                        <span className={`badge ${tx.status === 'completed' ? 'badge-success' : tx.status === 'cancelled' ? 'badge-danger' : 'badge-warning'}`} style={{ fontSize: '0.6rem' }}>
-                                                            {tx.status}
+                                        return (
+                                            <tr 
+                                                key={s.id || idx}
+                                                style={{ 
+                                                    borderBottom: idx < Math.min(sales.length, 10) - 1 ? '1px solid rgba(255, 255, 255, 0.04)' : 'none',
+                                                    transition: 'background 0.2s ease'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                                {/* Property ID */}
+                                                <td style={{ padding: '1.1rem 1rem', fontSize: '0.9rem', fontWeight: 600, color: '#F8FAFC', fontFamily: 'JetBrains Mono, monospace' }}>
+                                                    {propCode}
+                                                </td>
+
+                                                {/* Owner Wallet */}
+                                                <td style={{ padding: '1.1rem 1rem', fontSize: '0.85rem', color: '#94A3B8', fontFamily: 'JetBrains Mono, monospace' }}>
+                                                    {sellerShort}
+                                                </td>
+
+                                                {/* Boundary / District */}
+                                                <td style={{ padding: '1.1rem 1rem', fontSize: '0.85rem', color: '#94A3B8' }}>
+                                                    {boundary}
+                                                </td>
+
+                                                {/* ASBA Fund Lock Status */}
+                                                <td style={{ padding: '1.1rem 1rem' }}>
+                                                    {s.fundsBlocked ? (
+                                                        <span className="badge-active-green">
+                                                            Active
                                                         </span>
-                                                        {tx.authoritySigned && <span className="badge badge-success" style={{ fontSize: '0.6rem' }}>Signed</span>}
+                                                    ) : (
+                                                        <span className="badge-blocked-red">
+                                                            Pending
+                                                        </span>
+                                                    )}
+                                                </td>
+
+                                                {/* Multi-Sig Signatures */}
+                                                <td style={{ padding: '1.1rem 1rem', fontSize: '0.85rem', fontWeight: 600, color: '#F8FAFC' }}>
+                                                    {sigCount}/3 Signed
+                                                </td>
+
+                                                {/* Action Buttons */}
+                                                <td style={{ padding: '1.1rem 1rem', textAlign: 'right' }}>
+                                                    <div style={{ display: 'inline-flex', gap: '0.6rem' }}>
+                                                        <button 
+                                                            onClick={() => navigate(s.propertyId ? `/properties/${s.propertyId}` : `/sale/${s.id}`)}
+                                                            className="btn-dark-pill"
+                                                            style={{ padding: '0.4rem 0.9rem', fontSize: '0.78rem' }}
+                                                        >
+                                                            Review
+                                                        </button>
+                                                        {!s.authoritySigned && (
+                                                            <button 
+                                                                onClick={() => handleQuickApprove(s)}
+                                                                className="btn-cyan-glow"
+                                                                style={{ padding: '0.4rem 1.1rem', fontSize: '0.78rem', borderRadius: '8px' }}
+                                                                disabled={actionLoading === s.id}
+                                                            >
+                                                                {actionLoading === s.id ? <Loader2 size={12} className="animate-spin" /> : 'Approve'}
+                                                            </button>
+                                                        )}
                                                     </div>
-                                                </div>
-                                                {!tx.authoritySigned && tx.status !== 'completed' && tx.status !== 'cancelled' && (
-                                                    <button onClick={() => navigate(`/authority/sale/${tx.id}`)} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
-                                                        Review
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* ─── FUND BLOCKS TAB ─── */}
-                    {activeTab === 'fund' && (
-                        <div>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '1rem' }}>Pending Fund Block Confirmations</h3>
-                            {fundBlocks.length === 0 ? (
-                                <EmptyState icon={Landmark} message="No pending fund block confirmations." color="hsl(255,85%,65%)" />
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    {fundBlocks.map(fb => (
-                                        <div key={fb.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <div>
-                                                <p style={{ fontWeight: 700, color: 'white', fontSize: '0.88rem' }}>
-                                                    Fund Block #{(fb.id || '').toString().slice(0, 8)}
-                                                </p>
-                                                <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
-                                                    Amount: ₹{parseFloat(fb.block_amount || fb.blockAmount || 0).toLocaleString()} · {fb.currency || 'INR'}
-                                                </p>
-                                                <p style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', marginTop: 2 }}>
-                                                    Buyer: {shortenWallet(fb.buyer_wallet || fb.buyerWallet)}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <span className={`badge ${fb.status === 'blocked' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.65rem' }}>
-                                                    {fb.status || 'pending'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* ─── WALLET RECOVERY TAB ─── */}
-                    {activeTab === 'recovery' && (
-                        <div>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '1rem' }}>Pending Wallet Recovery Requests</h3>
-                            {recoveries.length === 0 ? (
-                                <EmptyState icon={Key} message="No wallet recovery requests at this time." color="hsl(38,92%,50%)" />
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    {recoveries.map(r => (
-                                        <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <div>
-                                                <p style={{ fontWeight: 700, color: 'white', fontSize: '0.88rem' }}>
-                                                    Recovery #{(r.id || '').toString().slice(0, 8)}
-                                                </p>
-                                                <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace', marginTop: 2 }}>
-                                                    User: {shortenWallet(r.old_wallet || r.oldWallet || r.user_id)}
-                                                </p>
-                                                <p style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>
-                                                    Status: {r.status}
-                                                </p>
-                                            </div>
-                                            <button onClick={() => navigate(`/authority/wallet-recovery/${r.id}`)} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
-                                                Review
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
-
-            {/* Footer */}
-            <div className="mt-8 flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.72rem', fontWeight: 600, padding: '0 0.5rem' }}>
-                <ShieldCheck size={14} style={{ color: '#ef4444' }} />
-                System access securely verified. All actions are indelibly logged on-chain.
             </div>
         </div>
     );

@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { propertyService } from '../../services/property.service';
 import { useAuth } from '../../context/AuthContext';
+import { TopNavbar } from '../../components/TopNavbar';
 import {
-    Building, MapPin, Maximize, FileText, Loader2, ArrowLeft,
-    Globe, Upload, CheckCircle2, AlertTriangle, Receipt
+    Building, MapPin, FileText, Loader2, ArrowLeft,
+    Globe, Upload, CheckCircle2, AlertTriangle, Receipt,
+    Shield, Check, PlusCircle, ArrowRight
 } from 'lucide-react';
 import './PropertyPages.css';
 
@@ -47,10 +49,11 @@ const RegisterProperty = () => {
             uploadData.append('file', file);
 
             const res = await propertyService.uploadToIPFS(uploadData);
-            setFormData({ ...formData, [field]: res.data.data.ipfsHash });
+            const ipfsHash = res.data?.data?.ipfsHash || res.data?.ipfsHash;
+            setFormData({ ...formData, [field]: ipfsHash });
         } catch (err) {
             console.error('IPFS Upload Error:', err);
-            setError(`Failed to upload ${field === 'documentHash' ? 'Title Deed' : 'Tax Receipt'}.`);
+            setError(`Failed to upload ${field === 'documentHash' ? 'Title Deed' : 'Tax Receipt'} to IPFS.`);
         } finally {
             setUploadingField(null);
         }
@@ -63,7 +66,7 @@ const RegisterProperty = () => {
 
         try {
             if (user?.kycStatus !== 'approved' && user?.kycStatus !== 'verified') {
-                throw new Error('KYC must be approved before registering a property.');
+                throw new Error('KYC must be approved by the land authority before registering a property.');
             }
 
             const payload = {
@@ -92,61 +95,70 @@ const RegisterProperty = () => {
         }
     };
 
-    const labelStyle = {
-        fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 600,
-        color: '#d1d5db', marginBottom: '0.4rem', display: 'block'
-    };
-
-    const cyberInputStyle = {
-        width: '100%', padding: '0.8rem 1rem', background: 'rgba(0,0,0,0.5)',
-        border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px',
-        color: 'white', fontFamily: 'inherit', fontSize: '0.9rem',
-        transition: 'all 0.2s ease', outline: 'none'
-    };
-
-    // Success state
     if (success) {
         return (
-            <div className="property-container container-sm mt-8 animate-fade-in">
-                <div className="cyber-hud-bar" style={{ display: 'block', textAlign: 'center', padding: '4rem 2rem', position: 'relative', overflow: 'hidden' }}>
-                    <div className="cyber-card-glow-orb" style={{ background: '#00E5FF', top: '0', left: '50%', transform: 'translateX(-50%)', width: '10rem', height: '10rem' }}></div>
+            <div style={{ minHeight: '100vh', background: '#0B0F19', color: '#F8FAFC' }} className="animate-fade-in">
+                <TopNavbar 
+                    title="Registration Complete"
+                    subtitle="Your property has been recorded and submitted for surveyor verification"
+                    showLogo={false}
+                    showNetwork={true}
+                    showNotifications={true}
+                    showProfile={true}
+                />
 
-                    <div className="relative z-10">
-                        <CheckCircle2 size={64} style={{ color: '#00E5FF', margin: '0 auto 1.5rem', filter: 'drop-shadow(0 0 15px rgba(0,229,255,0.5))' }} />
-                        <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', color: 'white' }}>
-                            Property Submitted
+                <div style={{ padding: '3rem 2rem', maxWidth: '640px', margin: '0 auto' }}>
+                    <div className="digi-card p-8 text-center" style={{ background: '#0F172A', borderRadius: '16px', border: '1px solid #1E293B' }}>
+                        <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid #10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                            <CheckCircle2 size={32} style={{ color: '#10B981' }} />
+                        </div>
+
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#F8FAFC', marginBottom: '0.5rem' }}>
+                            Property Registered On-Chain
                         </h2>
-                        <p style={{ color: 'hsl(220,15%,60%)', marginBottom: '2rem', fontSize: '1.05rem' }}>
-                            Your property registration has been submitted and is pending verification.
+                        <p style={{ color: '#94A3B8', fontSize: '0.9rem', marginBottom: '2rem' }}>
+                            Your parcel application has been indexed in the state registry and is awaiting final surveyor sign-off.
                         </p>
 
                         {submittedProp && (
-                            <div className="cyber-data-grid" style={{ textAlign: 'left', maxWidth: '500px', margin: '0 auto 2.5rem', border: '1px solid rgba(0,229,255,0.2)', background: 'rgba(0,229,255,0.05)' }}>
-                                <div className="cyber-data-item">
-                                    <div className="label">Property ID</div>
-                                    <div className="value" style={{ color: '#00E5FF' }}>{submittedProp.propertyCode}</div>
+                            <div 
+                                style={{
+                                    textAlign: 'left',
+                                    padding: '1.25rem 1.5rem',
+                                    background: '#0B0F19',
+                                    border: '1px solid #1E293B',
+                                    borderRadius: '12px',
+                                    marginBottom: '2rem',
+                                    display: 'grid',
+                                    gridTemplateColumns: '1fr 1fr',
+                                    gap: '1rem'
+                                }}
+                            >
+                                <div>
+                                    <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600, display: 'block' }}>Property Code</span>
+                                    <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#38BDF8', fontFamily: 'JetBrains Mono' }}>{submittedProp.propertyCode}</span>
                                 </div>
-                                <div className="cyber-data-item">
-                                    <div className="label">Status</div>
-                                    <div className="value" style={{ color: '#F59E0B' }}>Pending Verification</div>
+                                <div>
+                                    <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600, display: 'block' }}>Status</span>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#F59E0B' }}>Pending Verification</span>
                                 </div>
-                                <div className="cyber-data-item">
-                                    <div className="label">Survey Number</div>
-                                    <div className="value" style={{ fontFamily: 'inherit' }}>{submittedProp.surveyNumber}</div>
+                                <div>
+                                    <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600, display: 'block' }}>Survey Number</span>
+                                    <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#F8FAFC' }}>{submittedProp.surveyNumber}</span>
                                 </div>
-                                <div className="cyber-data-item">
-                                    <div className="label">Area (sq.ft.)</div>
-                                    <div className="value" style={{ fontFamily: 'inherit' }}>{submittedProp.areaSqft}</div>
+                                <div>
+                                    <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600, display: 'block' }}>Area</span>
+                                    <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#F8FAFC' }}>{submittedProp.areaSqft} sqft</span>
                                 </div>
                             </div>
                         )}
 
                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                            <button className="cyber-btn-hollow" onClick={() => navigate('/my-properties')} style={{ '--btn-color': '#00E5FF', padding: '0.75rem 1.5rem', textTransform: 'capitalize' }}>
-                                <Building size={16} /> Return to Dashboard
+                            <button className="btn-cyan-glow" onClick={() => navigate('/my-properties')}>
+                                Return to My Properties
                             </button>
-                            <button className="cyber-btn-hollow" onClick={() => { setSuccess(false); setSubmittedProp(null); setFormData({ surveyNumber: '', surveyDetails: '', areaSqft: '', addressLine: '', district: '', state: '', geoLat: '', geoLng: '', documentHash: '', taxReceiptHash: '' }); }} style={{ '--btn-color': '#FF007F', padding: '0.75rem 1.5rem', textTransform: 'capitalize' }}>
-                                Register Another Property
+                            <button className="btn-dark-pill" onClick={() => { setSuccess(false); setSubmittedProp(null); setFormData({ surveyNumber: '', surveyDetails: '', areaSqft: '', addressLine: '', district: '', state: '', geoLat: '', geoLng: '', documentHash: '', taxReceiptHash: '' }); }}>
+                                Register Another
                             </button>
                         </div>
                     </div>
@@ -156,205 +168,222 @@ const RegisterProperty = () => {
     }
 
     return (
-        <div className="property-container animate-fade-in" style={{ padding: '0', position: 'relative', overflow: 'hidden', minHeight: 'calc(100vh - 60px)', borderRadius: '24px', margin: '0' }}>
-            <style>
-                {`
-                    .rp-full-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-                    .rp-full-bg img { width: 100%; height: 100%; object-fit: cover; opacity: 0.6; mix-blend-mode: screen; }
-                    .rp-full-bg .overlay { position: absolute; inset: 0; background: radial-gradient(circle at center, transparent 0%, #050505 100%), linear-gradient(to right, #050505 0%, transparent 60%, transparent 80%, #050505 100%); }
-                    
-                    .rp-content-wrapper { display: flex; max-width: 1400px; margin: 0 auto; gap: 4rem; align-items: stretch; justify-content: space-between; position: relative; z-index: 10; padding: 2.5rem; height: 100%; }
-                    
-                    .rp-info-side { flex: 1; display: none; flex-direction: column; justify-content: center; position: relative; padding-right: 2rem; }
-                    @media (min-width: 1024px) { .rp-info-side { display: flex; } }
-                    
-                    .rp-glass-form { flex: 1.3; background: rgba(10, 10, 15, 0.5); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.06); border-radius: 24px; padding: 3rem; box-shadow: 0 30px 60px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,0,127,0.05); max-height: calc(100vh - 120px); overflow-y: auto; scrollbar-width: none; }
-                    .rp-glass-form::-webkit-scrollbar { display: none; }
-                `}
-            </style>
+        <div style={{ minHeight: '100vh', background: '#0B0F19', color: '#F8FAFC' }} className="animate-fade-in">
+            <TopNavbar 
+                title="Register Land Property"
+                subtitle="Mint a cryptographic cadastral parcel deed on Avalanche Fuji"
+                showLogo={false}
+                showNetwork={true}
+                showNotifications={true}
+                showProfile={true}
+            />
 
-            <div className="rp-full-bg">
-                <img src="/register_bg_premium.png" alt="Dynamic Background" />
-                <div className="overlay"></div>
-            </div>
-
-            <div className="rp-content-wrapper">
-                {/* ─── Hero Information Scale ─── */}
-                <div className="rp-info-side">
-                    <button className="cyber-btn-hollow mb-12" onClick={() => navigate(-1)} style={{ '--btn-color': '#00E5FF', width: 'fit-content', border: 'none', paddingLeft: 0, fontSize: '0.8rem' }}>
-                        <ArrowLeft size={16} /> Return to Dashboard
+            <div style={{ padding: '2.5rem 2rem', maxWidth: '1000px', margin: '0 auto' }}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <button onClick={() => navigate(-1)} className="btn-dark-pill" style={{ marginBottom: '1rem' }}>
+                        <ArrowLeft size={14} /> Back
                     </button>
-
-                    <div style={{ padding: '0.6rem 1.25rem', background: 'rgba(0,229,255,0.08)', borderLeft: '4px solid #00E5FF', width: 'fit-content', marginBottom: '1.5rem', borderRadius: '0 8px 8px 0' }}>
-                        <p style={{ color: '#00E5FF', fontWeight: 800, letterSpacing: '0.15em', fontSize: '0.7rem', textTransform: 'uppercase', margin: 0 }}>Secure Web3 Portal Active</p>
-                    </div>
-
-                    <h1 style={{ fontSize: '4rem', fontWeight: 800, lineHeight: 1.05, color: 'white', marginBottom: '1.5rem', letterSpacing: '-0.02em' }}>
-                        Digitize <br /> Your <span style={{ color: 'transparent', WebkitTextStroke: '1.5px #FF007F' }}>Properties</span>
-                    </h1>
-
-                    <p style={{ color: '#9ca3af', fontSize: '1.05rem', lineHeight: 1.6, maxWidth: '420px', marginBottom: '3.5rem' }}>
-                        Transition your physical real estate deeds into immutable on-chain cryptographic tokens governed seamlessly by smart contracts.
-                    </p>
-
-                    <div style={{ display: 'flex', gap: '2rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div style={{ width: '45px', height: '45px', borderRadius: '12px', background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(16,185,129,0.3)' }}><CheckCircle2 size={20} style={{ color: '#10B981' }} /></div>
-                            <span style={{ color: 'white', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Government<br /><span style={{ color: '#10B981', fontWeight: 600 }}>Grade Security</span></span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div style={{ width: '45px', height: '45px', borderRadius: '12px', background: 'rgba(168,85,247,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(168,85,247,0.3)' }}><Globe size={20} style={{ color: '#A855F7' }} /></div>
-                            <span style={{ color: 'white', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Interplanetary<br /><span style={{ color: '#A855F7', fontWeight: 600 }}>File System</span></span>
-                        </div>
-                    </div>
                 </div>
 
-                {/* ─── Registration Form ─── */}
-                <div className="rp-glass-form">
-                    {/* Form Header */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '2.5rem' }}>
-                        <div style={{
-                            width: '3.5rem', height: '3.5rem', borderRadius: '12px',
-                            background: 'rgba(255,0,127,0.1)', border: '1px solid rgba(255,0,127,0.3)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: '0 0 20px rgba(255,0,127,0.2)'
-                        }}>
-                            <Building size={24} style={{ color: '#FF007F' }} />
-                        </div>
-                        <div>
-                            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, color: 'white' }}>
-                                Application Payload
-                            </h2>
-                            <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginTop: '0.3rem', margin: 0 }}>
-                                Specify node variables for property registry
-                            </p>
-                        </div>
+                {error && (
+                    <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', padding: '0.85rem 1.25rem', marginBottom: '1.75rem', color: '#f87171', fontSize: '0.88rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <AlertTriangle size={18} /> {error}
                     </div>
+                )}
 
-                    {/* Error */}
-                    {error && (
-                        <div className="alert-message mb-6" style={{
-                            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-                            color: '#EF4444', fontSize: '0.9rem'
-                        }}>
-                            <AlertTriangle size={18} /> {error}
-                        </div>
-                    )}
+                <div 
+                    className="digi-card p-8"
+                    style={{
+                        background: '#0F172A',
+                        border: '1px solid #1E293B',
+                        borderRadius: '16px'
+                    }}
+                >
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                        
+                        {/* ── Section 1: Cadastral Survey Information ── */}
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                                <FileText size={18} style={{ color: '#0284C7' }} />
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#F8FAFC', margin: 0 }}>Cadastral Survey Information</h3>
+                            </div>
 
-                    <form onSubmit={handleSubmit}>
-                        {/* Section: Survey Details */}
-                        <div className="mb-6 p-6" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px' }}>
-                            <h4 className="flex items-center gap-2 mb-6 text-base font-bold" style={{ color: '#00E5FF' }}>
-                                <FileText size={18} /> Verification Data
-                            </h4>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                                <div className="form-group">
-                                    <label style={labelStyle}>Survey Number *</label>
-                                    <input style={cyberInputStyle} name="surveyNumber" type="text" placeholder="e.g. SRV-2026-991" value={formData.surveyNumber} onChange={handleChange} required />
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.4rem' }}>Survey Number *</label>
+                                    <input 
+                                        className="input-premium"
+                                        name="surveyNumber" 
+                                        type="text" 
+                                        placeholder="e.g. SRV-2026-991" 
+                                        value={formData.surveyNumber} 
+                                        onChange={handleChange} 
+                                        required 
+                                    />
                                 </div>
-                                <div className="form-group">
-                                    <label style={labelStyle}>Total Scale (Sq.Ft) *</label>
-                                    <input style={cyberInputStyle} name="areaSqft" type="number" placeholder="2500" value={formData.areaSqft} onChange={handleChange} required min="1" />
+                                <div>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.4rem' }}>Total Area (Sq.Ft) *</label>
+                                    <input 
+                                        className="input-premium"
+                                        name="areaSqft" 
+                                        type="number" 
+                                        placeholder="2500" 
+                                        value={formData.areaSqft} 
+                                        onChange={handleChange} 
+                                        required 
+                                        min="1" 
+                                    />
                                 </div>
-                                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                                    <label style={labelStyle}>Operational Notes</label>
-                                    <textarea style={{ ...cyberInputStyle, resize: 'vertical', minHeight: '80px' }} name="surveyDetails" placeholder="Enter Additional Details." value={formData.surveyDetails} onChange={handleChange} />
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.4rem' }}>Cadastral Survey Boundary Notes</label>
+                                    <textarea 
+                                        className="input-premium"
+                                        name="surveyDetails" 
+                                        placeholder="Subdivision notes, road boundaries, adjoining properties..." 
+                                        value={formData.surveyDetails} 
+                                        onChange={handleChange} 
+                                        style={{ minHeight: '80px', resize: 'vertical' }}
+                                    />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Section: Location */}
-                        <div className="mb-6 p-6" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px' }}>
-                            <h4 className="flex items-center gap-2 mb-6 text-base font-bold" style={{ color: '#00E5FF' }}>
-                                <MapPin size={18} /> Geographical Coordinates
-                            </h4>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                                    <label style={labelStyle}>Physical Address Line *</label>
-                                    <input style={cyberInputStyle} name="addressLine" type="text" placeholder="Address Line" value={formData.addressLine} onChange={handleChange} required />
+                        {/* ── Section 2: Geographic Coordinates & Location ── */}
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                                <MapPin size={18} style={{ color: '#0284C7' }} />
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#F8FAFC', margin: 0 }}>Geographic Coordinates & Location</h3>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.4rem' }}>Physical Address Line *</label>
+                                    <input 
+                                        className="input-premium"
+                                        name="addressLine" 
+                                        type="text" 
+                                        placeholder="Street name, landmark, layout" 
+                                        value={formData.addressLine} 
+                                        onChange={handleChange} 
+                                        required 
+                                    />
                                 </div>
-                                <div className="form-group">
-                                    <label style={labelStyle}>District / Sub-sector *</label>
-                                    <input style={cyberInputStyle} name="district" type="text" placeholder="District" value={formData.district} onChange={handleChange} required />
+                                <div>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.4rem' }}>District / Municipality *</label>
+                                    <input 
+                                        className="input-premium"
+                                        name="district" 
+                                        type="text" 
+                                        placeholder="Bangalore Urban" 
+                                        value={formData.district} 
+                                        onChange={handleChange} 
+                                        required 
+                                    />
                                 </div>
-                                <div className="form-group">
-                                    <label style={labelStyle}>State / Global Region *</label>
-                                    <input style={cyberInputStyle} name="state" type="text" placeholder="State" value={formData.state} onChange={handleChange} required />
+                                <div>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.4rem' }}>State / Region *</label>
+                                    <input 
+                                        className="input-premium"
+                                        name="state" 
+                                        type="text" 
+                                        placeholder="Karnataka" 
+                                        value={formData.state} 
+                                        onChange={handleChange} 
+                                        required 
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.4rem' }}>GPS Latitude (° N)</label>
+                                    <input 
+                                        className="input-premium"
+                                        name="geoLat" 
+                                        type="number" 
+                                        step="0.000001" 
+                                        placeholder="12.971600" 
+                                        value={formData.geoLat} 
+                                        onChange={handleChange} 
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.4rem' }}>GPS Longitude (° E)</label>
+                                    <input 
+                                        className="input-premium"
+                                        name="geoLng" 
+                                        type="number" 
+                                        step="0.000001" 
+                                        placeholder="77.594600" 
+                                        value={formData.geoLng} 
+                                        onChange={handleChange} 
+                                    />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Section: Documents */}
-                        <div className="mb-8 p-6" style={{ background: 'rgba(255,0,127,0.03)', border: '1px solid rgba(255,0,127,0.15)', borderRadius: '16px' }}>
-                            <h4 className="flex items-center gap-2 mb-6 text-base font-bold" style={{ color: '#FF007F' }}>
-                                <Upload size={18} /> Cryptographic Evidence
-                            </h4>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                        {/* ── Section 3: IPFS Document Uploads ── */}
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                                <Upload size={18} style={{ color: '#0284C7' }} />
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#F8FAFC', margin: 0 }}>IPFS Legal Title Documents</h3>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                                 {/* Title Deed */}
-                                <div className="form-group">
-                                    <label style={labelStyle}>Certified Title Deed *</label>
+                                <div>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.4rem' }}>Primary Title Deed *</label>
                                     {formData.documentHash ? (
-                                        <div style={{ padding: '1rem 1.25rem', background: 'rgba(0,229,255,0.08)', border: '1px solid rgba(0,229,255,0.2)', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
-                                                <div style={{ background: 'rgba(0,229,255,0.15)', padding: '0.4rem', borderRadius: '6px' }}><CheckCircle2 size={16} style={{ color: '#00E5FF' }} /></div>
-                                                <span style={{ fontFamily: 'JetBrains Mono', fontSize: '0.75rem', color: '#00E5FF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formData.documentHash}</span>
-                                            </div>
-                                            <span className="cyber-badge" style={{ '--badge-bg': 'transparent', '--badge-color': '#00E5FF', '--badge-border': 'rgba(0,229,255,0.5)', padding: '0.3rem 0.6rem', fontSize: '0.65rem' }}>Secured</span>
+                                        <div style={{ padding: '0.75rem 1rem', background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#38BDF8', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {formData.documentHash.slice(0, 20)}...
+                                            </span>
+                                            <span className="badge-active-green">Pinned</span>
                                         </div>
                                     ) : (
-                                        <label className="upload-box relative" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', borderColor: 'rgba(255,0,127,0.3)', borderStyle: 'dashed', borderWidth: '1px', borderRadius: '12px', padding: '1.5rem', transition: 'all 0.2s', cursor: uploadingField === 'documentHash' ? 'not-allowed' : 'pointer' }}>
-                                            <input
-                                                type="file" accept=".pdf,.jpg"
-                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                                                onChange={(e) => handleFileUpload(e, 'documentHash')} disabled={uploadingField === 'documentHash'}
+                                        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: '#0B0F19', border: '1.5px dashed #334155', borderRadius: '10px', cursor: 'pointer' }}>
+                                            <input 
+                                                type="file" 
+                                                accept=".pdf,.png,.jpg" 
+                                                style={{ display: 'none' }} 
+                                                onChange={e => handleFileUpload(e, 'documentHash')}
+                                                disabled={uploadingField === 'documentHash'}
                                             />
                                             {uploadingField === 'documentHash' ? (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                    <Loader2 size={24} className="animate-spin" style={{ color: '#FF007F' }} />
-                                                    <span style={{ fontSize: '0.9rem', color: '#FF007F', fontWeight: 600 }}>Encrypting File...</span>
-                                                </div>
+                                                <Loader2 size={20} className="animate-spin" style={{ color: '#0284C7' }} />
                                             ) : (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                    <Upload size={20} style={{ color: '#FF007F' }} />
-                                                    <div>
-                                                        <p style={{ fontSize: '0.9rem', color: 'white', fontWeight: 600, margin: 0 }}>Supply Title Deed (PDF/JPG)</p>
-                                                    </div>
-                                                </div>
+                                                <>
+                                                    <Upload size={20} style={{ color: '#0284C7', marginBottom: '0.5rem' }} />
+                                                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#F8FAFC' }}>Upload Title Deed (PDF/JPG)</span>
+                                                </>
                                             )}
                                         </label>
                                     )}
                                 </div>
 
                                 {/* Tax Receipt */}
-                                <div className="form-group mt-2">
-                                    <label style={labelStyle}>Additional Documents</label>
+                                <div>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94A3B8', display: 'block', marginBottom: '0.4rem' }}>Tax Clearance Receipt</label>
                                     {formData.taxReceiptHash ? (
-                                        <div style={{ padding: '1rem 1.25rem', background: 'rgba(0,229,255,0.08)', border: '1px solid rgba(0,229,255,0.2)', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
-                                                <div style={{ background: 'rgba(0,229,255,0.15)', padding: '0.4rem', borderRadius: '6px' }}><CheckCircle2 size={16} style={{ color: '#00E5FF' }} /></div>
-                                                <span style={{ fontFamily: 'JetBrains Mono', fontSize: '0.75rem', color: '#00E5FF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formData.taxReceiptHash}</span>
-                                            </div>
-                                            <span className="cyber-badge" style={{ '--badge-bg': 'transparent', '--badge-color': '#00E5FF', '--badge-border': 'rgba(0,229,255,0.5)', padding: '0.3rem 0.6rem', fontSize: '0.65rem' }}>Secured</span>
+                                        <div style={{ padding: '0.75rem 1rem', background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#38BDF8', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {formData.taxReceiptHash.slice(0, 20)}...
+                                            </span>
+                                            <span className="badge-active-green">Pinned</span>
                                         </div>
                                     ) : (
-                                        <label className="upload-box relative" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', borderColor: 'rgba(255,0,127,0.3)', borderStyle: 'dashed', borderWidth: '1px', borderRadius: '12px', padding: '1.5rem', transition: 'all 0.2s', cursor: uploadingField === 'taxReceiptHash' ? 'not-allowed' : 'pointer' }}>
-                                            <input
-                                                type="file" accept=".pdf,.jpg"
-                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                                                onChange={(e) => handleFileUpload(e, 'taxReceiptHash')} disabled={uploadingField === 'taxReceiptHash'}
+                                        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: '#0B0F19', border: '1.5px dashed #334155', borderRadius: '10px', cursor: 'pointer' }}>
+                                            <input 
+                                                type="file" 
+                                                accept=".pdf,.png,.jpg" 
+                                                style={{ display: 'none' }} 
+                                                onChange={e => handleFileUpload(e, 'taxReceiptHash')}
+                                                disabled={uploadingField === 'taxReceiptHash'}
                                             />
                                             {uploadingField === 'taxReceiptHash' ? (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                    <Loader2 size={24} className="animate-spin" style={{ color: '#FF007F' }} />
-                                                    <span style={{ fontSize: '0.9rem', color: '#FF007F', fontWeight: 600 }}>Encrypting File...</span>
-                                                </div>
+                                                <Loader2 size={20} className="animate-spin" style={{ color: '#0284C7' }} />
                                             ) : (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                    <Receipt size={20} style={{ color: '#FF007F' }} />
-                                                    <div>
-                                                        <p style={{ fontSize: '0.9rem', color: 'white', fontWeight: 600, margin: 0 }}>Supply Tax Receipt (PDF/JPG)</p>
-                                                    </div>
-                                                </div>
+                                                <>
+                                                    <Receipt size={20} style={{ color: '#94A3B8', marginBottom: '0.5rem' }} />
+                                                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94A3B8' }}>Upload Tax Receipt (PDF/JPG)</span>
+                                                </>
                                             )}
                                         </label>
                                     )}
@@ -362,18 +391,14 @@ const RegisterProperty = () => {
                             </div>
                         </div>
 
+                        {/* Submit Button */}
                         <button
                             type="submit"
-                            disabled={loading || !formData.documentHash || !formData.taxReceiptHash}
-                            className="cyber-btn-hollow"
-                            style={{
-                                '--btn-color': (loading || !formData.documentHash || !formData.taxReceiptHash) ? '#6b7280' : '#00E5FF',
-                                width: '100%', padding: '1.25rem', fontSize: '1.05rem', marginTop: '1rem', borderStyle: 'solid',
-                                cursor: (loading || !formData.documentHash || !formData.taxReceiptHash) ? 'not-allowed' : 'pointer',
-                                background: (loading || !formData.documentHash || !formData.taxReceiptHash) ? 'transparent' : 'rgba(0, 229, 255, 0.05)'
-                            }}
+                            disabled={loading || !formData.documentHash}
+                            className="btn-cyan-glow"
+                            style={{ width: '100%', padding: '0.85rem', fontSize: '0.95rem' }}
                         >
-                            {loading ? <><Loader2 size={24} className="animate-spin" /> Synthesizing Database Lock...</> : 'Transmit Node Registration'}
+                            {loading ? <Loader2 size={20} className="animate-spin" /> : 'Submit Property for Surveyor Verification'}
                         </button>
                     </form>
                 </div>

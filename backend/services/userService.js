@@ -128,7 +128,10 @@ const bindFaceId = async (userId, faceIdHash) => {
 /**
  * Update user profile (email, phone).
  */
-const updateProfile = async (userId, { email, phone, houseNumber, locality, city, pinCode, state, country, walletAddress }) => {
+const updateProfile = async (userId, { 
+    email, phone, houseNumber, locality, city, pinCode, state, country, walletAddress,
+    fatherSpouseName, panNumber, nomineeName, nomineeWallet, domicileState, emergencyContactPhone, preferredLanguage 
+}) => {
     const user = await User.findById(userId);
     if (!user) throw new AppError('User not found.', 404);
 
@@ -157,7 +160,14 @@ const updateProfile = async (userId, { email, phone, houseNumber, locality, city
         city: city || null, 
         pinCode: pinCode || null, 
         state: state || null, 
-        country: country || null 
+        country: country || null,
+        fatherSpouseName: fatherSpouseName !== undefined ? fatherSpouseName : null,
+        panNumber: panNumber !== undefined ? panNumber : null,
+        nomineeName: nomineeName !== undefined ? nomineeName : null,
+        nomineeWallet: nomineeWallet !== undefined ? nomineeWallet : null,
+        domicileState: domicileState !== undefined ? domicileState : null,
+        emergencyContactPhone: emergencyContactPhone !== undefined ? emergencyContactPhone : null,
+        preferredLanguage: preferredLanguage !== undefined ? preferredLanguage : null,
     });
 };
 

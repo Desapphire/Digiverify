@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { saleService } from '../../services/sale.service';
 import { bankService } from '../../services/bank.service';
 import { useAuth } from '../../context/AuthContext';
+import { TopNavbar } from '../../components/TopNavbar';
 import {
     Loader2, CheckCircle2, AlertTriangle, Landmark, DollarSign,
-    Hash, ArrowRight, XCircle, Info, CreditCard, ShieldCheck
+    Hash, ArrowRight, XCircle, Info, CreditCard, ShieldCheck, ArrowLeft
 } from 'lucide-react';
 import './PropertyPages.css';
 
@@ -41,7 +42,7 @@ const FundBlocking = () => {
                         setStep('success');
                     }
                 } catch (e) {
-                    // No fund blocks yet, that's fine
+                    // No fund blocks yet
                 }
             } catch (err) {
                 console.error('Failed to load sale', err);
@@ -88,10 +89,10 @@ const FundBlocking = () => {
 
     if (loading) {
         return (
-            <div className="dashboard-container" style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse-glow">
-                    <Loader2 style={{ width: '3rem', height: '3rem', color: 'hsl(255,85%,65%)' }} className="animate-spin" />
-                    <p className="text-muted" style={{ fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', fontSize: '0.875rem' }}>Loading Fund Block...</p>
+            <div style={{ display: 'flex', height: '100vh', width: '100%', alignItems: 'center', justifyContent: 'center', background: '#0B0F19' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse">
+                    <Loader2 size={32} style={{ color: '#0284C7' }} className="animate-spin" />
+                    <p style={{ fontWeight: 600, color: '#94A3B8', fontSize: '0.88rem' }}>Loading ASBA Escrow...</p>
                 </div>
             </div>
         );
@@ -99,179 +100,215 @@ const FundBlocking = () => {
 
     if (error && !sale) {
         return (
-            <div className="dashboard-container container-sm">
-                <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
-                    <XCircle size={48} style={{ color: 'hsl(var(--color-danger))', marginBottom: '1rem' }} />
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.75rem' }}>Transaction Not Found</h2>
-                    <p className="text-muted" style={{ marginBottom: '1.5rem' }}>{error}</p>
-                    <button className="btn btn-primary" onClick={() => navigate('/transactions')}>Back to Transactions</button>
+            <div style={{ minHeight: '100vh', background: '#0B0F19', color: '#F8FAFC' }}>
+                <TopNavbar showLogo={true} />
+                <div style={{ padding: '4rem 2rem', maxWidth: '500px', margin: '0 auto', textAlign: 'center' }}>
+                    <XCircle size={48} style={{ color: '#EF4444', margin: '0 auto 1rem' }} />
+                    <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem' }}>Transaction Not Found</h2>
+                    <p style={{ color: '#94A3B8', marginBottom: '1.5rem', fontSize: '0.9rem' }}>{error}</p>
+                    <button className="btn-cyan-outline" onClick={() => navigate('/transactions')}>
+                        Back to Transactions
+                    </button>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="dashboard-container" style={{ maxWidth: '750px' }}>
-            {/* Header */}
-            <div className="page-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                    <h1 style={{ fontSize: '2.25rem', fontWeight: 800, letterSpacing: '-0.03em' }}>
-                        Fund <span className="text-gradient">Blocking</span>
-                    </h1>
-                    <span className="badge badge-neutral" style={{ fontSize: '0.7rem', fontFamily: 'monospace' }}>
-                        TX #{sale?.id}
-                    </span>
-                </div>
-                <p className="text-muted" style={{ fontSize: '0.95rem' }}>
-                    ASBA-style fund blocking for secure escrow transactions
-                </p>
-            </div>
+        <div style={{ minHeight: '100vh', background: '#0B0F19', color: '#F8FAFC' }} className="animate-fade-in">
+            <TopNavbar 
+                title="ASBA Escrow Fund Block" 
+                subtitle={`Transaction #${sale?.id?.slice(0, 8)} • Certified Banking Partner Lock`}
+                showLogo={false} 
+                showNetwork={true}
+                showNotifications={true}
+                showProfile={true}
+            />
 
-            {/* Sale Price Display */}
-            <div className="info-box info-box-grid" style={{ marginBottom: '1.25rem' }}>
-                <div>
-                    <p style={{ fontSize: '0.65rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                        <DollarSign size={12} /> Amount to Block
-                    </p>
-                    <p style={{ fontSize: '2rem', fontWeight: 800 }} className="text-gradient">
-                        ₹{sale?.salePrice?.toLocaleString('en-IN')}
-                    </p>
+            <div style={{ padding: '2.5rem 2rem', maxWidth: '750px', margin: '0 auto' }}>
+                
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <button onClick={() => navigate(-1)} className="btn-dark-pill">
+                        <ArrowLeft size={14} /> Back
+                    </button>
                 </div>
-                <div>
-                    <p style={{ fontSize: '0.65rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Currency</p>
-                    <p style={{ fontSize: '2rem', fontWeight: 800 }}>INR</p>
-                    <p className="text-muted" style={{ fontSize: '0.75rem' }}>Indian Rupee</p>
-                </div>
-            </div>
 
-            {/* Bank Instructions */}
-            {step === 'input' && (
-                <>
-                    <div className="instruction-card" style={{ marginBottom: '1.25rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                            <Info size={16} style={{ color: 'hsl(217,91%,60%)' }} />
-                            <h3 style={{ fontSize: '0.9rem', fontWeight: 700 }}>Bank Instructions (ASBA Model)</h3>
-                        </div>
-                        <ol>
-                            <li>Log in to your registered bank's <strong>net banking portal</strong> or mobile app.</li>
-                            <li>Navigate to <strong>Fund Blocking / ASBA</strong> section.</li>
-                            <li>Enter the <strong>exact sale amount</strong> shown above: <strong>₹{sale?.salePrice?.toLocaleString('en-IN')}</strong></li>
-                            <li>Use reference: <strong style={{ fontFamily: 'monospace', color: 'hsl(255,85%,65%)' }}>DVRFY-TX-{sale?.id}</strong></li>
-                            <li>Complete the blocking process and note the <strong>Bank Reference ID</strong>.</li>
-                            <li>Enter the Bank Reference ID below to confirm the block.</li>
-                        </ol>
-                    </div>
-
-                    {/* Bank Reference Input */}
-                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <CreditCard size={16} /> Confirm Fund Block
-                        </h3>
-                        <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '1.25rem' }}>
-                            Enter the Bank Reference ID received from your bank after blocking the funds.
+                {/* Sale Price Display */}
+                <div 
+                    className="digi-card p-6" 
+                    style={{ 
+                        background: '#0F172A', 
+                        border: '1px solid #1E293B', 
+                        borderRadius: '16px',
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '1.5rem',
+                        marginBottom: '1.5rem'
+                    }}
+                >
+                    <div>
+                        <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                            <DollarSign size={13} /> Amount to Lock
+                        </span>
+                        <p style={{ fontSize: '1.75rem', fontWeight: 800, color: '#10B981', margin: '4px 0 0 0' }}>
+                            ₹{sale?.salePrice?.toLocaleString('en-IN')}
                         </p>
-
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <label style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.5rem', display: 'block', color: 'hsl(var(--color-text-secondary))' }}>
-                                <Hash size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.25rem' }} />
-                                Bank Reference ID
-                            </label>
-                            <input
-                                className="input-premium"
-                                type="text"
-                                placeholder="e.g. BRN-2026-XXXXXXXX"
-                                value={bankRefId}
-                                onChange={(e) => setBankRefId(e.target.value)}
-                                style={{ fontSize: '1rem', fontFamily: 'monospace' }}
-                            />
-                        </div>
-
-                        {error && (
-                            <div style={{
-                                background: 'rgba(225,29,72,0.1)', border: '1px solid rgba(225,29,72,0.2)',
-                                borderRadius: '10px', padding: '0.75rem', marginBottom: '1rem',
-                                fontSize: '0.8rem', color: 'hsl(var(--color-danger))',
-                                display: 'flex', alignItems: 'center', gap: '0.4rem'
-                            }}>
-                                <AlertTriangle size={14} /> {error}
-                            </div>
-                        )}
-
-                        {/* Warning */}
-                        <div style={{
-                            background: 'rgba(234,179,8,0.05)', border: '1px solid rgba(234,179,8,0.15)',
-                            borderRadius: '10px', padding: '0.75rem', marginBottom: '1.25rem',
-                            display: 'flex', gap: '0.5rem', alignItems: 'flex-start'
-                        }}>
-                            <AlertTriangle size={14} style={{ color: 'hsl(38,92%,50%)', flexShrink: 0, marginTop: '2px' }} />
-                            <p className="text-muted" style={{ fontSize: '0.78rem', lineHeight: 1.5 }}>
-                                Ensure you have blocked <strong>exactly ₹{sale?.salePrice?.toLocaleString('en-IN')}</strong> in your bank account.
-                                Incorrect amounts will delay the transaction.
-                            </p>
-                        </div>
-
-                        <button
-                            className="btn btn-primary btn-glow w-full"
-                            disabled={submitting || !bankRefId.trim()}
-                            onClick={handleRequestAndConfirm}
-                            style={{ padding: '0.875rem', fontSize: '0.95rem' }}
-                        >
-                            {submitting ? (
-                                <><Loader2 size={16} className="animate-spin" /> Processing...</>
-                            ) : (
-                                <><Landmark size={16} /> Confirm Fund Block</>
-                            )}
-                        </button>
                     </div>
-                </>
-            )}
+                    <div>
+                        <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600, display: 'block' }}>Currency & Model</span>
+                        <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#F8FAFC', margin: '4px 0 0 0' }}>INR (ASBA Escrow)</p>
+                        <p style={{ color: '#94A3B8', fontSize: '0.75rem', margin: '2px 0 0 0' }}>Held in your account until authority approval</p>
+                    </div>
+                </div>
 
-            {/* Success State */}
-            {step === 'success' && (
-                <div className="glass-panel-elevated" style={{ padding: '3rem', textAlign: 'center' }}>
-                    <div className="scale-in" style={{ marginBottom: '1.5rem' }}>
+                {/* Bank Instructions */}
+                {step === 'input' && (
+                    <>
+                        <div 
+                            className="digi-card p-6" 
+                            style={{ 
+                                background: '#0F172A', 
+                                border: '1px solid #1E293B', 
+                                borderRadius: '16px',
+                                marginBottom: '1.5rem'
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                                <Info size={16} style={{ color: '#38BDF8' }} />
+                                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#F8FAFC', margin: 0 }}>Bank Instructions (ASBA Model)</h3>
+                            </div>
+                            <ol style={{ paddingLeft: '1.25rem', color: '#94A3B8', fontSize: '0.85rem', lineHeight: 1.8, margin: 0 }}>
+                                <li>Log in to your registered bank's <strong>NetBanking portal</strong> or mobile application.</li>
+                                <li>Navigate to the <strong>Fund Blocking / ASBA</strong> section.</li>
+                                <li>Enter the exact escrow amount: <strong style={{ color: '#F8FAFC' }}>₹{sale?.salePrice?.toLocaleString('en-IN')}</strong></li>
+                                <li>Enter the system transaction reference: <strong style={{ fontFamily: 'JetBrains Mono', color: '#38BDF8' }}>DVRFY-TX-{sale?.id?.slice(0, 8)}</strong></li>
+                                <li>Complete the verification with your bank OTP and copy the <strong>Bank Reference ID</strong>.</li>
+                            </ol>
+                        </div>
+
+                        {/* Bank Reference Input */}
+                        <div 
+                            className="digi-card p-6" 
+                            style={{ 
+                                background: '#0F172A', 
+                                border: '1px solid #1E293B', 
+                                borderRadius: '16px' 
+                            }}
+                        >
+                            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#F8FAFC', margin: 0, marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <CreditCard size={16} style={{ color: '#0284C7' }} /> Confirm ASBA Fund Block
+                            </h3>
+                            <p style={{ color: '#94A3B8', fontSize: '0.82rem', margin: 0, marginBottom: '1.25rem' }}>
+                                Provide the reference ID generated by your bank after the ASBA lock is active.
+                            </p>
+
+                            <div style={{ marginBottom: '1.25rem' }}>
+                                <label style={{ fontSize: '0.78rem', fontWeight: 600, marginBottom: '0.4rem', display: 'block', color: '#94A3B8' }}>
+                                    <Hash size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.25rem' }} />
+                                    Bank Reference ID *
+                                </label>
+                                <input
+                                    className="input-premium"
+                                    type="text"
+                                    placeholder="e.g. BRN-2026-90428"
+                                    value={bankRefId}
+                                    onChange={(e) => setBankRefId(e.target.value)}
+                                    style={{ width: '100%', fontSize: '0.95rem', fontFamily: 'JetBrains Mono' }}
+                                />
+                            </div>
+
+                            {error && (
+                                <div style={{
+                                    background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)',
+                                    borderRadius: '8px', padding: '0.75rem', marginBottom: '1rem',
+                                    fontSize: '0.82rem', color: '#EF4444',
+                                    display: 'flex', alignItems: 'center', gap: '0.4rem'
+                                }}>
+                                    <AlertTriangle size={14} /> {error}
+                                </div>
+                            )}
+
+                            <div style={{
+                                background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)',
+                                borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.25rem',
+                                display: 'flex', gap: '0.5rem', alignItems: 'flex-start'
+                            }}>
+                                <AlertTriangle size={15} style={{ color: '#F59E0B', flexShrink: 0, marginTop: '2px' }} />
+                                <p style={{ color: '#94A3B8', fontSize: '0.78rem', lineHeight: 1.5, margin: 0 }}>
+                                    Ensure the blocked amount matches <strong>₹{sale?.salePrice?.toLocaleString('en-IN')}</strong> exactly. Mismatches will require manual audit.
+                                </p>
+                            </div>
+
+                            <button
+                                className="btn-cyan-glow"
+                                disabled={submitting || !bankRefId.trim()}
+                                onClick={handleRequestAndConfirm}
+                                style={{ width: '100%', padding: '0.85rem', fontSize: '0.95rem' }}
+                            >
+                                {submitting ? (
+                                    <><Loader2 size={16} className="animate-spin" /> Verifying Bank Escrow...</>
+                                ) : (
+                                    <><Landmark size={16} /> Confirm Fund Block</>
+                                )}
+                            </button>
+                        </div>
+                    </>
+                )}
+
+                {/* Success State */}
+                {step === 'success' && (
+                    <div 
+                        className="digi-card p-8 text-center" 
+                        style={{ 
+                            background: '#0F172A', 
+                            border: '1px solid #1E293B', 
+                            borderRadius: '16px' 
+                        }}
+                    >
                         <div style={{
-                            width: '80px', height: '80px', borderRadius: '50%', margin: '0 auto',
-                            background: 'rgba(34,197,94,0.1)', border: '2px solid hsl(142,71%,45%)',
+                            width: '64px', height: '64px', borderRadius: '50%', margin: '0 auto 1.25rem',
+                            background: 'rgba(16, 185, 129, 0.12)', border: '1px solid #10B981',
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}>
-                            <ShieldCheck size={40} style={{ color: 'hsl(142,71%,45%)' }} />
+                            <ShieldCheck size={36} style={{ color: '#10B981' }} />
                         </div>
-                    </div>
-                    <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.75rem' }}>
-                        Funds <span style={{ color: 'hsl(142,71%,45%)' }}>Blocked!</span>
-                    </h2>
-                    <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '0.5rem', lineHeight: 1.6 }}>
-                        The funds have been successfully blocked in your bank account.
-                    </p>
-                    <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '2rem' }}>
-                        The transaction is now pending authority approval before ownership can be transferred.
-                    </p>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#F8FAFC', marginBottom: '0.5rem' }}>
+                            ASBA Escrow Active
+                        </h2>
+                        <p style={{ color: '#94A3B8', fontSize: '0.88rem', marginBottom: '0.5rem', lineHeight: 1.6 }}>
+                            Funds are safely blocked in your account under ASBA protocol.
+                        </p>
+                        <p style={{ color: '#94A3B8', fontSize: '0.82rem', marginBottom: '1.75rem' }}>
+                            The agreement is now in the queue for final surveyor verification and land authority sign-off.
+                        </p>
 
-                    <div style={{
-                        background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '1rem',
-                        marginBottom: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', textAlign: 'left'
-                    }}>
-                        <div>
-                            <p style={{ fontSize: '0.65rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.2rem' }}>Amount Blocked</p>
-                            <p style={{ fontSize: '1.1rem', fontWeight: 700 }}>₹{sale?.salePrice?.toLocaleString('en-IN')}</p>
+                        <div style={{
+                            background: '#0B0F19', border: '1px solid #1E293B', borderRadius: '10px', padding: '1rem 1.25rem',
+                            marginBottom: '1.75rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', textAlign: 'left'
+                        }}>
+                            <div>
+                                <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>Amount Blocked</span>
+                                <p style={{ fontSize: '1.1rem', fontWeight: 700, color: '#10B981', margin: '2px 0 0 0' }}>₹{sale?.salePrice?.toLocaleString('en-IN')}</p>
+                            </div>
+                            <div>
+                                <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>Status</span>
+                                <div style={{ marginTop: '2px' }}>
+                                    <span className="badge-active-green">ASBA Active</span>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <p style={{ fontSize: '0.65rem', color: 'hsl(var(--color-text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.2rem' }}>Status</p>
-                            <span className="badge badge-success">BLOCKED</span>
-                        </div>
-                    </div>
 
-                    <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-                        <button className="btn btn-secondary" onClick={() => navigate('/transactions')}>
-                            My Transactions
-                        </button>
-                        <button className="btn btn-primary" onClick={() => navigate(`/sale/${id}/review`)}>
-                            View Sale Details <ArrowRight size={14} />
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                            <button className="btn-dark-pill" onClick={() => navigate('/transactions')}>
+                                View Transactions
+                            </button>
+                            <button className="btn-cyan-glow" onClick={() => navigate(`/sale/${id}/review`)}>
+                                View Agreement Details <ArrowRight size={14} />
+                            </button>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };

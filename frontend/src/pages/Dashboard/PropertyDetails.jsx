@@ -1,16 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { propertyService } from '../../services/property.service';
 import { saleService } from '../../services/sale.service';
 import { useAuth } from '../../context/AuthContext';
 import { useWeb3 } from '../../context/Web3Context';
+import { TopNavbar } from '../../components/TopNavbar';
+import { CadastralSatelliteMap } from '../../components/CadastralSatelliteMap';
+import { AvalancheIcon } from '../../components/Icons';
 import {
-    MapPin, Building, FileText, Activity, ArrowLeft, Loader2,
-    CheckCircle2, ShieldAlert, DollarSign, ExternalLink, Copy,
-    Clock, Hash, Wallet, Shield, Lock, ArrowUpRight, ArrowDownLeft,
-    AlertTriangle, Globe, Gavel, XCircle
+    FileText, Loader2, ArrowLeft, CheckCircle2, ShieldAlert,
+    DollarSign, ExternalLink, Copy, Check, Upload, Printer,
+    Lock, AlertTriangle, ShieldCheck, XCircle, MapPin, Hash,
+    Calendar, Layers, Globe, CheckCircle, Award
 } from 'lucide-react';
 import './PropertyPages.css';
+import { CONTRACT_ADDRESSES } from '../../config/contracts';
+
+const CONTRACT_ADDRESS = CONTRACT_ADDRESSES.LAND_NFT;
 
 const PropertyDetails = () => {
     const { id } = useParams();
@@ -21,41 +27,53 @@ const PropertyDetails = () => {
     const [property, setProperty] = useState(null);
     const [documents, setDocuments] = useState([]);
     const [transactions, setTransactions] = useState([]);
-    const [freezeOrders, setFreezeOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [copied, setCopied] = useState('');
+
+    // Modals
+    const [saleModalOpen, setSaleModalOpen] = useState(false);
     const [saleForm, setSaleForm] = useState({ buyerWallet: '', price: '' });
     const [saleLoading, setSaleLoading] = useState(false);
     const [saleMsg, setSaleMsg] = useState({ type: '', text: '' });
-    const [copied, setCopied] = useState('');
+
+    // Document Upload Modal
+    const [uploadModalOpen, setUploadModalOpen] = useState(false);
+    const [uploadDocType, setUploadDocType] = useState('Survey Report');
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [uploadLoading, setUploadLoading] = useState(false);
+    const [uploadSuccess, setUploadSuccess] = useState('');
+    const [uploadError, setUploadError] = useState('');
+
+    // Certificate Modal
+    const [certModalOpen, setCertModalOpen] = useState(false);
+
+    const fetchDetails = async () => {
+        try {
+            setLoading(true);
+            const [propRes, docRes, txRes] = await Promise.allSettled([
+                propertyService.getPropertyById(id),
+                propertyService.getDocuments(id),
+                saleService.getTransactionsByProperty(id),
+            ]);
+
+            if (propRes.status === 'fulfilled' && propRes.value.data?.data) {
+                setProperty(propRes.value.data.data);
+            } else {
+                setError('Property record not found on-chain.');
+            }
+
+            if (docRes.status === 'fulfilled') setDocuments(docRes.value.data?.data || []);
+            if (txRes.status === 'fulfilled') setTransactions(txRes.value.data?.data || []);
+        } catch (err) {
+            setError('Failed to load property details');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchDetails = async () => {
-            try {
-                setLoading(true);
-                const [propRes, docRes, txRes] = await Promise.all([
-                    propertyService.getPropertyById(id),
-                    propertyService.getDocuments(id),
-                    saleService.getTransactionsByProperty(id),
-                ]);
-                const propData = propRes.data.data;
-                setProperty(propData);
-                setDocuments(docRes.data.data || []);
-                setTransactions(txRes.data.data || []);
-                // Fetch freeze orders if property is frozen or under dispute
-                if (propData?.status === 'frozen' || propData?.status === 'under_dispute') {
-                    try {
-                        const frozenRes = await propertyService.getFreezeOrders(id);
-                        setFreezeOrders(frozenRes.data.data || []);
-                    } catch (_) { /* non-critical */ }
-                }
-            } catch (err) {
-                setError('Failed to load property details');
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchDetails();
     }, [id]);
 
@@ -66,6 +84,7 @@ const PropertyDetails = () => {
     );
 
     const handleCopy = (text, key) => {
+        if (!text) return;
         navigator.clipboard.writeText(text);
         setCopied(key);
         setTimeout(() => setCopied(''), 2000);
@@ -81,15 +100,12 @@ const PropertyDetails = () => {
                 buyerWallet: saleForm.buyerWallet,
                 salePrice: Number(saleForm.price)
             });
-            setSaleMsg({ type: 'success', text: 'Sale contract deployed successfully!' });
+            setSaleMsg({ type: 'success', text: 'Sale agreement deployed on-chain!' });
             setSaleForm({ buyerWallet: '', price: '' });
-            // Refresh
-            const [propRes, txRes] = await Promise.all([
-                propertyService.getPropertyById(id),
-                saleService.getTransactionsByProperty(id),
-            ]);
-            setProperty(propRes.data.data);
-            setTransactions(txRes.data.data || []);
+            setTimeout(() => {
+                setSaleModalOpen(false);
+                navigate('/sale');
+            }, 1200);
         } catch (err) {
             setSaleMsg({ type: 'error', text: err.response?.data?.message || 'Failed to initiate sale' });
         } finally {
@@ -97,30 +113,41 @@ const PropertyDetails = () => {
         }
     };
 
-    const statusConfig = {
-        active: { color: '#00E5FF', bg: 'rgba(0, 229, 255, 0.1)', badgeClass: 'badge-success' },
-        verified: { color: '#00E5FF', bg: 'rgba(0, 229, 255, 0.1)', badgeClass: 'badge-success' },
-        pending: { color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.1)', badgeClass: 'badge-warning-glow' },
-        frozen: { color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.1)', badgeClass: 'badge-neutral' },
-        under_dispute: { color: '#EF4444', bg: 'rgba(239, 68, 68, 0.1)', badgeClass: 'badge-danger' },
-        pending_transfer: { color: '#A855F7', bg: 'rgba(168, 85, 247, 0.1)', badgeClass: 'badge-warning' },
-        rejected: { color: '#EF4444', bg: 'rgba(239, 68, 68, 0.1)', badgeClass: 'badge-danger' },
-    };
-    const sc = statusConfig[property?.status] || statusConfig.pending;
+    const handleUploadDoc = async (e) => {
+        e.preventDefault();
+        if (!selectedFile) return;
+        setUploadLoading(true);
+        setUploadError('');
+        setUploadSuccess('');
+        try {
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('documentType', uploadDocType);
+            const ipfsRes = await propertyService.uploadToIPFS(formData);
+            const ipfsHash = ipfsRes.data?.data?.ipfsHash || ipfsRes.data?.ipfsHash;
 
-    const cyberInputStyle = {
-        width: '100%', padding: '0.85rem 1rem', background: 'rgba(0,0,0,0.4)',
-        border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px',
-        color: 'white', fontFamily: 'inherit', fontSize: '0.9rem',
-        transition: 'all 0.2s ease', outline: 'none'
+            if (ipfsHash) {
+                await propertyService.uploadDocument(id, ipfsHash);
+            }
+            setUploadSuccess('Document successfully pinned to IPFS and linked to parcel!');
+            setTimeout(() => {
+                setUploadModalOpen(false);
+                setSelectedFile(null);
+                fetchDetails();
+            }, 1300);
+        } catch (err) {
+            setUploadError(err.response?.data?.message || 'Failed to upload document to IPFS.');
+        } finally {
+            setUploadLoading(false);
+        }
     };
 
     if (loading) {
         return (
-            <div style={{ display: 'flex', height: '100vh', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', height: '100vh', width: '100%', alignItems: 'center', justifyContent: 'center', background: '#0B0F19' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse">
-                    <Loader2 style={{ width: '3rem', height: '3rem', color: '#00E5FF' }} className="animate-spin" />
-                    <p style={{ fontWeight: 600, letterSpacing: '0.05em', fontSize: '0.875rem', color: '#00E5FF' }}>Loading property data...</p>
+                    <Loader2 size={36} style={{ color: '#0284C7' }} className="animate-spin" />
+                    <p style={{ fontWeight: 600, letterSpacing: '0.02em', color: '#94A3B8', fontSize: '0.88rem' }}>Loading Cadastral Parcel...</p>
                 </div>
             </div>
         );
@@ -128,510 +155,823 @@ const PropertyDetails = () => {
 
     if (error || !property) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '80vh', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2rem' }}>
-                <ShieldAlert size={56} style={{ color: '#EF4444', marginBottom: '1rem' }} />
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem', color: 'white' }}>Property Not Found</h2>
-                <p style={{ color: '#9ca3af', marginBottom: '1.5rem' }}>{error || 'Unable to locate this asset record on the blockchain.'}</p>
-                <button className="cyber-btn-hollow" onClick={() => navigate('/my-properties')} style={{ '--btn-color': '#00E5FF', textTransform: 'capitalize' }}>
-                    Return to Dashboard
-                </button>
+            <div style={{ minHeight: '100vh', background: '#0B0F19', color: '#FFFFFF' }}>
+                <TopNavbar showLogo={true} />
+                <div style={{ display: 'flex', flexDirection: 'column', height: '70vh', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2rem' }}>
+                    <ShieldAlert size={48} style={{ color: '#EF4444', marginBottom: '1rem' }} />
+                    <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem', color: '#F8FAFC' }}>Property Record Not Found</h2>
+                    <p style={{ color: '#94A3B8', marginBottom: '1.5rem', fontSize: '0.9rem' }}>{error || 'Unable to locate this asset record on the blockchain.'}</p>
+                    <button className="btn-cyan-outline" onClick={() => navigate('/my-properties')}>
+                        Return to My Properties
+                    </button>
+                </div>
             </div>
         );
     }
 
+    const parcelTitle = property.propertyCode 
+        ? `Parcel #${property.propertyCode}` 
+        : (property.surveyNumber ? `Parcel #DV-${property.surveyNumber}` : `Parcel #${property.id?.slice(0, 8)}`);
+    
+    const locationText = `${property.district || 'Bangalore'}, ${property.state || 'Karnataka'}`;
+    const registrationDate = property.createdAt 
+        ? new Date(property.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) 
+        : 'Registered';
+    
+    const areaSqft = Number(property.areaSqft) || 0;
+    const areaText = areaSqft ? `${areaSqft.toLocaleString()} sqft` : 'Cadastral Parcel';
+    const acreage = areaSqft ? `${(areaSqft / 43560).toFixed(3)} acres` : '';
+    const snowtraceUrl = `https://testnet.snowtrace.io/nft/${CONTRACT_ADDRESS}/${property.nftTokenId || '1'}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(snowtraceUrl)}&bgcolor=0F172A&color=38BDF8`;
+
+    const numLat = parseFloat(property.geoLat) || 12.9716;
+    const numLng = parseFloat(property.geoLng) || 77.5946;
+
+    let displayDocs = [];
+    if (documents.length > 0) {
+        displayDocs = documents.map(d => ({
+            name: d.document_type || d.description || 'Legal Deed',
+            cid: d.ipfs_hash || d.document_hash || 'IPFS Record',
+            verified: true
+        }));
+    } else if (property.documentHash) {
+        displayDocs = [{
+            name: 'Primary Title Deed',
+            cid: property.documentHash,
+            verified: true
+        }];
+    }
+
+    const timelineEvents = [];
+    if (transactions.length > 0) {
+        transactions.forEach((tx, idx) => {
+            const dateStr = tx.created_at ? new Date(tx.created_at).toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }) : 'Recent';
+            const role = tx.status === 'completed' 
+                ? (tx.buyer_wallet ? `Owner: ${tx.buyer_wallet.slice(0, 6)}...${tx.buyer_wallet.slice(-4)}` : 'Completed Sale')
+                : (tx.status === 'authority_approved' ? 'Authority Approved' : 'Sale In Progress');
+            
+            timelineEvents.push({
+                role,
+                date: dateStr,
+                hash: tx.tx_hash || tx.id,
+                active: idx === 0
+            });
+        });
+    }
+
+    const genesisDate = property.createdAt ? new Date(property.createdAt).toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' }) : 'Genesis';
+    const ownerShort = property.ownerWallet ? `${property.ownerWallet.slice(0, 6)}...${property.ownerWallet.slice(-4)}` : 'Genesis Owner';
+    timelineEvents.push({
+        role: `Registry Genesis: ${ownerShort}`,
+        date: genesisDate,
+        hash: property.documentHash ? `IPFS: ${property.documentHash.slice(0, 18)}...` : (property.nftTokenId ? `NFT Token #${property.nftTokenId}` : '0xGenesisDeedHash'),
+        active: timelineEvents.length === 0
+    });
+
     return (
-        <div className="property-container container-md animate-fade-in">
-            <button
-                className="cyber-btn-hollow mb-6"
-                onClick={() => navigate(-1)}
-                style={{ '--btn-color': '#00E5FF', width: 'auto', border: 'none', textTransform: 'capitalize' }}
-            >
-                <ArrowLeft size={16} /> Back
-            </button>
+        <div style={{ minHeight: '100vh', background: '#0B0F19', color: '#F8FAFC' }} className="animate-fade-in">
+            <TopNavbar 
+                showLogo={true} 
+                logoSubtitle="Verified Land Registry"
+                showNetwork={true}
+                showNotifications={false}
+                showProfile={false}
+            />
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
-                {/* Top Section */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: '1.5rem' }}>
+            <div style={{ padding: '2rem', maxWidth: '1440px', margin: '0 auto' }}>
+                <div style={{ marginBottom: '1.25rem' }}>
+                    <Link 
+                        to="/my-properties"
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            color: '#94A3B8',
+                            fontSize: '0.85rem',
+                            fontWeight: 500,
+                            textDecoration: 'none',
+                            transition: 'color 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = '#38BDF8'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = '#94A3B8'}
+                    >
+                        <ArrowLeft size={16} /> Back to My Properties
+                    </Link>
+                </div>
 
-                    {/* ─── Asset Overview ─── */}
-                    <div className="cyber-hud-bar" style={{ display: 'block', position: 'relative', overflow: 'hidden', padding: '2rem', gridColumn: 'span 1' }}>
-                        <div className="cyber-card-glow-orb" style={{ background: sc.color, top: '-5%', right: '-5%', opacity: 0.1, width: '12rem', height: '12rem' }}></div>
+                {/* ─── Hero Header Row ─── */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                        <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#F8FAFC', letterSpacing: '-0.02em', margin: 0 }}>
+                            {parcelTitle}
+                        </h1>
 
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem', position: 'relative', zIndex: 10 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                                <div style={{
-                                    width: '3.5rem', height: '3.5rem', borderRadius: '12px',
-                                    background: sc.bg, border: `1px solid ${sc.color}33`,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    boxShadow: `0 0 20px ${sc.color}33`
-                                }}>
-                                    <Building size={24} style={{ color: sc.color }} />
-                                </div>
-                                <div>
-                                    <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, color: 'white' }}>{property.surveyNumber}</h1>
-                                    <p style={{ fontSize: '0.9rem', color: '#9ca3af', marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                        <MapPin size={14} style={{ color: sc.color }} /> {property.district}{property.state ? `, ${property.state}` : ''}
-                                    </p>
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                <div className="cyber-badge" style={{ '--badge-color': sc.color, '--badge-bg': 'transparent', '--badge-border': `${sc.color}66` }}>
-                                    <div className="cyber-badge-dot" style={{ background: sc.color, boxShadow: `0 0 5px ${sc.color}` }}></div>
-                                    {property.status?.toUpperCase()}
-                                </div>
-                                {property.encumbranceStatus && (
-                                    <div className="cyber-badge" style={{ '--badge-color': '#EF4444', '--badge-bg': 'rgba(239,68,68,0.1)', '--badge-border': 'rgba(239,68,68,0.3)' }}>
-                                        <Shield size={12} style={{ marginRight: '0.2rem' }} /> ENCUMBERED
-                                    </div>
-                                )}
-                            </div>
+                        <div className="badge-verified-pill">
+                            <CheckCircle2 size={13} style={{ color: '#10B981' }} />
+                            <span>Verified On-Chain</span>
                         </div>
 
-                        {/* Key Details Grid */}
-                        <div className="cyber-data-grid" style={{ marginBottom: 0, position: 'relative', zIndex: 10, background: 'rgba(0,0,0,0.4)', borderColor: 'rgba(255,255,255,0.05)' }}>
-                            <div className="cyber-data-item">
-                                <p className="label">Property Record ID</p>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                    <p className="value" style={{ color: '#00E5FF', wordBreak: 'break-all' }}>{property.id}</p>
-                                    <button onClick={() => handleCopy(property.id, 'id')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied === 'id' ? '#00E5FF' : '#9ca3af', padding: 0 }}>
-                                        {copied === 'id' ? <CheckCircle2 size={14} /> : <Copy size={14} />}
-                                    </button>
-                                </div>
+                        {property.status === 'frozen' && (
+                            <div style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid #3B82F6', color: '#93C5FD', padding: '0.3rem 0.75rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <Lock size={12} /> Court Freeze Active
                             </div>
-                            <div className="cyber-data-item">
-                                <p className="label">Property Code</p>
-                                <p className="value" style={{ color: '#00E5FF', textShadow: '0 0 10px rgba(0,229,255,0.3)' }}>{property.propertyCode || '—'}</p>
-                            </div>
-                            
-                            {property.nftTokenId && (
-                                <div className="cyber-data-item">
-                                    <p className="label">Digital Title ID</p>
-                                    <a 
-                                        href={`https://testnet.snowtrace.io/nft/0xE94d65289Cc088f597C077938A6D7Fc0974196fe/${property.nftTokenId}`}
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="value"
-                                        style={{ color: '#A855F7', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'none' }}
-                                    >
-                                        #{property.nftTokenId} <ExternalLink size={12} />
-                                    </a>
-                                </div>
-                            )}
-                            
-                            <div className="cyber-data-item">
-                                <p className="label">Area Size</p>
-                                <p className="value">{property.areaSqft?.toLocaleString() || '—'} sq.ft</p>
-                            </div>
-                            
-                            {(property.geoLat || property.geoLng) && (
-                                <div className="cyber-data-item">
-                                    <p className="label"><Globe size={11} style={{ display: 'inline', marginRight: '0.2rem' }} /> Geolocation</p>
-                                    <p className="value" style={{ fontSize: '0.8rem' }}>{property.geoLat}, {property.geoLng}</p>
-                                </div>
-                            )}
-                            
-                            <div className="cyber-data-item" style={{ gridColumn: '1 / -1' }}>
-                                <p className="label">Full Address</p>
-                                <p className="value" style={{ fontFamily: 'inherit', fontSize: '0.9rem', color: 'white' }}>{property.addressLine || '—'}</p>
-                            </div>
-                            
-                            <div className="cyber-data-item" style={{ gridColumn: '1 / -1' }}>
-                                <p className="label">Current Legal Owner</p>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                                    <code style={{
-                                        fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem',
-                                        color: '#A855F7', background: 'rgba(168,85,247,0.1)',
-                                        padding: '0.4rem 0.6rem', borderRadius: '6px',
-                                        border: '1px solid rgba(168,85,247,0.2)', wordBreak: 'break-all',
-                                    }}>
-                                        {property.ownerWallet}
-                                    </code>
-                                    {isOwner && <span className="cyber-badge" style={{ '--badge-bg': 'transparent', '--badge-color': '#00E5FF', '--badge-border': 'rgba(0,229,255,0.3)', padding: '0.2rem 0.5rem' }}>YOU</span>}
-                                    <button onClick={() => handleCopy(property.ownerWallet, 'owner')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied === 'owner' ? '#00E5FF' : '#9ca3af', padding: 0 }}>
-                                        {copied === 'owner' ? <CheckCircle2 size={16} /> : <Copy size={16} />}
-                                    </button>
-                                </div>
-                            </div>
+                        )}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <button 
+                            onClick={() => setCertModalOpen(true)}
+                            className="btn-cyan-outline"
+                        >
+                            <Printer size={15} /> Land Title Deed (PDF)
+                        </button>
+
+                        {isOwner && (
+                            <button 
+                                onClick={() => setUploadModalOpen(true)}
+                                className="btn-cyan-outline"
+                            >
+                                <Upload size={15} /> Attach Document
+                            </button>
+                        )}
+
+                        {isOwner && (property.status === 'active' || property.status === 'verified') && (
+                            <button 
+                                onClick={() => setSaleModalOpen(true)}
+                                className="btn-cyan-glow"
+                            >
+                                <DollarSign size={15} /> Initiate Sale
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* ─── 4-Card Quick Facts Strip ─── */}
+                <div 
+                    style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
+                        gap: '1rem', 
+                        marginBottom: '1.75rem' 
+                    }}
+                >
+                    <div className="digi-stat-card">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                Cadastral Survey #
+                            </span>
+                            <Hash size={15} style={{ color: '#0284C7' }} />
+                        </div>
+                        <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#38BDF8', fontFamily: 'JetBrains Mono' }}>
+                            {property.surveyNumber ? `SRV-${property.surveyNumber}` : 'SRV-PENDING'}
                         </div>
                     </div>
 
-                    {/* ─── Actions & Alerts Panel ─── */}
+                    <div className="digi-stat-card">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                Parcel Area
+                            </span>
+                            <Layers size={15} style={{ color: '#0284C7' }} />
+                        </div>
+                        <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#F8FAFC' }}>
+                            {areaText} {acreage && <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#94A3B8' }}>({acreage})</span>}
+                        </div>
+                    </div>
+
+                    <div className="digi-stat-card">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                Jurisdiction
+                            </span>
+                            <MapPin size={15} style={{ color: '#0284C7' }} />
+                        </div>
+                        <div style={{ fontSize: '1.15rem', fontWeight: 600, color: '#F8FAFC' }}>
+                            {locationText}
+                        </div>
+                    </div>
+
+                    <div className="digi-stat-card">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                On-Chain Token ID
+                            </span>
+                            <AvalancheIcon size={15} />
+                        </div>
+                        <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#F8FAFC', fontFamily: 'JetBrains Mono' }}>
+                            Avalanche #{property.nftTokenId || '1'}
+                        </div>
+                    </div>
+                </div>
+
+                {/* ─── 2-Column Split Hero Layout ─── */}
+                <div 
+                    style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: '1.2fr 1fr', 
+                        gap: '1.5rem',
+                        alignItems: 'start'
+                    }}
+                >
+                    {/* ════════ LEFT COLUMN (55%) ════════ */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         
-                        {/* Sale Initiation (owner only, active status) */}
-                        {isOwner && (property.status === 'active' || property.status === 'verified') && (
-                            <div className="cyber-hud-bar" style={{ padding: '1.75rem', position: 'relative', overflow: 'hidden' }}>
-                                <div style={{ borderLeft: '4px solid #00E5FF', paddingLeft: '1rem', position: 'relative', zIndex: 10 }}>
-                                    <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
-                                        <DollarSign size={18} style={{ color: '#00E5FF' }} /> Sell Property
-                                    </h4>
-                                    <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                                        Initiate a smart contract sale. Funds will be securely locked in escrow until verification.
-                                    </p>
-                                    <form onSubmit={handleInitiateSale} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                        <div>
-                                            <label style={{ fontSize: '0.75rem', color: '#d1d5db', marginBottom: '0.4rem', display: 'block', fontWeight: 600 }}>Buyer Wallet Address</label>
-                                            <input style={cyberInputStyle} type="text" placeholder="0x..." value={saleForm.buyerWallet} onChange={e => setSaleForm({ ...saleForm, buyerWallet: e.target.value })} required />
+                        {/* Interactive Satellite Cadastral Map */}
+                        <div style={{ height: '560px' }}>
+                            <CadastralSatelliteMap 
+                                geoLat={numLat}
+                                geoLng={numLng}
+                                areaSize={areaText}
+                                surveyNumber={property.surveyNumber}
+                            />
+                        </div>
+
+                        {/* Title Deed & QR Verification Card */}
+                        <div className="digi-card p-6">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <ShieldCheck size={18} style={{ color: '#38BDF8' }} />
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#F8FAFC', margin: 0 }}>
+                                        Cryptographic Title Verification
+                                    </h3>
+                                </div>
+                                <div className="badge-verified-pill">
+                                    <CheckCircle size={12} /> Live On-Chain
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '1.5rem', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                                    <div>
+                                        <span style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', fontWeight: 500 }}>Registry Smart Contract</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '3px' }}>
+                                            <span style={{ fontSize: '0.82rem', fontFamily: 'JetBrains Mono', color: '#38BDF8', fontWeight: 600 }}>
+                                                {CONTRACT_ADDRESS}
+                                            </span>
+                                            <button 
+                                                onClick={() => handleCopy(CONTRACT_ADDRESS, 'contract')} 
+                                                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                            >
+                                                {copied === 'contract' ? <Check size={13} style={{ color: '#10B981' }} /> : <Copy size={13} />}
+                                            </button>
                                         </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.75rem', color: '#d1d5db', marginBottom: '0.4rem', display: 'block', fontWeight: 600 }}>Sale Price (₹)</label>
-                                            <input style={cyberInputStyle} type="number" placeholder="500000" value={saleForm.price} onChange={e => setSaleForm({ ...saleForm, price: e.target.value })} required min="1" />
-                                        </div>
-                                        <button type="submit" disabled={saleLoading} className="cyber-btn-hollow" style={{ '--btn-color': '#00E5FF', width: '100%', padding: '0.85rem', marginTop: '0.5rem', textTransform: 'capitalize' }}>
-                                            {saleLoading ? <><Loader2 size={16} className="animate-spin" /> Deploying Contract...</> : 'Initiate Sale Contract'}
+                                    </div>
+
+                                    <div>
+                                        <span style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', fontWeight: 500 }}>IPFS Pinata Storage Gateway</span>
+                                        <span style={{ fontSize: '0.82rem', color: '#10B981', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '3px' }}>
+                                            <CheckCircle2 size={13} /> Decentralized Pinned & Verified
+                                        </span>
+                                    </div>
+
+                                    <div style={{ paddingTop: '0.25rem' }}>
+                                        <button 
+                                            onClick={() => setCertModalOpen(true)}
+                                            className="btn-cyan-outline"
+                                            style={{ width: '100%' }}
+                                        >
+                                            <Printer size={14} /> View Official Land Title Deed Certificate
                                         </button>
-                                    </form>
-                                    {saleMsg.text && (
-                                        <div className="alert-message mt-4" style={{
-                                            background: saleMsg.type === 'success' ? 'rgba(0,229,255,0.1)' : 'rgba(239,68,68,0.1)',
-                                            border: `1px solid ${saleMsg.type === 'success' ? 'rgba(0,229,255,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                                            color: saleMsg.type === 'success' ? '#00E5FF' : '#EF4444',
-                                        }}>
-                                            {saleMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />} {saleMsg.text}
-                                        </div>
-                                    )}
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', background: '#0B0F19', padding: '0.75rem', borderRadius: '8px', border: '1px solid #1E293B' }}>
+                                    <img 
+                                        src={qrCodeUrl} 
+                                        alt="Snowtrace QR Code" 
+                                        style={{ width: '105px', height: '105px', borderRadius: '6px' }} 
+                                    />
+                                    <span style={{ fontSize: '0.65rem', color: '#94A3B8', textAlign: 'center', fontFamily: 'JetBrains Mono' }}>
+                                        Scan for Snowtrace
+                                    </span>
                                 </div>
                             </div>
-                        )}
+                        </div>
+                    </div>
 
-                        {/* Active Transfer Alert */}
-                        {property.status === 'pending_transfer' && (
-                            <div className="cyber-hud-bar" style={{ padding: '1.25rem', borderLeft: '4px solid #F59E0B' }}>
-                                <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#F59E0B' }}>
-                                    <Activity size={18} /> Active Transfer Pending
-                                </h4>
-                                <p style={{ fontSize: '0.85rem', color: '#d1d5db', lineHeight: 1.5 }}>This property is currently locked in an active blockchain transfer. Other operations are paused.</p>
-                            </div>
-                        )}
+                    {/* ════════ RIGHT COLUMN (45%) ════════ */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        
+                        {/* Specifications Card */}
+                        <div className="digi-card p-6">
+                            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#F8FAFC', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Award size={17} style={{ color: '#38BDF8' }} />
+                                Property Specifications & Legal Attributes
+                            </h3>
 
-                        {/* Read-only Alert (not owner) */}
-                        {!isOwner && (
-                            <div className="cyber-hud-bar" style={{ padding: '1.25rem', borderLeft: '4px solid #6b7280' }}>
-                                <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
-                                    <ShieldAlert size={18} style={{ color: '#9ca3af' }} /> View Only Mode
-                                </h4>
-                                <p style={{ fontSize: '0.85rem', color: '#9ca3af', lineHeight: 1.5 }}>This asset is registered on the blockchain, but you are not listed as the owner.</p>
-                            </div>
-                        )}
-
-                        {/* ── Court Freeze / Dispute Panel ── */}
-                        {(property.status === 'frozen' || property.status === 'under_dispute') && (
-                            <div className="cyber-hud-bar" style={{
-                                padding: '1.75rem',
-                                borderLeft: `4px solid ${property.status === 'frozen' ? '#3B82F6' : '#EF4444'}`,
-                                position: 'relative', overflow: 'hidden',
-                            }}>
-                                <div className="cyber-card-glow-orb" style={{
-                                    background: property.status === 'frozen' ? '#3B82F6' : '#EF4444',
-                                    opacity: 0.06, top: '-2rem', right: '-2rem', width: '10rem', height: '10rem',
-                                }} />
-                                <div style={{ position: 'relative', zIndex: 10 }}>
-                                    <h4 style={{
-                                        fontSize: '1rem', fontWeight: 800, marginBottom: '0.4rem',
-                                        display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                        color: property.status === 'frozen' ? '#60a5fa' : '#f87171',
-                                    }}>
-                                        <Gavel size={18} />
-                                        {property.status === 'frozen' ? 'Court Freeze Order Active' : 'Property Under Legal Dispute'}
-                                    </h4>
-                                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                                        {property.status === 'frozen'
-                                            ? 'This property has been frozen by a judicial court order. All transfers and sales are suspended until the freeze is lifted.'
-                                            : 'This property is currently under an active legal dispute. Operations may be restricted.'}
-                                    </p>
-
-                                    {freezeOrders.length === 0 ? (
-                                        <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.08)' }}>
-                                            <p style={{ fontSize: '0.8rem', color: '#6b7280', textAlign: 'center' }}>Freeze order details are being retrieved...</p>
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                            {freezeOrders.map((order, i) => (
-                                                <div key={order.id} style={{
-                                                    padding: '1rem 1.25rem',
-                                                    background: order.is_active ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.02)',
-                                                    border: `1px solid ${order.is_active ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.06)'}`,
-                                                    borderRadius: '10px',
-                                                }}>
-                                                    {/* Status + Order number */}
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af' }}>
-                                                            Order #{freezeOrders.length - i}
-                                                        </span>
-                                                        <span style={{
-                                                            fontSize: '0.6rem', fontWeight: 700, padding: '2px 8px', borderRadius: '9999px',
-                                                            background: order.is_active ? 'rgba(59,130,246,0.12)' : 'rgba(34,197,94,0.08)',
-                                                            border: `1px solid ${order.is_active ? 'rgba(59,130,246,0.3)' : 'rgba(34,197,94,0.25)'}`,
-                                                            color: order.is_active ? '#60a5fa' : '#22c55e',
-                                                        }}>
-                                                            {order.is_active ? 'ACTIVE' : 'REVERSED'}
-                                                        </span>
-                                                    </div>
-
-                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-                                                        {order.case_number && (
-                                                            <div>
-                                                                <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6b7280', marginBottom: '0.2rem' }}>Case Number</p>
-                                                                <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'white', fontFamily: 'JetBrains Mono, monospace' }}>{order.case_number}</p>
-                                                            </div>
-                                                        )}
-                                                        <div>
-                                                            <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6b7280', marginBottom: '0.2rem' }}>Issued On</p>
-                                                            <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'white' }}>{new Date(order.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                                                        </div>
-                                                        {order.court_officer_name && (
-                                                            <div style={{ gridColumn: '1 / -1' }}>
-                                                                <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6b7280', marginBottom: '0.2rem' }}>Issuing Court Officer</p>
-                                                                <p style={{ fontSize: '0.82rem', color: '#d1d5db' }}>{order.court_officer_name}</p>
-                                                            </div>
-                                                        )}
-                                                        {order.reason && (
-                                                            <div style={{ gridColumn: '1 / -1' }}>
-                                                                <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6b7280', marginBottom: '0.2rem' }}>Reason</p>
-                                                                <p style={{ fontSize: '0.82rem', color: '#d1d5db', lineHeight: 1.5 }}>{order.reason}</p>
-                                                            </div>
-                                                        )}
-                                                        {order.court_order_hash && (
-                                                            <div style={{ gridColumn: '1 / -1' }}>
-                                                                <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6b7280', marginBottom: '0.3rem' }}>Court Order Document</p>
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                                    <code style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', color: '#60a5fa', wordBreak: 'break-all', flex: 1, lineHeight: 1.5 }}>
-                                                                        {order.court_order_hash}
-                                                                    </code>
-                                                                    <a
-                                                                        href={`https://gateway.pinata.cloud/ipfs/${order.court_order_hash}`}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: '#60a5fa', textDecoration: 'none', whiteSpace: 'nowrap', background: 'rgba(59,130,246,0.1)', padding: '0.3rem 0.6rem', borderRadius: '6px', border: '1px solid rgba(59,130,246,0.25)' }}
-                                                                    >
-                                                                        <ExternalLink size={11} /> View Order
-                                                                    </a>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.5rem', borderBottom: '1px solid #1E293B' }}>
+                                    <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>Physical Address</span>
+                                    <span style={{ fontSize: '0.82rem', fontWeight: 500, color: '#E2E8F0', maxWidth: '240px', textAlign: 'right' }}>
+                                        {property.addressLine || 'Designated Cadastral Plot'}
+                                    </span>
                                 </div>
-                            </div>
-                        )}
 
-                        {/* Legal Standing Panel */}
-                        <div className="cyber-hud-bar" style={{ padding: '1.25rem' }}>
-                            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9ca3af', marginBottom: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Legal Standing</p>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.5rem', borderBottom: '1px solid #1E293B' }}>
+                                    <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>Zoning & Survey Details</span>
+                                    <span style={{ fontSize: '0.82rem', fontWeight: 500, color: '#F8FAFC' }}>
+                                        {property.surveyDetails || 'Residential / Commercial Clear'}
+                                    </span>
+                                </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.5rem', borderBottom: '1px solid #1E293B' }}>
+                                    <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>Title Encumbrance</span>
+                                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: property.encumbranceStatus ? '#EF4444' : '#10B981' }}>
+                                        {property.encumbranceStatus ? 'Flagged / Encumbered' : 'Clear Title (Unencumbered)'}
+                                    </span>
+                                </div>
 
-                                {/* Frozen */}
-                                {property.status === 'frozen' && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.75rem', borderRadius: '8px', background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                                        <Lock size={13} style={{ color: '#3B82F6', flexShrink: 0 }} />
-                                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#93c5fd' }}>Court Freeze Active — Transfers Suspended</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.5rem', borderBottom: '1px solid #1E293B' }}>
+                                    <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>Current Title Owner</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#38BDF8', fontFamily: 'JetBrains Mono' }}>
+                                            {property.ownerWallet ? `${property.ownerWallet.slice(0, 6)}...${property.ownerWallet.slice(-4)}` : 'N/A'}
+                                        </span>
+                                        <button 
+                                            onClick={() => handleCopy(property.ownerWallet, 'owner')} 
+                                            style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                        >
+                                            {copied === 'owner' ? <Check size={12} style={{ color: '#10B981' }} /> : <Copy size={12} />}
+                                        </button>
                                     </div>
-                                )}
+                                </div>
 
-                                {/* Under Dispute */}
-                                {property.status === 'under_dispute' && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.75rem', borderRadius: '8px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                                        <AlertTriangle size={13} style={{ color: '#EF4444', flexShrink: 0 }} />
-                                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#fca5a5' }}>Under Active Legal Dispute</span>
-                                    </div>
-                                )}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.5rem', borderBottom: '1px solid #1E293B' }}>
+                                    <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>Registration Date</span>
+                                    <span style={{ fontSize: '0.82rem', fontWeight: 500, color: '#F8FAFC' }}>{registrationDate}</span>
+                                </div>
 
-                                {/* Encumbrance */}
-                                {property.encumbranceStatus ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.75rem', borderRadius: '8px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                                            <Shield size={13} style={{ color: '#EF4444', flexShrink: 0 }} />
-                                            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#fca5a5' }}>Encumbrance Flagged</span>
-                                        </div>
-                                        {property.encumbranceReason && (
-                                            <div style={{ padding: '0.5rem 0.75rem', borderRadius: '6px', background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)' }}>
-                                                <p style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#6b7280', marginBottom: '0.2rem' }}>Reason</p>
-                                                <p style={{ fontSize: '0.8rem', color: '#fca5a5', lineHeight: 1.5 }}>{property.encumbranceReason}</p>
-                                            </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.82rem', color: '#94A3B8' }}>Primary IPFS Hash</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                        <span style={{ fontSize: '0.8rem', fontFamily: 'JetBrains Mono', color: '#94A3B8' }}>
+                                            {property.documentHash ? `${property.documentHash.slice(0, 8)}...${property.documentHash.slice(-4)}` : 'N/A'}
+                                        </span>
+                                        {property.documentHash && (
+                                            <a 
+                                                href={`https://gateway.pinata.cloud/ipfs/${property.documentHash}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{ color: '#38BDF8', display: 'flex', alignItems: 'center' }}
+                                            >
+                                                <ExternalLink size={12} />
+                                            </a>
                                         )}
                                     </div>
-                                ) : (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.75rem', borderRadius: '8px', background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.12)' }}>
-                                        <div className="cyber-badge-dot" style={{ background: '#00E5FF', boxShadow: '0 0 6px #00E5FF', flexShrink: 0 }}></div>
-                                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>No Encumbrances on Record</span>
-                                    </div>
-                                )}
+                                </div>
+                            </div>
+                        </div>
 
-                                {/* All clear summary */}
-                                {!property.encumbranceStatus && property.status !== 'frozen' && property.status !== 'under_dispute' && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.75rem', borderRadius: '8px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}>
-                                        <CheckCircle2 size={13} style={{ color: '#22c55e', flexShrink: 0 }} />
-                                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#86efac' }}>Clear Record — No Legal Restrictions</span>
-                                    </div>
+                        {/* Verified IPFS Documents Card */}
+                        <div className="digi-card p-6">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <FileText size={17} style={{ color: '#38BDF8' }} />
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#F8FAFC', margin: 0 }}>
+                                        Verified IPFS Legal Documents
+                                    </h3>
+                                </div>
+                                {isOwner && (
+                                    <button 
+                                        onClick={() => setUploadModalOpen(true)}
+                                        className="btn-cyan-outline"
+                                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.72rem' }}
+                                    >
+                                        <Upload size={12} /> Attach Doc
+                                    </button>
                                 )}
+                            </div>
+
+                            {displayDocs.length === 0 ? (
+                                <div style={{ padding: '1.25rem', textAlign: 'center', color: '#64748B', fontSize: '0.85rem', background: '#0B0F19', borderRadius: '8px', border: '1px solid #1E293B' }}>
+                                    No secondary IPFS documents attached to this title.
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {displayDocs.map((doc, idx) => (
+                                        <div 
+                                            key={idx}
+                                            style={{
+                                                padding: '0.85rem 1rem',
+                                                background: '#0B0F19',
+                                                border: '1px solid #1E293B',
+                                                borderRadius: '8px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '0.45rem'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <FileText size={15} style={{ color: '#94A3B8' }} />
+                                                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#F8FAFC' }}>{doc.name}</span>
+                                                </div>
+                                                <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <Check size={11} style={{ color: '#0F172A', strokeWidth: 3 }} />
+                                                </span>
+                                            </div>
+
+                                            <p style={{ fontSize: '0.68rem', fontFamily: 'JetBrains Mono', color: '#64748B', wordBreak: 'break-all', margin: 0 }}>
+                                                IPFS CID: {doc.cid}
+                                            </p>
+
+                                            <a 
+                                                href={`https://gateway.pinata.cloud/ipfs/${doc.cid}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="btn-cyan-outline"
+                                                style={{ alignSelf: 'stretch', padding: '0.4rem', fontSize: '0.75rem', marginTop: '0.2rem' }}
+                                            >
+                                                View Document on IPFS
+                                            </a>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Timeline Card */}
+                        <div className="digi-card p-6">
+                            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#F8FAFC', marginBottom: '1.25rem' }}>
+                                Immutable Blockchain Ownership Timeline
+                            </h3>
+
+                            <div style={{ position: 'relative', paddingLeft: '1.5rem' }}>
+                                <div 
+                                    style={{
+                                        position: 'absolute',
+                                        left: '6px',
+                                        top: '8px',
+                                        bottom: '12px',
+                                        width: '2px',
+                                        background: '#334155'
+                                    }}
+                                />
+
+                                {timelineEvents.map((item, idx) => (
+                                    <div 
+                                        key={idx} 
+                                        style={{ 
+                                            position: 'relative', 
+                                            marginBottom: '1.25rem' 
+                                        }}
+                                    >
+                                        <div 
+                                            style={{
+                                                position: 'absolute',
+                                                left: '-1.5rem',
+                                                top: '3px',
+                                                width: '14px',
+                                                height: '14px',
+                                                borderRadius: '50%',
+                                                background: item.active ? '#0284C7' : '#1E293B',
+                                                border: item.active ? '2px solid #0F172A' : '2px solid #475569',
+                                                zIndex: 2
+                                            }}
+                                        />
+
+                                        <div>
+                                            <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#F8FAFC', margin: 0 }}>
+                                                {item.role}
+                                            </p>
+                                            <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: '1px', margin: 0 }}>
+                                                Date: {item.date}
+                                            </p>
+                                            <p style={{ fontSize: '0.72rem', color: '#64748B', marginTop: '2px', margin: 0, wordBreak: 'break-all' }}>
+                                                Hashes:{' '}
+                                                <a 
+                                                    href={item.hash.startsWith('0x') ? `https://testnet.snowtrace.io/tx/${item.hash}` : `#`} 
+                                                    target={item.hash.startsWith('0x') ? "_blank" : "_self"}
+                                                    rel="noopener noreferrer"
+                                                    style={{ color: '#38BDF8', textDecoration: 'none', fontFamily: 'JetBrains Mono' }}
+                                                >
+                                                    {item.hash}
+                                                </a>
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div 
+                                style={{
+                                    marginTop: '1rem',
+                                    padding: '0.75rem 0.9rem',
+                                    background: '#0B0F19',
+                                    borderRadius: '8px',
+                                    border: '1px solid #1E293B',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <AvalancheIcon size={15} />
+                                    <div>
+                                        <span style={{ fontSize: '0.68rem', color: '#64748B', display: 'block', fontWeight: 500 }}>Avalanche Fuji C-Chain</span>
+                                        <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: '#38BDF8' }}>
+                                            {CONTRACT_ADDRESS.slice(0, 8)}...{CONTRACT_ADDRESS.slice(-6)}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <a 
+                                    href={snowtraceUrl} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="btn-cyan-outline"
+                                    style={{ padding: '0.3rem 0.65rem', fontSize: '0.72rem' }}
+                                >
+                                    Verify <ExternalLink size={10} />
+                                </a>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {/* ─── Document Vault ─── */}
-                <div className="cyber-hud-bar" style={{ display: 'block', padding: '2rem' }}>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'white' }}>
-                        <FileText size={22} style={{ color: '#00E5FF' }} /> Registered Documents
-                    </h3>
+            {/* ════════ Official Land Title Deed Certificate Modal ════════ */}
+            {certModalOpen && (
+                <div 
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(0, 0, 0, 0.8)',
+                        backdropFilter: 'blur(8px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 200,
+                        padding: '1.5rem'
+                    }}
+                >
+                    <div 
+                        className="digi-card p-8"
+                        style={{
+                            maxWidth: '640px',
+                            width: '100%',
+                            background: '#0F172A',
+                            border: '1px solid #334155',
+                            borderRadius: '16px',
+                            position: 'relative',
+                            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)'
+                        }}
+                    >
+                        <button 
+                            onClick={() => setCertModalOpen(false)}
+                            style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}
+                        >
+                            <XCircle size={22} />
+                        </button>
 
-                    {/* Property-level document hash */}
-                    {property.documentHash && (
-                        <div style={{
-                            marginBottom: '1rem', padding: '1.25rem', background: 'rgba(0,0,0,0.4)',
-                            borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)',
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem',
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                <div style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(0,229,255,0.1)' }}>
-                                    <Hash size={18} style={{ color: '#00E5FF' }} />
+                        <div style={{ textAlign: 'center', borderBottom: '1px solid #1E293B', paddingBottom: '1.25rem', marginBottom: '1.25rem' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(2, 132, 199, 0.15)', border: '1px solid #0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.5rem' }}>
+                                <ShieldCheck size={22} style={{ color: '#38BDF8' }} />
+                            </div>
+                            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, color: '#F8FAFC', margin: 0 }}>
+                                DIGIVERIFY IMMUTABLE LAND CERTIFICATE
+                            </h2>
+                            <p style={{ fontSize: '0.75rem', color: '#94A3B8', fontFamily: 'JetBrains Mono', margin: 0, marginTop: '4px' }}>
+                                Avalanche Fuji C-Chain Smart Registry • ERC-721 #{property.nftTokenId || '1'}
+                            </p>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                <div>
+                                    <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block', fontWeight: 600 }}>CADASTRAL SURVEY NUMBER</span>
+                                    <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#38BDF8', fontFamily: 'JetBrains Mono' }}>
+                                        {property.surveyNumber || 'PENDING'}
+                                    </span>
                                 </div>
                                 <div>
-                                    <p style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.2rem', color: 'white' }}>Title Deed IPFS Hash</p>
-                                    <p style={{ fontFamily: 'JetBrains Mono', fontSize: '0.75rem', color: '#9ca3af', wordBreak: 'break-all' }}>{property.documentHash}</p>
+                                    <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block', fontWeight: 600 }}>RECORDED TITLE OWNER</span>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#F8FAFC', fontFamily: 'JetBrains Mono', wordBreak: 'break-all' }}>
+                                        {property.ownerWallet}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block', fontWeight: 600 }}>PARCEL SPECIFICATIONS</span>
+                                    <span style={{ fontSize: '0.82rem', fontWeight: 500, color: '#F8FAFC' }}>
+                                        {areaText} • {locationText}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block', fontWeight: 600 }}>IPFS TITLE HASH</span>
+                                    <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono', color: '#94A3B8', wordBreak: 'break-all' }}>
+                                        {property.documentHash || 'ipfs://Qmdvd372...genesis'}
+                                    </span>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                <a 
-                                    href={`https://gateway.pinata.cloud/ipfs/${property.documentHash}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="cyber-btn-hollow"
-                                    style={{ '--btn-color': '#00E5FF', padding: '0.4rem 0.75rem', border: '1px solid rgba(0,229,255,0.3)' }}
+
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', background: '#0B0F19', padding: '0.75rem', borderRadius: '8px', border: '1px solid #1E293B' }}>
+                                <img 
+                                    src={qrCodeUrl} 
+                                    alt="Snowtrace QR" 
+                                    style={{ width: '110px', height: '110px', borderRadius: '6px' }} 
+                                />
+                                <span style={{ fontSize: '0.65rem', color: '#94A3B8', textAlign: 'center', fontFamily: 'JetBrains Mono' }}>
+                                    Scan to verify
+                                </span>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+                            <button 
+                                onClick={() => window.print()} 
+                                className="btn-cyan-glow"
+                                style={{ flex: 1 }}
+                            >
+                                <Printer size={15} /> Print Official Deed (PDF)
+                            </button>
+                            <a 
+                                href={snowtraceUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="btn-cyan-outline"
+                                style={{ flex: 1, textAlign: 'center' }}
+                            >
+                                <ExternalLink size={15} /> View on Snowtrace
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ════════ Initiate Sale Modal ════════ */}
+            {saleModalOpen && (
+                <div 
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(0, 0, 0, 0.8)',
+                        backdropFilter: 'blur(8px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 200,
+                        padding: '1.5rem'
+                    }}
+                >
+                    <div 
+                        className="digi-card p-6"
+                        style={{
+                            maxWidth: '460px',
+                            width: '100%',
+                            background: '#0F172A',
+                            border: '1px solid #334155',
+                            borderRadius: '16px'
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#F8FAFC', margin: 0 }}>
+                                Initiate Multi-Sig Sale
+                            </h3>
+                            <button onClick={() => setSaleModalOpen(false)} style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}>
+                                <XCircle size={20} />
+                            </button>
+                        </div>
+
+                        {saleMsg.text && (
+                            <div style={{ padding: '0.65rem 0.85rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.8rem', background: saleMsg.type === 'error' ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)', color: saleMsg.type === 'error' ? '#EF4444' : '#10B981', border: `1px solid ${saleMsg.type === 'error' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)'}` }}>
+                                {saleMsg.text}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleInitiateSale} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#94A3B8', marginBottom: '0.35rem' }}>Buyer Avalanche Wallet Address</label>
+                                <input 
+                                    type="text"
+                                    required
+                                    placeholder="0x71C...b4e"
+                                    value={saleForm.buyerWallet}
+                                    onChange={(e) => setSaleForm({ ...saleForm, buyerWallet: e.target.value })}
+                                    className="input-premium"
+                                    style={{ fontFamily: 'JetBrains Mono' }}
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#94A3B8', marginBottom: '0.35rem' }}>Agreed Sale Price (AVAX)</label>
+                                <input 
+                                    type="number"
+                                    step="0.001"
+                                    required
+                                    placeholder="e.g. 5.50"
+                                    value={saleForm.price}
+                                    onChange={(e) => setSaleForm({ ...saleForm, price: e.target.value })}
+                                    className="input-premium"
+                                />
+                            </div>
+
+                            <button 
+                                type="submit" 
+                                disabled={saleLoading}
+                                className="btn-cyan-glow"
+                                style={{ marginTop: '0.5rem', width: '100%' }}
+                            >
+                                {saleLoading ? <Loader2 size={16} className="animate-spin" /> : 'Deploy Multi-Sig Sale Contract'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ════════ Upload IPFS Document Modal ════════ */}
+            {uploadModalOpen && (
+                <div 
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(0, 0, 0, 0.8)',
+                        backdropFilter: 'blur(8px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 200,
+                        padding: '1.5rem'
+                    }}
+                >
+                    <div 
+                        className="digi-card p-6"
+                        style={{
+                            maxWidth: '460px',
+                            width: '100%',
+                            background: '#0F172A',
+                            border: '1px solid #334155',
+                            borderRadius: '16px'
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#F8FAFC', margin: 0 }}>
+                                Attach IPFS Legal Document
+                            </h3>
+                            <button onClick={() => setUploadModalOpen(false)} style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}>
+                                <XCircle size={20} />
+                            </button>
+                        </div>
+
+                        {uploadError && (
+                            <div style={{ padding: '0.65rem 0.85rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.8rem', background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                {uploadError}
+                            </div>
+                        )}
+
+                        {uploadSuccess && (
+                            <div style={{ padding: '0.65rem 0.85rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.8rem', background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.2)' }}>
+                                {uploadSuccess}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleUploadDoc} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#94A3B8', marginBottom: '0.35rem' }}>Document Classification</label>
+                                <select 
+                                    value={uploadDocType}
+                                    onChange={(e) => setUploadDocType(e.target.value)}
+                                    className="input-premium"
+                                    style={{ background: '#0B0F19' }}
                                 >
-                                    <ExternalLink size={14} /> View Document
-                                </a>
-                                <button onClick={() => handleCopy(property.documentHash, 'dochash')} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', color: copied === 'dochash' ? '#00E5FF' : '#9ca3af', padding: '0.5rem', borderRadius: '8px' }}>
-                                    {copied === 'dochash' ? <CheckCircle2 size={16} /> : <Copy size={16} />}
-                                </button>
+                                    <option value="Survey Report">Survey Report / Demarcation Map</option>
+                                    <option value="Encumbrance Certificate">Encumbrance Certificate (EC)</option>
+                                    <option value="Tax Receipt">Municipal Tax Paid Receipt</option>
+                                    <option value="Khata Certificate">Khata / Title Certificate</option>
+                                    <option value="Sale Deed">Registered Sale Deed</option>
+                                </select>
                             </div>
-                        </div>
-                    )}
 
-                    {documents.length === 0 && !property.documentHash ? (
-                        <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#9ca3af', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                            <FileText size={32} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
-                            <p style={{ fontSize: '0.9rem' }}>No verification documents found for this asset.</p>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {documents.map((doc) => (
-                                <div key={doc.id || doc.document_hash} style={{
-                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                    padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
-                                    borderRadius: '12px', transition: 'background 0.2s', flexWrap: 'wrap', gap: '1rem'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                        <div style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(168,85,247,0.1)' }}>
-                                            <FileText size={18} style={{ color: '#A855F7' }} />
-                                        </div>
-                                        <div>
-                                            <p style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.2rem', color: 'white' }}>{doc.document_type || 'Attached Document'}</p>
-                                            <p style={{ fontFamily: 'JetBrains Mono', fontSize: '0.75rem', color: '#9ca3af', maxWidth: '350px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {doc.ipfs_hash || doc.document_hash}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <a 
-                                        href={`https://gateway.pinata.cloud/ipfs/${doc.ipfs_hash || doc.document_hash}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="cyber-btn-hollow" 
-                                        style={{ '--btn-color': '#A855F7', padding: '0.4rem 0.75rem', border: '1px solid rgba(168,85,247,0.3)' }}
-                                    >
-                                        <ExternalLink size={14} /> Open File
-                                    </a>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#94A3B8', marginBottom: '0.35rem' }}>Select PDF or Image Document</label>
+                                <input 
+                                    type="file"
+                                    accept=".pdf,.png,.jpg,.jpeg"
+                                    required
+                                    onChange={(e) => setSelectedFile(e.target.files[0])}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.65rem',
+                                        background: '#0B0F19',
+                                        border: '1px solid #334155',
+                                        borderRadius: '8px',
+                                        color: '#94A3B8',
+                                        fontSize: '0.82rem'
+                                    }}
+                                />
+                            </div>
+
+                            <button 
+                                type="submit" 
+                                disabled={uploadLoading || !selectedFile}
+                                className="btn-cyan-glow"
+                                style={{ marginTop: '0.5rem', width: '100%' }}
+                            >
+                                {uploadLoading ? <Loader2 size={16} className="animate-spin" /> : 'Pin Document to IPFS & Link'}
+                            </button>
+                        </form>
+                    </div>
                 </div>
-
-                {/* ─── Transaction History ─── */}
-                <div className="cyber-hud-bar" style={{ display: 'block', padding: '2rem' }}>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'white' }}>
-                        <Activity size={22} style={{ color: '#00E5FF' }} /> Transaction History
-                    </h3>
-
-                    {transactions.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#9ca3af', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                            <Activity size={32} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
-                            <p style={{ fontSize: '0.9rem' }}>No past ledger transactions recorded for this property.</p>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {transactions.map((tx) => {
-                                const isSeller = tx.sellerWallet?.toLowerCase() === account?.toLowerCase();
-                                const txStatusConfig = {
-                                    completed: { color: '#00E5FF', bg: 'rgba(0,229,255,0.1)' },
-                                    cancelled: { color: '#EF4444', bg: 'rgba(239,68,68,0.1)' },
-                                    expired: { color: '#9ca3af', bg: 'rgba(255,255,255,0.05)' },
-                                };
-                                const tsc = txStatusConfig[tx.status] || { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' };
-
-                                return (
-                                    <div key={tx.id} style={{
-                                        padding: '1.5rem', background: 'rgba(0,0,0,0.3)',
-                                        borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)',
-                                        display: 'grid', gridTemplateColumns: '1fr auto', gap: '1rem',
-                                        alignItems: 'center', transition: 'all 0.2s ease'
-                                    }}>
-                                        <div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem', flexWrap: 'wrap' }}>
-                                                {isSeller
-                                                    ? <ArrowUpRight size={16} style={{ color: '#A855F7' }} />
-                                                    : <ArrowDownLeft size={16} style={{ color: '#00E5FF' }} />
-                                                }
-                                                <span className="cyber-badge" style={{ '--badge-bg': 'rgba(255,255,255,0.1)', '--badge-color': '#d1d5db', '--badge-border': 'transparent', padding: '0.2rem 0.4rem', fontSize: '0.6rem' }}>
-                                                    {isSeller ? 'SELLER' : 'BUYER'}
-                                                </span>
-                                                <span className="cyber-badge" style={{ '--badge-bg': tsc.bg, '--badge-color': tsc.color, '--badge-border': 'transparent', padding: '0.2rem 0.4rem', fontSize: '0.6rem' }}>
-                                                    {tx.status?.toUpperCase()}
-                                                </span>
-                                                {tx.txHash && (
-                                                    <a 
-                                                        href={`https://testnet.snowtrace.io/tx/${tx.txHash}`}
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer"
-                                                        style={{ fontFamily: 'JetBrains Mono', fontSize: '0.75rem', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'none', marginLeft: '0.5rem' }}
-                                                    >
-                                                        TX: {tx.txHash.slice(0, 10)}... <ExternalLink size={12} />
-                                                    </a>
-                                                )}
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', fontSize: '0.8rem', color: '#d1d5db' }}>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                                    <Wallet size={12} style={{ color: '#6b7280' }} /> Buyer: <span style={{ fontFamily: 'JetBrains Mono' }}>{tx.buyerWallet?.slice(0, 8)}...</span>
-                                                </span>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                                    <Wallet size={12} style={{ color: '#6b7280' }} /> Seller: <span style={{ fontFamily: 'JetBrains Mono' }}>{tx.sellerWallet?.slice(0, 8)}...</span>
-                                                </span>
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', fontSize: '0.75rem', color: '#9ca3af' }}>
-                                                <span>Buyer: {tx.buyerSigned ? <span style={{color: '#00E5FF'}}>Signed</span> : 'Pending'}</span>
-                                                <span>Seller: {tx.sellerSigned ? <span style={{color: '#00E5FF'}}>Signed</span> : 'Pending'}</span>
-                                                <span>Authority: {tx.authoritySigned ? <span style={{color: '#00E5FF'}}>Verified</span> : 'Pending'}</span>
-                                            </div>
-                                        </div>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <p style={{ fontWeight: 800, fontSize: '1.25rem', color: '#00E5FF', textShadow: '0 0 10px rgba(0,229,255,0.3)' }}>
-                                                ₹{Number(tx.salePrice).toLocaleString('en-IN')}
-                                            </p>
-                                            <p style={{ fontSize: '0.75rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '0.3rem', justifyContent: 'flex-end', marginTop: '0.4rem' }}>
-                                                <Clock size={12} /> {new Date(tx.createdAt).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-            </div>
+            )}
         </div>
     );
 };

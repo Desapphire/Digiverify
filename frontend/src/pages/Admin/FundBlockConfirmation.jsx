@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminService } from '../../services/admin.service';
+import { TopNavbar } from '../../components/TopNavbar';
 import {
     Landmark, CheckCircle2, XCircle, Loader2,
     RefreshCcw, Search, Wallet, Clock, ChevronDown,
-    ChevronUp, ShieldCheck, Hash, Ban, DollarSign
+    ChevronUp, ShieldCheck, Hash, Ban, DollarSign, Check
 } from 'lucide-react';
 
 const FundBlockConfirmation = () => {
@@ -63,7 +64,6 @@ const FundBlockConfirmation = () => {
     const shortenWallet = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '—';
     const shortenId = (id) => id ? id.toString().slice(0, 8) : '—';
 
-    // Normalize fields (backend may return snake_case from raw query)
     const normalize = (fb) => ({
         id: fb.id,
         transactionId: fb.transaction_id || fb.transactionId,
@@ -81,10 +81,10 @@ const FundBlockConfirmation = () => {
 
     const statusStyle = (status) => {
         switch (status) {
-            case 'blocked': return { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: '#22c55e' };
-            case 'released': return { bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.2)', text: '#3b82f6' };
-            case 'failed': return { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#ef4444' };
-            default: return { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.2)', text: '#eab308' };
+            case 'blocked': return { bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)', text: '#10B981' };
+            case 'released': return { bg: 'rgba(56,189,248,0.12)', border: 'rgba(56,189,248,0.3)', text: '#38BDF8' };
+            case 'failed': return { bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)', text: '#EF4444' };
+            default: return { bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)', text: '#F59E0B' };
         }
     };
 
@@ -100,162 +100,167 @@ const FundBlockConfirmation = () => {
     });
 
     return (
-        <div className="dashboard-container">
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div>
-                    <h1 className="dashboard-title">
-                        Fund Block <span className="text-gradient">Confirmation</span>
-                    </h1>
-                    <p className="text-muted mt-2" style={{ fontSize: '0.9rem' }}>
-                        Verify and confirm ASBA fund blocks against bank records.
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <button onClick={() => navigate('/authority')} className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>← Back</button>
-                    <button onClick={fetchFundBlocks} className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}><RefreshCcw size={14} /> Refresh</button>
-                </div>
-            </div>
+        <div style={{ minHeight: '100vh', background: '#090D16', color: '#FFFFFF' }} className="animate-fade-in">
+            <TopNavbar 
+                title="ASBA Fund Lock Confirmation" 
+                subtitle="Verify and confirm banking escrow locks against core banking system records"
+                showLogo={false}
+                showNetwork={false}
+                showNotifications={true}
+                showProfile={true}
+                customRight={
+                    <button onClick={fetchFundBlocks} className="btn-dark-pill" style={{ fontSize: '0.8rem' }}>
+                        <RefreshCcw size={14} /> Refresh
+                    </button>
+                }
+            />
 
-            {/* Search */}
-            <div className="glass-panel p-4 mb-6" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)' }}>
-                    {loading ? 'Loading...' : `${filteredBlocks.length} fund block${filteredBlocks.length !== 1 ? 's' : ''}`}
+            <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+                {/* Search */}
+                <div className="digi-card p-4 mb-6" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0F172A', border: '1px solid #1E293B', borderRadius: '12px' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#94A3B8' }}>
+                        {loading ? 'Loading...' : `${filteredBlocks.length} escrow block${filteredBlocks.length !== 1 ? 's' : ''}`}
+                    </div>
+                    <div style={{ position: 'relative', minWidth: 260 }}>
+                        <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
+                        <input
+                            type="text"
+                            placeholder="Search by ID, wallet, bank ref..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="input-premium"
+                            style={{ paddingLeft: 36, fontSize: '0.85rem' }}
+                        />
+                    </div>
                 </div>
-                <div style={{ position: 'relative', minWidth: 240 }}>
-                    <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
-                    <input type="text" placeholder="Search by ID, wallet, bank ref..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                        className="input-premium" style={{ paddingLeft: 34, fontSize: '0.82rem', padding: '0.5rem 0.75rem 0.5rem 34px' }} />
-                </div>
-            </div>
 
-            {/* List */}
-            {loading ? (
-                <div className="glass-panel p-8 flex items-center justify-center">
-                    <Loader2 size={32} className="animate-spin" style={{ color: '#ef4444' }} />
-                </div>
-            ) : filteredBlocks.length === 0 ? (
-                <div className="glass-panel p-8 flex flex-col items-center justify-center" style={{ opacity: 0.5 }}>
-                    <Landmark size={48} style={{ marginBottom: '1rem', color: 'rgba(255,255,255,0.3)' }} />
-                    <p style={{ color: 'rgba(255,255,255,0.4)' }}>No pending fund blocks at this time.</p>
-                </div>
-            ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {filteredBlocks.map(fb => {
-                        const sc = statusStyle(fb.status);
-                        const isExpanded = expandedBlock === fb.id;
-                        const isActing = actionLoading === fb.id;
-                        const isPending = !fb.bankConfirmed && fb.status !== 'released' && fb.status !== 'failed';
+                {/* List */}
+                {loading ? (
+                    <div className="digi-card p-12 flex items-center justify-center">
+                        <Loader2 size={36} className="animate-spin" style={{ color: '#0284C7' }} />
+                    </div>
+                ) : filteredBlocks.length === 0 ? (
+                    <div className="digi-card p-12 flex flex-col items-center justify-center text-center">
+                        <Landmark size={48} style={{ marginBottom: '1rem', color: '#64748B' }} />
+                        <p style={{ color: '#94A3B8', fontSize: '0.9rem', margin: 0 }}>No pending ASBA fund block requests at this time.</p>
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {filteredBlocks.map(fb => {
+                            const sc = statusStyle(fb.status);
+                            const isExpanded = expandedBlock === fb.id;
+                            const isActing = actionLoading === fb.id;
+                            const isPending = !fb.bankConfirmed && fb.status !== 'released' && fb.status !== 'failed';
 
-                        return (
-                            <div key={fb.id} className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
-                                {/* Main Row */}
-                                <div onClick={() => setExpandedBlock(isExpanded ? null : fb.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', cursor: 'pointer' }}>
-                                    <div className="flex items-center gap-4">
-                                        <div style={{
-                                            width: 44, height: 44, borderRadius: '12px',
-                                            background: sc.bg, border: `1px solid ${sc.border}`,
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            color: sc.text, flexShrink: 0,
-                                        }}>
-                                            <Landmark size={20} />
-                                        </div>
-                                        <div>
-                                            <p style={{ fontWeight: 700, color: 'white', fontSize: '0.92rem' }}>
-                                                Fund Block #{shortenId(fb.id)}
-                                                <span style={{ fontWeight: 600, color: '#a78bfa', marginLeft: 10, fontSize: '0.92rem' }}>
-                                                    ₹{fb.blockAmount.toLocaleString()}
-                                                </span>
-                                                <span style={{ fontWeight: 400, color: 'rgba(255,255,255,0.3)', marginLeft: 4, fontSize: '0.72rem' }}>
-                                                    {fb.currency}
-                                                </span>
-                                            </p>
-                                            <div className="flex items-center gap-4" style={{ marginTop: 4 }}>
-                                                <span className="flex items-center gap-1" style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
-                                                    <Wallet size={11} /> Buyer: {shortenWallet(fb.buyerWallet)}
-                                                </span>
-                                                <span className="flex items-center gap-1" style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>
-                                                    <Hash size={11} /> Tx: {shortenId(fb.transactionId)}
-                                                </span>
+                            return (
+                                <div key={fb.id} className="digi-card" style={{ padding: 0, overflow: 'hidden', background: '#0F172A', border: '1px solid #1E293B', borderRadius: '12px' }}>
+                                    {/* Main Row */}
+                                    <div
+                                        onClick={() => setExpandedBlock(isExpanded ? null : fb.id)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            padding: '1.25rem 1.5rem', cursor: 'pointer', flexWrap: 'wrap', gap: '1rem'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                            <div style={{
+                                                width: 44, height: 44, borderRadius: '10px',
+                                                background: 'rgba(2,132,199,0.12)', border: '1px solid rgba(2,132,199,0.3)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                color: '#38BDF8', flexShrink: 0,
+                                            }}>
+                                                <Landmark size={20} />
                                             </div>
-                                        </div>
-                                    </div>
 
-                                    <div className="flex items-center gap-3">
-                                        <span style={{
-                                            fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase',
-                                            letterSpacing: '0.04em', padding: '3px 10px', borderRadius: '9999px',
-                                            background: sc.bg, border: `1px solid ${sc.border}`, color: sc.text,
-                                        }}>
-                                            {fb.bankConfirmed ? 'confirmed' : fb.status}
-                                        </span>
-
-                                        {isExpanded ? <ChevronUp size={16} style={{ color: 'rgba(255,255,255,0.3)' }} /> : <ChevronDown size={16} style={{ color: 'rgba(255,255,255,0.3)' }} />}
-                                    </div>
-                                </div>
-
-                                {/* Expanded */}
-                                {isExpanded && (
-                                    <div style={{ padding: '0 1.25rem 1.25rem', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '1rem' }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                                            <DetailField label="Block ID" value={fb.id} mono />
-                                            <DetailField label="Transaction ID" value={fb.transactionId || '—'} mono />
-                                            <DetailField label="Buyer Wallet" value={fb.buyerWallet || '—'} mono />
-                                            <DetailField label="Amount" value={`₹${fb.blockAmount.toLocaleString()} ${fb.currency}`} />
-                                            <DetailField label="Status" value={fb.status?.toUpperCase()} />
-                                            <DetailField label="Bank Confirmed" value={fb.bankConfirmed ? 'Yes' : 'No'} />
-                                            <DetailField label="Bank Reference" value={fb.bankReferenceId || 'Not set'} mono />
-                                            <DetailField label="Blocked At" value={fb.blockedAt ? new Date(fb.blockedAt).toLocaleString() : '—'} />
-                                            {fb.bankConfirmTs && <DetailField label="Confirmed At" value={new Date(fb.bankConfirmTs).toLocaleString()} />}
-                                            {fb.unblockedAt && <DetailField label="Released At" value={new Date(fb.unblockedAt).toLocaleString()} />}
-                                        </div>
-
-                                        {/* Actions */}
-                                        {isPending && (
-                                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '1rem' }}>
-                                                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                                                    <div style={{ flex: 1, minWidth: 200 }}>
-                                                        <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>
-                                                            Bank Reference ID
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            placeholder="e.g. REF-2026-XXXXX"
-                                                            value={bankRefInput[fb.id] || ''}
-                                                            onChange={(e) => setBankRefInput(prev => ({ ...prev, [fb.id]: e.target.value }))}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            className="input-premium"
-                                                            style={{ fontSize: '0.82rem', fontFamily: 'monospace', width: '100%' }}
-                                                        />
-                                                    </div>
-                                                    <button onClick={() => handleConfirm(fb.id)} disabled={isActing} style={{
-                                                        padding: '0.5rem 1rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 700,
-                                                        background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)',
-                                                        display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: isActing ? 0.5 : 1,
-                                                    }}>
-                                                        {isActing ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-                                                        Confirm Block
-                                                    </button>
-                                                    <button onClick={() => handleRelease(fb.id)} disabled={isActing} className="btn btn-danger" style={{
-                                                        padding: '0.5rem 1rem', fontSize: '0.78rem', opacity: isActing ? 0.5 : 1,
-                                                    }}>
-                                                        <Ban size={14} /> Release Funds
-                                                    </button>
+                                            <div>
+                                                <p style={{ fontWeight: 600, color: '#F8FAFC', fontSize: '0.95rem', margin: 0 }}>
+                                                    ₹{fb.blockAmount ? fb.blockAmount.toLocaleString('en-IN') : '0'}
+                                                    <span style={{ fontWeight: 400, color: '#64748B', marginLeft: 8, fontSize: '0.825rem', fontFamily: 'JetBrains Mono' }}>
+                                                        Ref: {fb.bankReferenceId || 'Pending Input'}
+                                                    </span>
+                                                </p>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.3rem', flexWrap: 'wrap' }}>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', color: '#94A3B8' }}>
+                                                        Buyer: <code style={{ fontFamily: 'JetBrains Mono', color: '#F8FAFC' }}>{shortenWallet(fb.buyerWallet)}</code>
+                                                    </span>
+                                                    <span style={{ fontSize: '0.8rem', color: '#64748B', fontFamily: 'JetBrains Mono' }}>
+                                                        Sale ID: {shortenId(fb.transactionId)}
+                                                    </span>
                                                 </div>
                                             </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
+                                        </div>
 
-            {/* Footer */}
-            <div className="mt-8 flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.72rem', fontWeight: 600 }}>
-                <ShieldCheck size={14} style={{ color: '#ef4444' }} />
-                Fund block confirmations are cross-verified with the central banking ledger.
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                                            <span style={{
+                                                fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase',
+                                                padding: '0.25rem 0.65rem', borderRadius: '6px',
+                                                background: sc.bg, border: `1px solid ${sc.border}`, color: sc.text,
+                                            }}>
+                                                {fb.bankConfirmed ? 'Bank Confirmed' : fb.status}
+                                            </span>
+
+                                            {isPending && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Enter Bank Ref ID..."
+                                                        value={bankRefInput[fb.id] || ''}
+                                                        onChange={(e) => setBankRefInput({ ...bankRefInput, [fb.id]: e.target.value })}
+                                                        className="input-premium"
+                                                        style={{ padding: '0.4rem 0.65rem', fontSize: '0.8rem', width: 160 }}
+                                                    />
+                                                    <button
+                                                        onClick={() => handleConfirm(fb.id)}
+                                                        disabled={isActing}
+                                                        className="btn-cyan-glow"
+                                                        style={{ padding: '0.45rem 0.9rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                                    >
+                                                        {isActing ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                                                        Confirm Lock
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {isExpanded ? <ChevronUp size={18} style={{ color: '#64748B' }} /> : <ChevronDown size={18} style={{ color: '#64748B' }} />}
+                                        </div>
+                                    </div>
+
+                                    {/* Expanded Details */}
+                                    {isExpanded && (
+                                        <div style={{
+                                            padding: '1.25rem 1.5rem', borderTop: '1px solid #1E293B',
+                                            background: '#0B0F19'
+                                        }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+                                                <DetailField label="Escrow Block ID" value={fb.id} mono />
+                                                <DetailField label="Sale Agreement ID" value={fb.transactionId || '—'} mono />
+                                                <DetailField label="Blocked Amount" value={`₹${fb.blockAmount ? fb.blockAmount.toLocaleString('en-IN') : '0'}`} />
+                                                <DetailField label="Currency" value={fb.currency} />
+                                                <DetailField label="Buyer Wallet Address" value={fb.buyerWallet || '—'} mono />
+                                                <DetailField label="Bank Reference Code" value={fb.bankReferenceId || 'Not linked'} mono />
+                                                <DetailField label="Bank Officer ID" value={fb.bankUserId || 'Automated Gateway'} />
+                                                <DetailField label="Request Timestamp" value={fb.blockedAt ? new Date(fb.blockedAt).toLocaleString() : '—'} />
+                                            </div>
+
+                                            {fb.bankConfirmed && (
+                                                <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end' }}>
+                                                    <button
+                                                        onClick={() => handleRelease(fb.id)}
+                                                        disabled={isActing}
+                                                        className="btn-cyan-outline"
+                                                        style={{ padding: '0.45rem 1rem', fontSize: '0.8rem', color: '#EF4444', borderColor: 'rgba(239,68,68,0.3)' }}
+                                                    >
+                                                        Release Funds to Buyer
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -263,8 +268,16 @@ const FundBlockConfirmation = () => {
 
 const DetailField = ({ label, value, mono = false }) => (
     <div>
-        <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)', marginBottom: 3 }}>{label}</p>
-        <p style={{ fontSize: '0.8rem', fontWeight: 500, color: 'rgba(255,255,255,0.75)', fontFamily: mono ? 'monospace' : 'inherit', wordBreak: 'break-all' }}>{value}</p>
+        <span style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748B', display: 'block', marginBottom: '0.2rem' }}>
+            {label}
+        </span>
+        <span style={{
+            fontSize: '0.875rem', fontWeight: 500, color: '#CBD5E1',
+            fontFamily: mono ? 'JetBrains Mono' : 'inherit',
+            wordBreak: 'break-all',
+        }}>
+            {value}
+        </span>
     </div>
 );
 
