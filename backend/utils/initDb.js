@@ -9,6 +9,6 @@ const run = async () => {
 };
 
 run().catch((err) => {
-    console.error('❌ Schema upload failed:', err);
+    console.error('Schema upload failed:', err);
     process.exit(1);
 });

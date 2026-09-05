@@ -88,7 +88,7 @@ const unpinFromPinata = async (ipfsHash) => {
                 pinata_secret_api_key: pinataSecretApiKey,
             }
         });
-        console.log(`🗑️ Unpinned ${ipfsHash} from Pinata`);
+        console.log(`Unpinned ${ipfsHash} from Pinata`);
     } catch (err) {
         console.error(`Failed to unpin ${ipfsHash} from Pinata:`, err.response?.data || err.message);
     }

@@ -24,7 +24,7 @@ const approveProperty = async (propertyId, reason = null) => {
     const updatedProperty = await Property.updateStatus(propertyId, 'active', reason);
 
     // 2. Register Property on-chain (first step of blockchain lifecycle)
-    console.log(`🔗 Registering property ${property.propertyCode} on-chain (authority approval) ...`);
+    console.log(`Registering property ${property.propertyCode} on-chain (authority approval) ...`);
     await contractService.registerPropertyOnChain(
         property.propertyCode,
         property.ownerWallet,
@@ -42,7 +42,7 @@ const approveProperty = async (propertyId, reason = null) => {
 
     if (result.tokenId) {
         await Property.setNftTokenId(propertyId, result.tokenId);
-        console.log(`✅ NFT Minted for property ${propertyId}: TokenID ${result.tokenId}, Tx: ${txHash}`);
+        console.log(`NFT Minted for property ${propertyId}: TokenID ${result.tokenId}, Tx: ${txHash}`);
     }
 
     return { property: updatedProperty, txHash };
@@ -79,7 +79,7 @@ const approveSaleTransaction = async (saleId, authorityWallet, signatureHash, re
             // Try to call buyerSign if not already done on-chain
             if (sale.buyerSigned) {
                 try {
-                    console.log(`🔗 Fallback: Ensuring BuyerSign on-chain for SaleID: ${sale.onChainId}...`);
+                    console.log(`Fallback: Ensuring BuyerSign on-chain for SaleID: ${sale.onChainId}...`);
                     await contractService.buyerSignOnChain(sale.onChainId);
                 } catch (e) {
                     // Ignore if already signed or other non-critical error
@@ -90,13 +90,13 @@ const approveSaleTransaction = async (saleId, authorityWallet, signatureHash, re
             // Note: confirmFundsBlocked must have been called by Bank earlier.
             // If it failed on-chain, we can't easily fix it here without BANK_ROLE.
             
-            console.log(`🔗 Executing AuthorityApprove on-chain for SaleID: ${sale.onChainId}...`);
+            console.log(`Executing AuthorityApprove on-chain for SaleID: ${sale.onChainId}...`);
             const result = await contractService.authorityApproveOnChain(sale.onChainId);
             txHash = result.hash;
-            console.log(`✅ On-chain sale approval successful for SaleID: ${sale.onChainId}, Tx: ${txHash}`);
+            console.log(`On-chain sale approval successful for SaleID: ${sale.onChainId}, Tx: ${txHash}`);
         } catch (err) {
             // If it fails with "Funds must be blocked first", it means Bank confirmation is missing on-chain
-            console.warn(`⚠️ On-chain approval failed: ${err.message}`);
+            console.warn(`On-chain approval failed: ${err.message}`);
         }
     }
 
@@ -107,12 +107,12 @@ const approveSaleTransaction = async (saleId, authorityWallet, signatureHash, re
             const { getSigner } = require('../config/blockchain');
             const signer = getSigner();
             if (signer) {
-                console.log(`✍️ Backend signing for Authority Approval (SaleID: ${saleId})...`);
+                console.log(`Backend signing for Authority Approval (SaleID: ${saleId})...`);
                 // Sign the saleId as proof of approval
                 finalSignatureHash = await signer.signMessage(`Authority Approve Sale: ${saleId}`);
             }
         } catch (err) {
-            console.warn('⚠️ Backend signing failed:', err.message);
+            console.warn('Backend signing failed:', err.message);
         }
     }
 

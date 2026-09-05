@@ -612,9 +612,9 @@ const PropertyDetails = () => {
                                                 </span>
                                             </div>
                                             <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', fontSize: '0.75rem', color: '#9ca3af' }}>
-                                                <span>Buyer: {tx.buyerSigned ? <span style={{color: '#00E5FF'}}>✓ Signed</span> : '⏳ Pending'}</span>
-                                                <span>Seller: {tx.sellerSigned ? <span style={{color: '#00E5FF'}}>✓ Signed</span> : '⏳ Pending'}</span>
-                                                <span>Authority: {tx.authoritySigned ? <span style={{color: '#00E5FF'}}>✓ Verified</span> : '⏳ Pending'}</span>
+                                                <span>Buyer: {tx.buyerSigned ? <span style={{color: '#00E5FF'}}>Signed</span> : 'Pending'}</span>
+                                                <span>Seller: {tx.sellerSigned ? <span style={{color: '#00E5FF'}}>Signed</span> : 'Pending'}</span>
+                                                <span>Authority: {tx.authoritySigned ? <span style={{color: '#00E5FF'}}>Verified</span> : 'Pending'}</span>
                                             </div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>

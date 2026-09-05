@@ -673,7 +673,7 @@ const PropertyInvestigation = () => {
                                         <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>Uploading to IPFS...</span></>
                                     ) : forceHash ? (
                                         <><CheckCircle2 size={22} style={{ color: '#22c55e' }} />
-                                        <span style={{ fontSize: '0.78rem', color: '#22c55e', fontWeight: 600 }}>Document uploaded ✓</span>
+                                        <span style={{ fontSize: '0.78rem', color: '#22c55e', fontWeight: 600 }}>Document uploaded </span>
                                         <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>{forceFile?.name}</span></>
                                     ) : (
                                         <><UploadCloud size={22} style={{ color: '#c084fc' }} />
@@ -912,7 +912,7 @@ const PropertyInvestigation = () => {
                                         <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>Uploading to IPFS...</span></>
                                     ) : freezeHash ? (
                                         <><CheckCircle2 size={22} style={{ color: '#22c55e' }} />
-                                        <span style={{ fontSize: '0.78rem', color: '#22c55e', fontWeight: 600 }}>Document uploaded ✓</span>
+                                        <span style={{ fontSize: '0.78rem', color: '#22c55e', fontWeight: 600 }}>Document uploaded </span>
                                         <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>{freezeFile?.name}</span></>
                                     ) : (
                                         <><UploadCloud size={22} style={{ color: '#60a5fa' }} />
@@ -1025,7 +1025,7 @@ const PropertyInvestigation = () => {
                                         <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>Uploading to IPFS...</span></>
                                     ) : reverseHash ? (
                                         <><CheckCircle2 size={22} style={{ color: '#22c55e' }} />
-                                        <span style={{ fontSize: '0.78rem', color: '#22c55e', fontWeight: 600 }}>Document uploaded ✓</span>
+                                        <span style={{ fontSize: '0.78rem', color: '#22c55e', fontWeight: 600 }}>Document uploaded </span>
                                         <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>{reverseFile?.name}</span></>
                                     ) : (
                                         <><UploadCloud size={22} style={{ color: '#22c55e' }} />
