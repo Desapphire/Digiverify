@@ -56,9 +56,9 @@ const confirmFundBlock = async (fundBlockId, bankReferenceId, bankUserId) => {
             try {
                 const receipt = await contractService.confirmFundsBlockedOnChain(sale.onChainId);
                 txHash = receipt.hash;
-                console.log(`✅ Funds confirmed on-chain for SaleID: ${sale.onChainId}, Tx: ${txHash}`);
+                console.log(`Funds confirmed on-chain for SaleID: ${sale.onChainId}, Tx: ${txHash}`);
             } catch (err) {
-                console.error('⚠️ On-chain fund confirmation failed:', err.message);
+                console.error('On-chain fund confirmation failed:', err.message);
             }
         }
 

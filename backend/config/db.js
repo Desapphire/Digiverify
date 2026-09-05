@@ -40,9 +40,9 @@ const connectDB = async () => {
     try {
         await pool.query('SELECT 1');
         await initSchema();
-        console.log('✅ PostgreSQL connected — schema initialized');
+        console.log('PostgreSQL connected — schema initialized');
     } catch (err) {
-        console.error('❌ DB connection failed:', err.message);
+        console.error('DB connection failed:', err.message);
         process.exit(1);
     }
 };

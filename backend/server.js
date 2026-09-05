@@ -169,11 +169,11 @@ const startServer = async () => {
         try {
             startEventListeners();
         } catch (err) {
-            console.warn('⚠️  Blockchain event listeners failed to start:', err.message);
+            console.warn(' Blockchain event listeners failed to start:', err.message);
         }
 
         const server = app.listen(env.PORT, () => {
-            console.log(`\n🚀 Digiverify Land Registry API`);
+            console.log(`\nDigiverify Land Registry API`);
             console.log(`   Environment : ${env.NODE_ENV}`);
             console.log(`   Port        : ${env.PORT}`);
             console.log(`   Network     : Avalanche Fuji C-Chain`);
@@ -185,13 +185,13 @@ const startServer = async () => {
         const shutdown = (signal) => {
             console.log(`\n${signal} received. Shutting down gracefully...`);
             server.close(() => {
-                console.log('✅ Server closed.');
+                console.log('Server closed.');
                 process.exit(0);
             });
 
             // Force shutdown after 10 seconds
             setTimeout(() => {
-                console.error('⚠️  Forced shutdown after timeout.');
+                console.error(' Forced shutdown after timeout.');
                 process.exit(1);
             }, 10000);
         };
@@ -201,19 +201,19 @@ const startServer = async () => {
 
         // Handle uncaught exceptions
         process.on('uncaughtException', (err) => {
-            console.error('\n❌ CRITICAL ERROR (Uncaught Exception):');
+            console.error('\nCRITICAL ERROR (Uncaught Exception):');
             console.error(err.stack);
             shutdown('uncaughtException');
         });
 
         process.on('unhandledRejection', (reason, promise) => {
-            console.error('\n❌ CRITICAL ERROR (Unhandled Rejection):');
+            console.error('\nCRITICAL ERROR (Unhandled Rejection):');
             console.error(reason);
             shutdown('unhandledRejection');
         });
 
     } catch (err) {
-        console.error('❌ Failed to start server:', err.message);
+        console.error('Failed to start server:', err.message);
         process.exit(1);
     }
 };

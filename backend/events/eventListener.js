@@ -42,7 +42,7 @@ const pollEvents = async () => {
                 const events = await contracts.landNFT.queryFilter('Transfer', fromBlock, toBlock);
                 for (const event of events) {
                     const [from, to, tokenId] = event.args;
-                    console.log(`🔗 NFT Transfer: ${from} → ${to} (tokenId: ${tokenId})`);
+                    console.log(`NFT Transfer: ${from} → ${to} (tokenId: ${tokenId})`);
 
                     const result = await pool.query(
                         'SELECT id FROM properties WHERE nft_token_id = $1 LIMIT 1',
@@ -72,7 +72,7 @@ const pollEvents = async () => {
                 const events = await contracts.landRegistry.queryFilter('PropertyRegistered', fromBlock, toBlock);
                 for (const event of events) {
                     const [propertyCode, owner, tokenId] = event.args;
-                    console.log(`🔗 Property Registered: ${propertyCode} (owner: ${owner})`);
+                    console.log(`Property Registered: ${propertyCode} (owner: ${owner})`);
 
                     const property = await Property.findByCode(propertyCode);
                     if (property) {
@@ -98,7 +98,7 @@ const pollEvents = async () => {
                 const events = await contracts.saleContract.queryFilter('SaleCompleted', fromBlock, toBlock);
                 for (const event of events) {
                     const [saleId, tokenId] = event.args;
-                    console.log(`🔗 Sale Completed: saleId=${saleId}, tokenId=${tokenId}`);
+                    console.log(`Sale Completed: saleId=${saleId}, tokenId=${tokenId}`);
 
                     await AuditLog.create({
                         actionType: AUDIT_ACTIONS.SALE_COMPLETED,
@@ -125,11 +125,11 @@ const startEventListeners = () => {
     const contracts = getContracts();
 
     if (!contracts.landNFT && !contracts.landRegistry && !contracts.saleContract) {
-        console.warn('⚠️  No blockchain contracts configured — event polling disabled');
+        console.warn('No blockchain contracts configured — event polling disabled');
         return;
     }
 
-    console.log(`📡 Event polling started (every ${POLL_INTERVAL_MS / 1000}s)`);
+    console.log(`Event polling started (every ${POLL_INTERVAL_MS / 1000}s)`);
 
     // Initial poll
     pollEvents();
