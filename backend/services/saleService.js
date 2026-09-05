@@ -79,11 +79,11 @@ const initiateSale = async ({ propertyId, buyerWallet, salePrice, onChainSaleId,
         // If frontend already registered it on-chain
         await SaleTransaction.setOnChainId(transaction.id, onChainSaleId);
         if (onChainTxHash) await SaleTransaction.setTxHash(transaction.id, onChainTxHash);
-        console.log(`✅ Sale recorded with frontend-provided On-chain ID: ${onChainSaleId}`);
+        console.log(`Sale recorded with frontend-provided On-chain ID: ${onChainSaleId}`);
     } else if (property.nftTokenId) {
         // Fallback: Backend tries to register (may fail due to ownership)
         try {
-            console.log(`🔗 Initiating on-chain sale for NFT ${property.nftTokenId}...`);
+            console.log(`Initiating on-chain sale for NFT ${property.nftTokenId}...`);
             const result = await contractService.registerOnChainSale(
                 property.nftTokenId,
                 property.propertyCode,
@@ -96,10 +96,10 @@ const initiateSale = async ({ propertyId, buyerWallet, salePrice, onChainSaleId,
             if (result.saleId) {
                 await SaleTransaction.setOnChainId(transaction.id, result.saleId);
                 await SaleTransaction.setTxHash(transaction.id, txHash);
-                console.log(`✅ On-chain sale registered: ID ${result.saleId}, Tx: ${txHash}`);
+                console.log(`On-chain sale registered: ID ${result.saleId}, Tx: ${txHash}`);
             }
         } catch (err) {
-            console.error('⚠️ On-chain registration failed:', err.message);
+            console.error('On-chain registration failed:', err.message);
         }
     }
 
@@ -142,9 +142,9 @@ const signSale = async (saleId, signerWallet, signerRole, signatureHash) => {
                 try {
                     const result = await contractService.buyerSignOnChain(sale.onChainId);
                     txHash = result.hash;
-                    console.log(`✅ Buyer signed on-chain for SaleID: ${sale.onChainId}, Tx: ${txHash}`);
+                    console.log(`Buyer signed on-chain for SaleID: ${sale.onChainId}, Tx: ${txHash}`);
                 } catch (err) {
-                    console.error('⚠️ On-chain buyer sign failed:', err.message);
+                    console.error('On-chain buyer sign failed:', err.message);
                 }
             }
         } else if (signerRole === 'seller') {
@@ -204,16 +204,16 @@ const completeSale = async (saleId) => {
     let txHash = null;
     if (sale.onChainId) {
         try {
-            console.log(`🔗 Executing on-chain execution for SaleID ${sale.onChainId}...`);
+            console.log(`Executing on-chain execution for SaleID ${sale.onChainId}...`);
             const result = await contractService.completeOnChainSale(sale.onChainId);
             txHash = result.txHash;
-            console.log(`✅ On-chain sale completed. Tx: ${txHash}`);
+            console.log(`On-chain sale completed. Tx: ${txHash}`);
         } catch (err) {
             // Check if it's already completed on-chain (out-of-sync recovery)
             if (err.message.includes('Not approved by authority')) {
                 console.log('ℹ️ Sale already completed on-chain. Syncing DB status...');
             } else {
-                console.error('❌ On-chain sale completion failed:', err.message);
+                console.error('On-chain sale completion failed:', err.message);
                 throw err;
             }
         }

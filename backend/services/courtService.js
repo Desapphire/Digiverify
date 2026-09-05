@@ -32,9 +32,9 @@ const freezeProperty = async ({ propertyId, courtOrderHash, caseNumber, reason }
         if (property.nftTokenId) {
             try {
                 await contractService.courtFreezeProperty(property.nftTokenId, reason || 'Judicial Order');
-                console.log(`✅ On-chain freeze ordered for property ${propertyId}`);
+                console.log(`On-chain freeze ordered for property ${propertyId}`);
             } catch (err) {
-                console.error('⚠️ On-chain freeze failed:', err.message);
+                console.error('On-chain freeze failed:', err.message);
             }
         }
 
@@ -48,7 +48,7 @@ const freezeProperty = async ({ propertyId, courtOrderHash, caseNumber, reason }
                 }
                 await saleService.freezeSale(activeSale.id);
             } catch (e) {
-                console.warn('⚠️ Could not freeze active sale:', e.message);
+                console.warn('Could not freeze active sale:', e.message);
             }
         }
 
@@ -129,9 +129,9 @@ const forceTransfer = async ({ propertyId, newOwnerWallet, courtOrderHash, reaso
                     newOwnerWallet,
                     reason || 'Court Ordered Force Transfer'
                 );
-                console.log(`✅ On-chain judicial transfer successful for NFT ${property.nftTokenId}`);
+                console.log(`On-chain judicial transfer successful for NFT ${property.nftTokenId}`);
             } catch (err) {
-                console.error('⚠️ On-chain judicial transfer failed:', err.message);
+                console.error('On-chain judicial transfer failed:', err.message);
                 // Non-blocking in this simulation, but usually critical
             }
         }
