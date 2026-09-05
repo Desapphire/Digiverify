@@ -8,14 +8,14 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const env = {
     // Server
-    PORT: parseInt(process.env.PORT, 10) || 5000,
-    NODE_ENV: process.env.NODE_ENV || 'development',
-    IS_PRODUCTION: process.env.NODE_ENV === 'production',
+    PORT: parseInt(process.env.PORT, 10),
+    NODE_ENV: process.env.NODE_ENV,
+    IS_PRODUCTION: process.env.IS_PRODUCTION,
 
     // PostgreSQL
     PG: {
-        host: process.env.PGHOST || 'localhost',
-        port: parseInt(process.env.PGPORT, 10) || 5432,
+        host: process.env.PGHOST,
+        port: parseInt(process.env.PGPORT, 10),
         user: process.env.PGUSER,
         password: process.env.PGPASSWORD,
         database: process.env.PGDATABASE,
@@ -24,27 +24,27 @@ const env = {
 
     // JWT
     JWT: {
-        secret: process.env.JWT_SECRET || 'dev_jwt_secret_change_in_production',
-        expiresIn: process.env.JWT_EXPIRES_IN || '24h',
-        refreshSecret: process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret_change_in_production',
-        refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+        secret: process.env.JWT_SECRET,
+        expiresIn: process.env.JWT_EXPIRES_IN,
+        refreshSecret: process.env.JWT_REFRESH_SECRET,
+        refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN,
     },
 
     // Blockchain
     BLOCKCHAIN: {
-        rpcUrl: process.env.AVALANCHE_RPC_URL || 'https://api.avax-test.network/ext/bc/C/rpc',
-        chainId: parseInt(process.env.CHAIN_ID, 10) || 43113,
-        signerKey: process.env.SIGNER_PRIVATE_KEY || '',
+        rpcUrl: process.env.AVALANCHE_RPC_URL,
+        chainId: parseInt(process.env.CHAIN_ID, 10),
+        signerKey: process.env.SIGNER_PRIVATE_KEY,
         contracts: {
-            landNFT: process.env.LAND_NFT_ADDRESS || '',
-            landRegistry: process.env.LAND_REGISTRY_ADDRESS || '',
-            saleContract: process.env.SALE_CONTRACT_ADDRESS || '',
-            courtOverride: process.env.COURT_OVERRIDE_ADDRESS || '',
+            landNFT: process.env.LAND_NFT_ADDRESS,
+            landRegistry: process.env.LAND_REGISTRY_ADDRESS,
+            saleContract: process.env.SALE_CONTRACT_ADDRESS,
+            courtOverride: process.env.COURT_OVERRIDE_ADDRESS,
         },
     },
 
     // Redis
-    REDIS_URL: process.env.REDIS_URL || '',
+    REDIS_URL: process.env.REDIS_URL,
 
     // CORS
     CORS_ORIGINS: process.env.CORS_ORIGINS
@@ -58,10 +58,10 @@ const env = {
     },
 
     // Encryption
-    ENCRYPTION_KEY: process.env.ENCRYPTION_KEY || 'dev_encryption_key_32chars_min!',
+    ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
 
     // Session (legacy)
-    SESSION_SECRET: process.env.SESSION_SECRET || 'default_session_secret',
+    SESSION_SECRET: process.env.SESSION_SECRET,
 };
 
 // ── Validation ──────────────────────────────────────────

@@ -85,7 +85,7 @@ const approveKyc = async (userId, reason = null) => {
     if (!user) throw new AppError('User not found.', 404);
 
     // Blockchain anchoring (Mock/Placeholder for identity contract)
-    console.log(`🔗 Anchoring KYC for user ${userId} (${user.walletAddress}) on-chain...`);
+    console.log(`Anchoring KYC for user ${userId} (${user.walletAddress}) on-chain...`);
 
     return User.updateKycStatus(userId, 'verified', null, reason);
 };

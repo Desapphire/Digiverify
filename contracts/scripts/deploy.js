@@ -8,7 +8,7 @@ const path = require("path");
 
 async function main() {
     const [deployer] = await ethers.getSigners();
-    console.log("\n🚀 Deploying contracts with:", deployer.address);
+    console.log("\nDeploying contracts with:", deployer.address);
     console.log("   Balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)), "AVAX\n");
 
     // ── 1. Deploy LandNFT ──────────────────────────────────
@@ -17,7 +17,7 @@ async function main() {
     const landNFT = await LandNFT.deploy();
     await landNFT.waitForDeployment();
     const landNFTAddress = await landNFT.getAddress();
-    console.log("   ✅ LandNFT deployed at:", landNFTAddress);
+    console.log("   LandNFT deployed at:", landNFTAddress);
 
     // ── 2. Deploy LandRegistry ─────────────────────────────
     console.log("\n2️⃣  Deploying LandRegistry...");
@@ -25,7 +25,7 @@ async function main() {
     const landRegistry = await LandRegistry.deploy(landNFTAddress);
     await landRegistry.waitForDeployment();
     const landRegistryAddress = await landRegistry.getAddress();
-    console.log("   ✅ LandRegistry deployed at:", landRegistryAddress);
+    console.log("   LandRegistry deployed at:", landRegistryAddress);
 
     // ── 3. Deploy SaleContract ─────────────────────────────
     console.log("\n3️⃣  Deploying SaleContract...");
@@ -33,7 +33,7 @@ async function main() {
     const saleContract = await SaleContract.deploy(landNFTAddress, landRegistryAddress);
     await saleContract.waitForDeployment();
     const saleContractAddress = await saleContract.getAddress();
-    console.log("   ✅ SaleContract deployed at:", saleContractAddress);
+    console.log("   SaleContract deployed at:", saleContractAddress);
 
     // ── 4. Deploy CourtOverride ────────────────────────────
     console.log("\n4️⃣  Deploying CourtOverride...");
@@ -41,7 +41,7 @@ async function main() {
     const courtOverride = await CourtOverride.deploy(landNFTAddress, saleContractAddress);
     await courtOverride.waitForDeployment();
     const courtOverrideAddress = await courtOverride.getAddress();
-    console.log("   ✅ CourtOverride deployed at:", courtOverrideAddress);
+    console.log("   CourtOverride deployed at:", courtOverrideAddress);
 
     // ── 5. Grant roles ─────────────────────────────────────
     console.log("\n5️⃣  Granting roles...");
@@ -51,19 +51,19 @@ async function main() {
     const COURT_ROLE = ethers.keccak256(ethers.toUtf8Bytes("COURT_ROLE"));
 
     await (await landNFT.grantRole(MINTER_ROLE, landRegistryAddress)).wait();
-    console.log("   ✅ MINTER_ROLE of LandNFT granted to LandRegistry");
+    console.log("   MINTER_ROLE of LandNFT granted to LandRegistry");
 
     await (await landNFT.grantRole(COURT_ROLE, courtOverrideAddress)).wait();
-    console.log("   ✅ COURT_ROLE of LandNFT granted to CourtOverride");
+    console.log("   COURT_ROLE of LandNFT granted to CourtOverride");
 
     // SaleContract Roles
     const AUTHORITY_ROLE = ethers.keccak256(ethers.toUtf8Bytes("AUTHORITY_ROLE"));
     await (await saleContract.grantRole(AUTHORITY_ROLE, courtOverrideAddress)).wait();
-    console.log("   ✅ AUTHORITY_ROLE of SaleContract granted to CourtOverride");
+    console.log("   AUTHORITY_ROLE of SaleContract granted to CourtOverride");
 
     const SALE_CONTRACT_ROLE = ethers.keccak256(ethers.toUtf8Bytes("SALE_CONTRACT_ROLE"));
     await (await landNFT.grantRole(SALE_CONTRACT_ROLE, saleContractAddress)).wait();
-    console.log("   ✅ SALE_CONTRACT_ROLE of LandNFT granted to SaleContract");
+    console.log("   SALE_CONTRACT_ROLE of LandNFT granted to SaleContract");
 
     // ── 6. Save deployment info ────────────────────────────
     const deployment = {
@@ -81,7 +81,7 @@ async function main() {
 
     const deploymentsPath = path.join(__dirname, "..", "deployments.json");
     fs.writeFileSync(deploymentsPath, JSON.stringify(deployment, null, 2));
-    console.log("\n📄 Deployment info saved to deployments.json");
+    console.log("\nDeployment info saved to deployments.json");
 
     // ── 7. Copy ABIs to backend ────────────────────────────
     const backendAbisDir = path.join(__dirname, "..", "..", "backend", "blockchain", "abis");
@@ -94,7 +94,7 @@ async function main() {
                 fs.writeFileSync(path.join(backendAbisDir, `${name}.json`), JSON.stringify(artifact.abi, null, 2));
             }
         }
-        console.log("📋 ABIs copied to backend/blockchain/abis/");
+        console.log("ABIs copied to backend/blockchain/abis/");
     }
 
     // summary
@@ -111,6 +111,6 @@ async function main() {
 main()
     .then(() => process.exit(0))
     .catch((error) => {
-        console.error("❌ Deployment failed:", error);
+        console.error("Deployment failed:", error);
         process.exit(1);
     });

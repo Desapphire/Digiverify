@@ -30,7 +30,7 @@ const getProvider = () => {
 const getSigner = () => {
     if (!signer) {
         if (!env.BLOCKCHAIN.signerKey) {
-            console.warn('⚠️  SIGNER_PRIVATE_KEY not set — blockchain writes disabled');
+            console.warn(' SIGNER_PRIVATE_KEY not set — blockchain writes disabled');
             return null;
         }
         signer = new ethers.Wallet(env.BLOCKCHAIN.signerKey, getProvider());

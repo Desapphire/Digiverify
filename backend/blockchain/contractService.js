@@ -21,7 +21,7 @@ const registerPropertyOnChain = async (propertyCode, ownerAddress, documentHash)
         const receipt = await tx.wait();
         return { txHash: receipt.hash };
     } catch (err) {
-        console.error('❌ Property registration on-chain failed:', err.message);
+        console.error('Property registration on-chain failed:', err.message);
         throw err;
     }
 };
@@ -43,7 +43,7 @@ const approvePropertyOnChain = async (propertyCode, metadataURI) => {
 
         return { tokenId, txHash: receipt.hash };
     } catch (err) {
-        console.error('❌ Property approval on-chain failed:', err.message);
+        console.error('Property approval on-chain failed:', err.message);
         throw err;
     }
 };
@@ -69,7 +69,7 @@ const registerOnChainSale = async (tokenId, propertyCode, seller, buyer, price) 
 
         return { saleId, txHash: receipt.hash };
     } catch (err) {
-        console.error('❌ Sale initiation on-chain failed:', err.message);
+        console.error('Sale initiation on-chain failed:', err.message);
         throw err;
     }
 };
@@ -104,7 +104,7 @@ const completeOnChainSale = async (saleId) => {
         const receipt = await tx.wait();
         return { txHash: receipt.hash };
     } catch (err) {
-        console.error('❌ On-chain sale completion failed:', err.message);
+        console.error('On-chain sale completion failed:', err.message);
         throw err;
     }
 };

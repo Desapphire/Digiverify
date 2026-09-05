@@ -16,112 +16,115 @@ const path = require("path");
 
 async function main() {
     const [deployer] = await ethers.getSigners();
-    console.log("\n🚀 Starting Full Flow Test...");
+    console.log("\nStarting Full Flow Test...");
     console.log("   Admin/Auth/Bank Signer:", deployer.address);
 
-    // Load Deployment Addresses
-    const deploymentsPath = path.join(__dirname, "..", "deployments.json");
-    if (!fs.existsSync(deploymentsPath)) {
-        throw new Error("Deployments file not found. Run deploy.js first.");
-    }
-    const deployments = JSON.parse(fs.readFileSync(deploymentsPath, "utf8"));
-    const { LandNFT, LandRegistry, SaleContract } = deployments.contracts;
+    // Deploy Fresh Contract Instances for Test
+    const LandNFTFactory = await ethers.getContractFactory("LandNFT");
+    const landNFT = await LandNFTFactory.deploy();
+    await landNFT.waitForDeployment();
+    const landNFTAddress = await landNFT.getAddress();
 
-    // Get Contract Instances
-    const landNFT = await ethers.getContractAt("LandNFT", LandNFT);
-    const landRegistry = await ethers.getContractAt("LandRegistry", LandRegistry);
-    const saleContract = await ethers.getContractAt("SaleContract", SaleContract);
+    const LandRegistryFactory = await ethers.getContractFactory("LandRegistry");
+    const landRegistry = await LandRegistryFactory.deploy(landNFTAddress);
+    await landRegistry.waitForDeployment();
+    const landRegistryAddress = await landRegistry.getAddress();
+
+    const SaleContractFactory = await ethers.getContractFactory("SaleContract");
+    const saleContract = await SaleContractFactory.deploy(landNFTAddress, landRegistryAddress);
+    await saleContract.waitForDeployment();
+    const saleContractAddress = await saleContract.getAddress();
+
+    const MINTER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MINTER_ROLE"));
+    const SALE_CONTRACT_ROLE = ethers.keccak256(ethers.toUtf8Bytes("SALE_CONTRACT_ROLE"));
+    await (await landNFT.grantRole(MINTER_ROLE, landRegistryAddress)).wait();
+    await (await landNFT.grantRole(SALE_CONTRACT_ROLE, saleContractAddress)).wait();
 
     // 1️⃣ Generate Test Wallets
     const seller = ethers.Wallet.createRandom().connect(ethers.provider);
     const buyer = ethers.Wallet.createRandom().connect(ethers.provider);
 
-    console.log("\n👤 Generated Test Wallets:");
+    console.log("\nGenerated Test Wallets:");
     console.log("   Seller:", seller.address);
     console.log("   Buyer: ", buyer.address);
 
-    // Fund Wallets for Gas
-    console.log("\n⛽ Funding test wallets...");
-    const fundAmount = ethers.parseEther("0.05");
-    await (await deployer.sendTransaction({ to: seller.address, value: fundAmount })).wait();
-    await (await deployer.sendTransaction({ to: buyer.address, value: fundAmount })).wait();
-    console.log("   ✅ Wallets funded.");
+    // 2️⃣ Fund Test Wallets
+    console.log("\nFunding test wallets...");
+    await (await deployer.sendTransaction({ to: seller.address, value: ethers.parseEther("10.0") })).wait();
+    await (await deployer.sendTransaction({ to: buyer.address, value: ethers.parseEther("10.0") })).wait();
+    console.log("   Wallets funded.");
 
-    const propertyCode = "GOV-PROP-" + Date.now();
-    const docHash = ethers.id("PROP-DOC-123");
-
-    // 2️⃣ Seller Registers Property
-    console.log(`\n🏠 Step 1: Seller registering property (${propertyCode})...`);
+    // 3️⃣ Register Property
+    const propertyCode = `GOV-PROP-${Date.now()}`;
+    const docHash = "0x" + "a".repeat(64);
+    console.log(`\nStep 1: Seller registering property (${propertyCode})...`);
     await (await landRegistry.connect(seller).registerProperty(propertyCode, seller.address, docHash)).wait();
-    console.log("   ✅ Property submitted for approval.");
+    console.log("   Property submitted for approval.");
 
-    // 3️⃣ Authority Approves Property (Mints NFT)
-    console.log("\n📜 Step 2: Authority approving property...");
+    // 4️⃣ Authority Approves Property (Mints NFT)
+    console.log("\nStep 2: Authority approving property...");
     const metadataURI = `ipfs://QmTest${Date.now()}`;
-    const approveTx = await landRegistry.connect(deployer).approveProperty(propertyCode, metadataURI);
-    const approveReceipt = await approveTx.wait();
+    await (await landRegistry.connect(deployer).approveProperty(propertyCode, metadataURI)).wait();
 
-    // Find TokenID from logs
-    const approveLog = approveReceipt.logs.find(x => x.fragment?.name === 'PropertyApproved');
-    const tokenId = approveLog.args[1];
-    console.log(`   ✅ Property approved. NFT Minted: TokenID ${tokenId}`);
+    const propRecord = await landRegistry.propertyRecords(propertyCode);
+    const tokenId = propRecord.tokenId;
+    console.log(`   Property approved. NFT Minted: TokenID ${tokenId}`);
 
     // Verify Owner
     const owner = await landNFT.ownerOf(tokenId);
     console.log("   Verification: NFT Owner is", owner);
 
-    // 4️⃣ Initiate Sale
-    console.log("\n🤝 Step 3: Seller initiating sale to Buyer...");
+    // 5️⃣ Initiate Sale
+    console.log("\nStep 3: Seller initiating sale to Buyer...");
     const salePrice = ethers.parseEther("1.5");
 
     // Seller MUST approve SaleContract as operator first
-    await (await landNFT.connect(seller).setApprovalForAll(SaleContract, true)).wait();
-    console.log("   ✅ Seller approved SaleContract as NFT operator.");
+    await (await landNFT.connect(seller).setApprovalForAll(saleContractAddress, true)).wait();
+    console.log("   Seller approved SaleContract as NFT operator.");
 
-    const initTx = await saleContract.connect(seller).initiateSale(tokenId, propertyCode, buyer.address, salePrice);
-    const initReceipt = await initTx.wait();
-    const saleId = initReceipt.logs.find(x => x.fragment?.name === 'SaleInitiated').args[0];
-    console.log(`   ✅ Sale initiated. On-Chain Sale ID: ${saleId}`);
+    await (await saleContract.connect(seller).initiateSale(tokenId, propertyCode, seller.address, buyer.address, salePrice)).wait();
+    const saleId = await saleContract.saleCount();
+    console.log(`   Sale initiated. On-Chain Sale ID: ${saleId}`);
 
     // 5️⃣ Buyer Signs
-    console.log("\n🖊️  Step 4: Buyer signing sale...");
+    console.log("\n Step 4: Buyer signing sale...");
     await (await saleContract.connect(buyer).buyerSign(saleId)).wait();
-    console.log("   ✅ Buyer signed.");
+    console.log("   Buyer signed.");
 
     // 6️⃣ Bank Confirms Funds
-    console.log("\n🏦 Step 5: Bank confirming blocked funds...");
+    console.log("\nStep 5: Bank confirming blocked funds...");
     await (await saleContract.connect(deployer).confirmFundsBlocked(saleId)).wait();
-    console.log("   ✅ Funds confirmed blocked.");
+    console.log("   Funds confirmed blocked.");
 
     // 7️⃣ Authority Approves Sale
-    console.log("\n🏛️  Step 6: Authority approving sale transaction...");
+    console.log("\n Step 6: Authority approving sale transaction...");
     await (await saleContract.connect(deployer).authorityApprove(saleId)).wait();
-    console.log("   ✅ Sale transaction approved by government.");
+    console.log("   Sale transaction approved by government.");
 
     // 8️⃣ Complete Sale (Final Transfer)
-    console.log("\n🚚 Step 7: Executing final transfer...");
+    console.log("\nStep 7: Executing final transfer...");
     const completeTx = await saleContract.connect(deployer).executeTransfer(saleId);
     await completeTx.wait();
-    console.log("   ✅ Execution complete. Transfer finalized.");
+    console.log("   Execution complete. Transfer finalized.");
 
     // 9️⃣ Final Verification
     const newOwner = await landNFT.ownerOf(tokenId);
-    console.log("\n🏆 FINAL VERIFICATION:");
+    console.log("\nFINAL VERIFICATION:");
     console.log("   Property Code:", propertyCode);
     console.log("   NFT Token ID :", tokenId.toString());
     console.log("   Old Owner    :", seller.address);
     console.log("   New Owner    :", newOwner);
 
     if (newOwner.toLowerCase() === buyer.address.toLowerCase()) {
-        console.log("\n✨ SUCCESS: Property ownership successfully transferred on-chain! ✨");
+        console.log("\nSUCCESS: Property ownership successfully transferred on-chain! ");
     } else {
-        console.log("\n❌ FAILURE: Ownership transfer failed.");
+        console.log("\nFAILURE: Ownership transfer failed.");
     }
 }
 
 main()
     .then(() => process.exit(0))
     .catch((error) => {
-        console.error("\n❌ Test failed:", error);
+        console.error("\nTest failed:", error);
         process.exit(1);
     });
