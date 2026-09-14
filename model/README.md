@@ -19,7 +19,7 @@ All default paths are resolved relative to the Python scripts, not the shell's c
 Open PowerShell in this folder:
 
 ```powershell
-cd path\to\ML_Model
+cd path\to\model
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
@@ -86,14 +86,14 @@ The output contains the overall score, risk level, action, fair price, AML decis
 Use absolute or relative script paths. The default CSV and model paths still resolve beside the scripts:
 
 ```powershell
-python D:\path\to\ML_Model\score_transaction.py --price 7500000 --transaction-value 7500000 --annual-income 3000000
+python D:\path\to\model\score_transaction.py --price 7500000 --transaction-value 7500000 --annual-income 3000000
 ```
 
 Training and testing also work from outside the project folder:
 
 ```powershell
-python D:\path\to\ML_Model\train_models.py
-python -m pytest D:\path\to\ML_Model\test_risk_engine.py -q
+python D:\path\to\model\train_models.py
+python -m pytest D:\path\to\model\test_risk_engine.py -q
 ```
 
 ## Validation
