@@ -40,6 +40,10 @@ const env = {
             landRegistry: process.env.LAND_REGISTRY_ADDRESS,
             saleContract: process.env.SALE_CONTRACT_ADDRESS,
             courtOverride: process.env.COURT_OVERRIDE_ADDRESS,
+            bankLienRegistry: process.env.BANK_LIEN_REGISTRY_ADDRESS,
+            inheritanceSuccession: process.env.INHERITANCE_SUCCESSION_ADDRESS,
+            propertyTaxVault: process.env.PROPERTY_TAX_VAULT_ADDRESS,
+            citizenIdentityRegistry: process.env.CITIZEN_IDENTITY_REGISTRY_ADDRESS,
         },
     },
 
@@ -59,6 +63,13 @@ const env = {
 
     // Encryption
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
+
+    // AWS Rekognition
+    AWS: {
+        region: process.env.AWS_REGION || 'ap-south-1',
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    },
 
     // Session (legacy)
     SESSION_SECRET: process.env.SESSION_SECRET,

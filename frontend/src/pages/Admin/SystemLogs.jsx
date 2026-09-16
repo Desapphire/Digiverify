@@ -4,7 +4,9 @@ import { adminService } from '../../services/admin.service';
 import {
     Database, Loader2, RefreshCcw, Search, Filter,
     ChevronDown, ChevronUp, ShieldCheck, Hash, Clock,
-    CheckCircle2, XCircle, Box, Activity, Wallet, Eye
+    CheckCircle2, XCircle, Box, Activity, Wallet, Eye,
+    Copy, ExternalLink, Shield, Code, Server, User,
+    FileCheck, Check, Building2, Landmark, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 const SystemLogs = () => {
@@ -15,7 +17,15 @@ const SystemLogs = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedLog, setExpandedLog] = useState(null);
     const [page, setPage] = useState(0);
+    const [copiedId, setCopiedId] = useState('');
     const LIMIT = 50;
+
+    const handleCopy = (text, id) => {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(''), 2000);
+    };
 
     const fetchLogs = async () => {
         setLoading(true);
@@ -31,20 +41,75 @@ const SystemLogs = () => {
         }
     };
 
-    useEffect(() => { fetchLogs(); }, [filter, page]);
+    useEffect(() => {
+        fetchLogs();
+    }, [filter, page]);
 
     const shortenWallet = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '—';
     const shortenId = (id) => id ? id.toString().slice(0, 8) : '—';
 
-    const actionColor = (action) => {
-        if (!action) return { bg: 'rgba(255,255,255,0.05)', text: 'rgba(255,255,255,0.5)' };
+    const getActionBadge = (action) => {
+        if (!action) {
+            return (
+                <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '0.72rem',
+                    fontFamily: 'monospace',
+                    fontWeight: 700,
+                    backgroundColor: '#F1F5F9',
+                    color: '#475569',
+                    border: '1px solid #E2E8F0'
+                }}>
+                    ACTIVITY
+                </span>
+            );
+        }
         const a = action.toLowerCase();
-        if (a.includes('approve') || a.includes('verify') || a.includes('mint')) return { bg: 'rgba(34,197,94,0.1)', text: '#22c55e' };
-        if (a.includes('reject') || a.includes('freeze') || a.includes('deny')) return { bg: 'rgba(239,68,68,0.1)', text: '#ef4444' };
-        if (a.includes('sale') || a.includes('transfer')) return { bg: 'rgba(139,92,246,0.1)', text: '#a78bfa' };
-        if (a.includes('fund') || a.includes('block') || a.includes('release')) return { bg: 'rgba(59,130,246,0.1)', text: '#3b82f6' };
-        if (a.includes('recovery') || a.includes('wallet')) return { bg: 'rgba(234,179,8,0.1)', text: '#eab308' };
-        return { bg: 'rgba(255,255,255,0.05)', text: 'rgba(255,255,255,0.5)' };
+        let bg = '#F1F5F9';
+        let color = '#475569';
+        let border = '#E2E8F0';
+
+        if (a.includes('approve') || a.includes('verify') || a.includes('mint')) {
+            bg = '#ECFDF5';
+            color = '#065F46';
+            border = '#A7F3D0';
+        } else if (a.includes('reject') || a.includes('freeze') || a.includes('deny')) {
+            bg = '#FEF2F2';
+            color = '#991B1B';
+            border = '#FECACA';
+        } else if (a.includes('sale') || a.includes('transfer')) {
+            bg = '#FAF5FF';
+            color = '#6B21A8';
+            border = '#E9D5FF';
+        } else if (a.includes('fund') || a.includes('block') || a.includes('release')) {
+            bg = '#EFF6FF';
+            color = '#1E40AF';
+            border = '#BFDBFE';
+        } else if (a.includes('recovery') || a.includes('wallet')) {
+            bg = '#FEF3C7';
+            color = '#92400E';
+            border = '#FDE68A';
+        }
+
+        return (
+            <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                fontSize: '0.72rem',
+                fontFamily: 'monospace',
+                fontWeight: 700,
+                backgroundColor: bg,
+                color: color,
+                border: `1px solid ${border}`
+            }}>
+                {action}
+            </span>
+        );
     };
 
     const filteredLogs = logs.filter(l => {
@@ -60,13 +125,13 @@ const SystemLogs = () => {
     });
 
     const FILTERS = [
-        { key: '', label: 'All Events' },
-        { key: 'KYC_APPROVED', label: 'KYC Approved' },
-        { key: 'KYC_REJECTED', label: 'KYC Rejected' },
+        { key: '', label: 'All Activities' },
+        { key: 'KYC_APPROVED', label: 'Identity Approved' },
+        { key: 'KYC_REJECTED', label: 'Identity Rejected' },
         { key: 'PROPERTY_APPROVED', label: 'Property Approved' },
-        { key: 'PROPERTY_FROZEN', label: 'Property Frozen' },
-        { key: 'SALE_APPROVED', label: 'Sale Approved' },
-        { key: 'NFT_MINT', label: 'NFT Mint' },
+        { key: 'PROPERTY_FROZEN', label: 'Property Locked' },
+        { key: 'SALE_APPROVED', label: 'Sale Completed' },
+        { key: 'NFT_MINT', label: 'Property Token Created' },
     ];
 
     const formatTime = (ts) => {
@@ -88,211 +153,589 @@ const SystemLogs = () => {
     };
 
     return (
-        <div className="dashboard-container">
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ width: '100%' }}>
+            {/* Header section */}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+                gap: '1.25rem',
+                marginBottom: '1.75rem',
+                backgroundColor: '#FFFFFF',
+                padding: '1.5rem 1.75rem',
+                borderRadius: '12px',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
+            }}>
                 <div>
-                    <h1 className="dashboard-title">
-                        System <span className="text-gradient">Audit Logs</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            backgroundColor: '#EFF6FF',
+                            border: '1px solid #BFDBFE',
+                            color: '#1D4ED8',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '9999px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em'
+                        }}>
+                            <Database size={12} />
+                            Activity Logs
+                        </span>
+                    </div>
+                    <h1 style={{
+                        fontSize: '1.65rem',
+                        fontWeight: 800,
+                        color: '#0F172A',
+                        letterSpacing: '-0.02em',
+                        margin: 0
+                    }}>
+                        Activity Logs
                     </h1>
-                    <p className="text-muted mt-2" style={{ fontSize: '0.9rem' }}>
-                        Immutable, append-only record of all registry state changes and administrative actions.
+                    <p style={{ fontSize: '0.875rem', color: '#64748B', marginTop: '4px', margin: 0 }}>
+                        Review administrator approvals, citizen verifications, property titles, and system events.
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button onClick={() => navigate('/authority')} className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>← Back</button>
-                    <button onClick={fetchLogs} className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}><RefreshCcw size={14} /> Refresh</button>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button
+                        onClick={fetchLogs}
+                        disabled={loading}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 16px',
+                            backgroundColor: '#FFFFFF',
+                            border: '1px solid #CBD5E1',
+                            borderRadius: '8px',
+                            color: '#334155',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#FFFFFF'; }}
+                    >
+                        <RefreshCcw size={15} className={loading ? 'animate-spin' : ''} style={{ color: '#2563EB' }} />
+                        {loading ? 'Refreshing...' : 'Refresh'}
+                    </button>
                 </div>
             </div>
 
-            {/* Filters + Search */}
-            <div className="glass-panel p-4 mb-6" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                    {FILTERS.map(f => (
-                        <button key={f.key} onClick={() => { setFilter(f.key); setPage(0); }} style={{
-                            padding: '0.35rem 0.8rem', borderRadius: '0.5rem', fontSize: '0.72rem', fontWeight: 700,
-                            border: filter === f.key ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(255,255,255,0.05)',
-                            background: filter === f.key ? 'rgba(220,38,38,0.12)' : 'rgba(0,0,0,0.2)',
-                            color: filter === f.key ? '#fca5a5' : 'rgba(255,255,255,0.4)', cursor: 'pointer',
-                        }}>{f.label}</button>
-                    ))}
-                </div>
-                <div style={{ position: 'relative', minWidth: 220 }}>
-                    <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
-                    <input type="text" placeholder="Search action, wallet, tx hash..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                        className="input-premium" style={{ paddingLeft: 34, fontSize: '0.82rem', padding: '0.5rem 0.75rem 0.5rem 34px' }} />
-                </div>
-            </div>
-
-            {/* Count */}
-            <div style={{ marginBottom: '0.75rem', fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)' }}>
-                {loading ? 'Loading...' : `${filteredLogs.length} log entr${filteredLogs.length !== 1 ? 'ies' : 'y'}`}
-            </div>
-
-            {/* Log List */}
-            {loading ? (
-                <div className="glass-panel p-8 flex items-center justify-center">
-                    <Loader2 size={32} className="animate-spin" style={{ color: '#ef4444' }} />
-                </div>
-            ) : filteredLogs.length === 0 ? (
-                <div className="glass-panel p-8 flex flex-col items-center justify-center" style={{ opacity: 0.5 }}>
-                    <Database size={48} style={{ marginBottom: '1rem', color: 'rgba(255,255,255,0.3)' }} />
-                    <p style={{ color: 'rgba(255,255,255,0.4)' }}>No audit log entries found.</p>
-                </div>
-            ) : (
-                <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
-                    {/* Table Header */}
+            {/* KPI Stats Grid */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                gap: '1rem',
+                marginBottom: '1.75rem'
+            }}>
+                <div style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    padding: '1.25rem 1.5rem',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem'
+                }}>
                     <div style={{
-                        display: 'grid', gridTemplateColumns: '180px 1fr 160px 160px 60px',
-                        padding: '0.65rem 1.25rem', background: 'rgba(0,0,0,0.15)', borderBottom: '1px solid rgba(255,255,255,0.05)',
-                        fontSize: '0.62rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)',
+                        width: '46px',
+                        height: '46px',
+                        borderRadius: '10px',
+                        backgroundColor: '#EFF6FF',
+                        border: '1px solid #BFDBFE',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#2563EB',
+                        flexShrink: 0
                     }}>
-                        <span>Timestamp</span>
-                        <span>Event</span>
-                        <span>Actor</span>
-                        <span>Entity</span>
-                        <span></span>
+                        <Database size={22} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Total Activities
+                        </div>
+                        <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2 }}>
+                            {logs.length}
+                        </div>
+                    </div>
+                </div>
+
+                <div style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    padding: '1.25rem 1.5rem',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem'
+                }}>
+                    <div style={{
+                        width: '46px',
+                        height: '46px',
+                        borderRadius: '10px',
+                        backgroundColor: '#ECFDF5',
+                        border: '1px solid #A7F3D0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#059669',
+                        flexShrink: 0
+                    }}>
+                        <CheckCircle2 size={22} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Identity Checks
+                        </div>
+                        <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2 }}>
+                            {logs.filter(l => (l.action_type || '').includes('KYC') || (l.action_type || '').includes('VERIF')).length}
+                        </div>
+                    </div>
+                </div>
+
+                <div style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    padding: '1.25rem 1.5rem',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem'
+                }}>
+                    <div style={{
+                        width: '46px',
+                        height: '46px',
+                        borderRadius: '10px',
+                        backgroundColor: '#FAF5FF',
+                        border: '1px solid #E9D5FF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#9333EA',
+                        flexShrink: 0
+                    }}>
+                        <Building2 size={22} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Property Approvals
+                        </div>
+                        <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2 }}>
+                            {logs.filter(l => (l.action_type || '').includes('PROPERTY') || (l.action_type || '').includes('MINT')).length}
+                        </div>
+                    </div>
+                </div>
+
+                <div style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    padding: '1.25rem 1.5rem',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem'
+                }}>
+                    <div style={{
+                        width: '46px',
+                        height: '46px',
+                        borderRadius: '10px',
+                        backgroundColor: '#FEF3C7',
+                        border: '1px solid #FDE68A',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#D97706',
+                        flexShrink: 0
+                    }}>
+                        <Landmark size={22} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Sales & Payments
+                        </div>
+                        <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2 }}>
+                            {logs.filter(l => (l.action_type || '').includes('SALE') || (l.action_type || '').includes('FUND')).length}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Filter Pills & Search Control Card */}
+            <div style={{
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderRadius: '12px',
+                padding: '1.25rem 1.5rem',
+                marginBottom: '1.75rem',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+            }}>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '1rem',
+                    marginBottom: '1rem'
+                }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {FILTERS.map(f => {
+                            const isActive = filter === f.key;
+                            return (
+                                <button
+                                    key={f.key}
+                                    onClick={() => { setFilter(f.key); setPage(0); }}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '6px 14px',
+                                        borderRadius: '8px',
+                                        fontSize: '0.82rem',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        border: isActive ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                                        backgroundColor: isActive ? '#0F172A' : '#F8FAFC',
+                                        color: isActive ? '#FFFFFF' : '#475569',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    {f.label}
+                                </button>
+                            );
+                        })}
                     </div>
 
-                    {/* Rows */}
-                    {filteredLogs.map((log, i) => {
-                        const ac = actionColor(log.action_type);
-                        const isExpanded = expandedLog === (log.id || i);
-
-                        return (
-                            <div key={log.id || i}>
-                                <div
-                                    onClick={() => setExpandedLog(isExpanded ? null : (log.id || i))}
-                                    style={{
-                                        display: 'grid', gridTemplateColumns: '180px 1fr 160px 160px 60px',
-                                        padding: '0.7rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.03)',
-                                        cursor: 'pointer', transition: 'background 0.15s',
-                                        alignItems: 'center',
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                >
-                                    {/* Timestamp */}
-                                    <div>
-                                        <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
-                                            {formatTime(log.created_at)}
-                                        </span>
-                                        <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.2)', marginLeft: 6 }}>
-                                            {timeAgo(log.created_at)}
-                                        </span>
-                                    </div>
-
-                                    {/* Action */}
-                                    <div>
-                                        <span style={{
-                                            fontSize: '0.65rem', fontWeight: 800, padding: '2px 8px', borderRadius: '4px',
-                                            background: ac.bg, color: ac.text, fontFamily: 'monospace',
-                                        }}>
-                                            {log.action_type || '—'}
-                                        </span>
-                                    </div>
-
-                                    {/* Actor */}
-                                    <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
-                                        {shortenWallet(log.actor_wallet) || shortenId(log.actor_user_id) || '—'}
-                                    </span>
-
-                                    {/* Entity */}
-                                    <div>
-                                        {log.entity_type && (
-                                            <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.25)', marginRight: 4, textTransform: 'uppercase', fontWeight: 700 }}>
-                                                {log.entity_type}:
-                                            </span>
-                                        )}
-                                        <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
-                                            {shortenId(log.entity_id) || '—'}
-                                        </span>
-                                    </div>
-
-                                    {/* Expand */}
-                                    <div style={{ textAlign: 'right' }}>
-                                        {isExpanded ? <ChevronUp size={14} style={{ color: 'rgba(255,255,255,0.25)' }} /> : <ChevronDown size={14} style={{ color: 'rgba(255,255,255,0.25)' }} />}
-                                    </div>
-                                </div>
-
-                                {/* Expanded Detail */}
-                                {isExpanded && (
-                                    <div style={{
-                                        padding: '0.75rem 1.25rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.05)',
-                                        background: 'rgba(0,0,0,0.1)',
-                                    }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
-                                            <DetailField label="Log ID" value={log.id || '—'} mono />
-                                            <DetailField label="Action Type" value={log.action_type || '—'} />
-                                            <DetailField label="Actor Wallet" value={log.actor_wallet || '—'} mono />
-                                            <DetailField label="Actor User ID" value={log.actor_user_id || '—'} mono />
-                                            <DetailField label="IP Address" value={log.ip_address || '—'} mono />
-                                            <DetailField label="Entity Type" value={log.entity_type || '—'} />
-                                            <DetailField label="Entity ID" value={log.entity_id || '—'} mono />
-                                            <DetailField label="Tx Hash" value={log.tx_hash || 'None'} mono />
-                                            <DetailField label="Timestamp" value={formatTime(log.created_at)} />
-                                            {log.metadata && (
-                                                <div style={{ gridColumn: '1 / -1' }}>
-                                                    <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)', marginBottom: 3 }}>Metadata</p>
-                                                    <pre style={{
-                                                        fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace',
-                                                        background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '0.4rem',
-                                                        overflow: 'auto', maxHeight: 120, whiteSpace: 'pre-wrap',
-                                                    }}>
-                                                        {typeof log.metadata === 'string' ? log.metadata : JSON.stringify(log.metadata, null, 2)}
-                                                    </pre>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748B' }}>
+                        Page {page + 1} ({filteredLogs.length} activities)
+                    </div>
                 </div>
-            )}
 
-            {/* Pagination */}
-            {!loading && logs.length > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', padding: '0 0.25rem' }}>
-                    <button
-                        onClick={() => setPage(p => Math.max(0, p - 1))}
-                        disabled={page === 0}
+                {/* Search Bar */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    width: '100%',
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    boxSizing: 'border-box',
+                    position: 'relative'
+                }}>
+                    <Search size={18} style={{ color: '#64748B', flexShrink: 0 }} />
+                    <input
+                        type="text"
+                        placeholder="Search by activity, account address, transaction hash, or ID..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         style={{
-                            padding: '0.4rem 1rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700,
-                            background: 'rgba(0,0,0,0.2)', color: page === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.5)',
-                            border: '1px solid rgba(255,255,255,0.05)', cursor: page === 0 ? 'default' : 'pointer',
+                            width: '100%',
+                            border: 'none',
+                            background: 'transparent',
+                            outline: 'none',
+                            padding: 0,
+                            margin: 0,
+                            fontSize: '0.875rem',
+                            color: '#0F172A',
+                            boxShadow: 'none'
                         }}
-                    >← Previous</button>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)' }}>
-                        Page {page + 1}
-                    </span>
-                    <button
-                        onClick={() => setPage(p => p + 1)}
-                        disabled={logs.length < LIMIT}
-                        style={{
-                            padding: '0.4rem 1rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700,
-                            background: 'rgba(0,0,0,0.2)', color: logs.length < LIMIT ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.5)',
-                            border: '1px solid rgba(255,255,255,0.05)', cursor: logs.length < LIMIT ? 'default' : 'pointer',
-                        }}
-                    >Next →</button>
+                    />
+                    {searchQuery && (
+                        <button
+                            onClick={() => setSearchQuery('')}
+                            style={{
+                                position: 'absolute',
+                                right: '12px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#94A3B8',
+                                cursor: 'pointer',
+                                fontSize: '0.8rem',
+                                fontWeight: 600
+                            }}
+                        >
+                            Clear
+                        </button>
+                    )}
                 </div>
-            )}
-
-            {/* Footer */}
-            <div className="mt-6 flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.72rem', fontWeight: 600 }}>
-                <ShieldCheck size={14} style={{ color: '#ef4444' }} />
-                Immutable audit trail — append-only, verified via on-chain smart contract logs.
             </div>
+
+            {/* Audit Log Table */}
+            {loading && !logs.length ? (
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4rem 2rem',
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '12px',
+                    border: '1px solid #E2E8F0'
+                }}>
+                    <Loader2 size={32} className="animate-spin" style={{ color: '#2563EB', marginBottom: '1rem' }} />
+                    <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#0F172A', margin: 0 }}>
+                        Loading activity logs...
+                    </p>
+                </div>
+            ) : filteredLogs.length === 0 ? (
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4rem 2rem',
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '12px',
+                    border: '1px dashed #CBD5E1',
+                    textAlign: 'center'
+                }}>
+                    <div style={{
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '12px',
+                        backgroundColor: '#F1F5F9',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#64748B',
+                        marginBottom: '1rem'
+                    }}>
+                        <Database size={26} />
+                    </div>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0F172A', margin: '0 0 4px 0' }}>
+                        No activities found
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: '#64748B', margin: 0, maxWidth: '400px' }}>
+                        {searchQuery
+                            ? `No records matched your search query "${searchQuery}".`
+                            : 'No activity records found for the selected filter.'}
+                    </p>
+                </div>
+            ) : (
+                <div style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    overflow: 'hidden'
+                }}>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                            <thead>
+                                <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                                    <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Time</th>
+                                    <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Activity</th>
+                                    <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Type & ID</th>
+                                    <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Admin / Citizen Account</th>
+                                    <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Transaction Hash</th>
+                                    <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', textAlign: 'right' }}>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredLogs.map(log => {
+                                    const isExpanded = expandedLog === log.id;
+                                    return (
+                                        <React.Fragment key={log.id}>
+                                            <tr
+                                                style={{
+                                                    borderBottom: '1px solid #F1F5F9',
+                                                    backgroundColor: isExpanded ? '#F8FAFC' : '#FFFFFF',
+                                                    transition: 'background 0.15s'
+                                                }}
+                                            >
+                                                <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#0F172A', whiteSpace: 'nowrap' }}>
+                                                    <div style={{ fontWeight: 600 }}>{timeAgo(log.created_at || log.timestamp)}</div>
+                                                    <div style={{ fontSize: '0.7rem', color: '#64748B' }}>{formatTime(log.created_at || log.timestamp)}</div>
+                                                </td>
+
+                                                <td style={{ padding: '12px 16px' }}>
+                                                    {getActionBadge(log.action_type)}
+                                                </td>
+
+                                                <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: '#0F172A' }}>
+                                                    <div style={{ fontWeight: 600 }}>{log.entity_type || 'SYSTEM'}</div>
+                                                    <code style={{ fontSize: '0.75rem', color: '#2563EB' }}>{shortenId(log.entity_id)}</code>
+                                                </td>
+
+                                                <td style={{ padding: '12px 16px', fontSize: '0.8rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                        <code style={{ fontSize: '0.75rem', color: '#0F172A' }}>{shortenWallet(log.actor_wallet)}</code>
+                                                        {log.actor_wallet && (
+                                                             <button
+                                                                onClick={() => handleCopy(log.actor_wallet, `actor-${log.id}`)}
+                                                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: copiedId === `actor-${log.id}` ? '#059669' : '#94A3B8' }}
+                                                            >
+                                                                {copiedId === `actor-${log.id}` ? <Check size={11} /> : <Copy size={11} />}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                <td style={{ padding: '12px 16px', fontSize: '0.8rem' }}>
+                                                    {log.tx_hash ? (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <code style={{ fontSize: '0.75rem', color: '#2563EB' }}>{shortenWallet(log.tx_hash)}</code>
+                                                            <button
+                                                                onClick={() => handleCopy(log.tx_hash, `tx-${log.id}`)}
+                                                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: copiedId === `tx-${log.id}` ? '#059669' : '#94A3B8' }}
+                                                            >
+                                                                {copiedId === `tx-${log.id}` ? <Check size={11} /> : <Copy size={11} />}
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span style={{ color: '#94A3B8', fontSize: '0.75rem' }}>System Record</span>
+                                                    )}
+                                                </td>
+
+                                                <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                                    <button
+                                                        onClick={() => setExpandedLog(isExpanded ? null : log.id)}
+                                                        style={{
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px',
+                                                            padding: '4px 8px',
+                                                            borderRadius: '6px',
+                                                            border: '1px solid #CBD5E1',
+                                                            backgroundColor: '#FFFFFF',
+                                                            color: '#334155',
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: 600,
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        {isExpanded ? 'Hide' : 'View Details'}
+                                                        {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                                    </button>
+                                                </td>
+                                            </tr>
+
+                                            {/* Expandable JSON details drawer */}
+                                            {isExpanded && (
+                                                <tr>
+                                                    <td colSpan={6} style={{ padding: '1rem 1.5rem', backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E3A8A', textTransform: 'uppercase' }}>
+                                                                Event Details
+                                                            </span>
+                                                            <button
+                                                                onClick={() => handleCopy(JSON.stringify(log.metadata || log, null, 2), `json-${log.id}`)}
+                                                                style={{
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '4px',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '4px',
+                                                                    border: '1px solid #CBD5E1',
+                                                                    backgroundColor: '#FFFFFF',
+                                                                    color: copiedId === `json-${log.id}` ? '#059669' : '#334155',
+                                                                    fontSize: '0.7rem',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                {copiedId === `json-${log.id}` ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy Details</>}
+                                                            </button>
+                                                        </div>
+                                                        <pre style={{
+                                                            backgroundColor: '#0F172A',
+                                                            color: '#38BDF8',
+                                                            padding: '12px 14px',
+                                                            borderRadius: '8px',
+                                                            fontSize: '0.75rem',
+                                                            fontFamily: 'monospace',
+                                                            overflowX: 'auto',
+                                                            margin: 0
+                                                        }}>
+                                                            {JSON.stringify(log.metadata || log, null, 2)}
+                                                        </pre>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Pagination Footer */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                        borderTop: '1px solid #E2E8F0',
+                        backgroundColor: '#F8FAFC',
+                        fontSize: '0.8rem',
+                        color: '#64748B'
+                    }}>
+                        <div>
+                            Showing {filteredLogs.length} entries
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button
+                                onClick={() => setPage(Math.max(0, page - 1))}
+                                disabled={page === 0}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '6px 12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #CBD5E1',
+                                    backgroundColor: page === 0 ? '#F1F5F9' : '#FFFFFF',
+                                    color: page === 0 ? '#94A3B8' : '#334155',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    cursor: page === 0 ? 'not-allowed' : 'pointer'
+                                }}
+                            >
+                                <ChevronLeft size={14} /> Previous
+                            </button>
+
+                            <button
+                                onClick={() => setPage(page + 1)}
+                                disabled={logs.length < LIMIT}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '6px 12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #CBD5E1',
+                                    backgroundColor: logs.length < LIMIT ? '#F1F5F9' : '#FFFFFF',
+                                    color: logs.length < LIMIT ? '#94A3B8' : '#334155',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    cursor: logs.length < LIMIT ? 'not-allowed' : 'pointer'
+                                }}
+                            >
+                                Next <ChevronRight size={14} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
-
-const DetailField = ({ label, value, mono = false }) => (
-    <div>
-        <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)', marginBottom: 3 }}>{label}</p>
-        <p style={{ fontSize: '0.78rem', fontWeight: 500, color: 'rgba(255,255,255,0.7)', fontFamily: mono ? 'monospace' : 'inherit', wordBreak: 'break-all' }}>{value}</p>
-    </div>
-);
 
 export default SystemLogs;

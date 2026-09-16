@@ -3,6 +3,19 @@ import { ethers } from 'ethers';
 
 const Web3Context = createContext(null);
 
+const getEthereumProvider = () => {
+    try {
+        if (typeof window === 'undefined') return null;
+        if (window.ethereum?.providers?.length) {
+            const metaMask = window.ethereum.providers.find((p) => p.isMetaMask && !p.isBraveWallet);
+            return metaMask || window.ethereum.providers[0];
+        }
+        return window.ethereum || null;
+    } catch (_) {
+        return null;
+    }
+};
+
 export const Web3Provider = ({ children }) => {
     const [account, setAccount] = useState('');
     const [provider, setProvider] = useState(null);
@@ -12,43 +25,64 @@ export const Web3Provider = ({ children }) => {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        if (window.ethereum) {
-            const checkConnection = async () => {
-                try {
-                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-                    if (accounts.length > 0) {
-                        await connectWallet();
-                    }
-                } catch (err) {
-                    console.error('Auto-connect check failed:', err);
-                }
-            };
-            checkConnection();
+        const eth = getEthereumProvider();
+        if (!eth) return;
 
-            const handleAccountsChanged = (accounts) => {
-                if (accounts.length > 0) {
+        const checkConnection = async () => {
+            try {
+                const accounts = await eth.request({ method: 'eth_accounts' });
+                if (accounts && accounts.length > 0) {
+                    const web3Provider = new ethers.BrowserProvider(eth);
+                    const web3Signer = await web3Provider.getSigner();
+                    const network = await web3Provider.getNetwork();
+
                     setAccount(accounts[0]);
-                } else {
-                    setAccount('');
+                    setProvider(web3Provider);
+                    setSigner(web3Signer);
+                    setChainId(Number(network.chainId));
                 }
-            };
+            } catch (err) {
+                console.warn('Auto-connect check skipped:', err);
+            }
+        };
 
-            const handleChainChanged = (chainIdHex) => {
-                setChainId(parseInt(chainIdHex, 16));
-            };
+        checkConnection();
 
-            window.ethereum.on('accountsChanged', handleAccountsChanged);
-            window.ethereum.on('chainChanged', handleChainChanged);
+        const handleAccountsChanged = (accounts) => {
+            if (accounts && accounts.length > 0) {
+                setAccount(accounts[0]);
+            } else {
+                setAccount('');
+                setSigner(null);
+            }
+        };
 
-            return () => {
-                window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-                window.ethereum.removeListener('chainChanged', handleChainChanged);
-            };
+        const handleChainChanged = (chainIdHex) => {
+            setChainId(parseInt(chainIdHex, 16));
+        };
+
+        try {
+            if (typeof eth.on === 'function') {
+                eth.on('accountsChanged', handleAccountsChanged);
+                eth.on('chainChanged', handleChainChanged);
+            }
+        } catch (eventErr) {
+            console.warn('Could not register ethereum event listeners:', eventErr);
         }
+
+        return () => {
+            try {
+                if (typeof eth.removeListener === 'function') {
+                    eth.removeListener('accountsChanged', handleAccountsChanged);
+                    eth.removeListener('chainChanged', handleChainChanged);
+                }
+            } catch (_) {}
+        };
     }, []);
 
     const connectWallet = async () => {
-        if (!window.ethereum) {
+        const eth = getEthereumProvider();
+        if (!eth) {
             setError('Please install MetaMask to use Web3 features.');
             throw new Error('MetaMask not installed');
         }
@@ -58,10 +92,13 @@ export const Web3Provider = ({ children }) => {
             setError('');
 
             // Request account access
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            const accounts = await eth.request({ method: 'eth_requestAccounts' });
+            if (!accounts || accounts.length === 0) {
+                throw new Error('No Ethereum account selected.');
+            }
 
             // Re-initialize provider
-            const web3Provider = new ethers.BrowserProvider(window.ethereum);
+            const web3Provider = new ethers.BrowserProvider(eth);
             const web3Signer = await web3Provider.getSigner();
             const network = await web3Provider.getNetwork();
 
@@ -73,7 +110,12 @@ export const Web3Provider = ({ children }) => {
             return accounts[0];
         } catch (err) {
             console.error('Connection error:', err);
-            const errorMessage = err.message || 'Failed to connect wallet';
+            let errorMessage = err.message || 'Failed to connect wallet';
+            if (err.code === 4001 || err.info?.error?.code === 4001) {
+                errorMessage = 'Connection request was rejected in MetaMask.';
+            } else if (err.code === -32002) {
+                errorMessage = 'MetaMask request is already pending. Please check the MetaMask extension popup in your browser toolbar.';
+            }
             setError(errorMessage);
             throw new Error(errorMessage);
         } finally {
@@ -82,8 +124,15 @@ export const Web3Provider = ({ children }) => {
     };
 
     const signMessage = async (message) => {
-        if (!signer) throw new Error("Wallet not connected");
-        return await signer.signMessage(message);
+        let currentSigner = signer;
+        const eth = getEthereumProvider();
+        if (!currentSigner && eth) {
+            const web3Provider = new ethers.BrowserProvider(eth);
+            currentSigner = await web3Provider.getSigner();
+            setSigner(currentSigner);
+        }
+        if (!currentSigner) throw new Error("Wallet not connected. Please connect MetaMask.");
+        return await currentSigner.signMessage(message);
     };
 
     return (

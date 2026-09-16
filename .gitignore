@@ -67,9 +67,10 @@ venv/
 .antigravity/
 *.resolved
 
-# ─── Temporary Files & Scripts ───────────────────────────────────────────────
-tmp/
-temp/
-tmp_*.js
-test_*.js
-search_result.txt
+# ─── Hardhat / Smart Contracts ─────────────────────────────────────────────
+contracts/artifacts/
+contracts/cache/
+
+# ─── Machine Learning & Data ──────────────────────────────────────────────────
+model/artifacts/
+*.joblib

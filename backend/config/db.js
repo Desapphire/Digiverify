@@ -7,15 +7,22 @@ const fs = require('fs');
 const path = require('path');
 const env = require('./env');
 
-const poolConfig = env.PG.connectionString
-    ? { connectionString: env.PG.connectionString }
-    : {
-        host: env.PG.host,
-        port: env.PG.port,
-        user: env.PG.user,
-        password: env.PG.password,
-        database: env.PG.database,
-    };
+const poolConfig = {
+    ...(env.PG.connectionString
+        ? { connectionString: env.PG.connectionString }
+        : {
+            host: env.PG.host,
+            port: env.PG.port,
+            user: env.PG.user,
+            password: env.PG.password,
+            database: env.PG.database,
+        }),
+    connectionTimeoutMillis: 10000, // 10s connection timeout
+    idleTimeoutMillis: 30000,       // 30s idle connection release
+    max: 25,                        // Max pool connections
+    statement_timeout: 15000,       // 15s max query execution time
+    query_timeout: 15000,
+};
 
 // Production: enforce SSL
 if (env.IS_PRODUCTION) {

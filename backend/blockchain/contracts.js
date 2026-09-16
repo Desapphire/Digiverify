@@ -1,15 +1,19 @@
 /**
- * Smart Contract Instances — Loads ABIs and creates Ethers.js contract objects.
+ * Smart Contract Instances — Loads ABIs and creates Ethers.js contract objects for all 8 DigiVerify contracts.
  */
 
 const { ethers } = require('ethers');
 const { getProvider, getSigner, contractAddresses } = require('../config/blockchain');
 
-// Placeholder ABIs — replace with actual ABIs from deployed contracts
+// ABIs compiled from Hardhat
 const LandNFT_ABI = require('./abis/LandNFT.json');
 const LandRegistry_ABI = require('./abis/LandRegistry.json');
 const SaleContract_ABI = require('./abis/SaleContract.json');
 const CourtOverride_ABI = require('./abis/CourtOverride.json');
+const BankLienRegistry_ABI = require('./abis/BankLienRegistry.json');
+const InheritanceSuccession_ABI = require('./abis/InheritanceSuccession.json');
+const PropertyTaxVault_ABI = require('./abis/PropertyTaxVault.json');
+const CitizenIdentityRegistry_ABI = require('./abis/CitizenIdentityRegistry.json');
 
 let contracts = {};
 
@@ -52,6 +56,38 @@ const initContracts = () => {
         );
     }
 
+    if (contractAddresses.bankLienRegistry) {
+        contracts.bankLienRegistry = new ethers.Contract(
+            contractAddresses.bankLienRegistry,
+            BankLienRegistry_ABI,
+            signerOrProvider
+        );
+    }
+
+    if (contractAddresses.inheritanceSuccession) {
+        contracts.inheritanceSuccession = new ethers.Contract(
+            contractAddresses.inheritanceSuccession,
+            InheritanceSuccession_ABI,
+            signerOrProvider
+        );
+    }
+
+    if (contractAddresses.propertyTaxVault) {
+        contracts.propertyTaxVault = new ethers.Contract(
+            contractAddresses.propertyTaxVault,
+            PropertyTaxVault_ABI,
+            signerOrProvider
+        );
+    }
+
+    if (contractAddresses.citizenIdentityRegistry) {
+        contracts.citizenIdentityRegistry = new ethers.Contract(
+            contractAddresses.citizenIdentityRegistry,
+            CitizenIdentityRegistry_ABI,
+            signerOrProvider
+        );
+    }
+
     return contracts;
 };
 
@@ -62,4 +98,15 @@ const getContracts = () => {
     return contracts;
 };
 
-module.exports = { initContracts, getContracts };
+module.exports = {
+    initContracts,
+    getContracts,
+    LandNFT_ABI,
+    LandRegistry_ABI,
+    SaleContract_ABI,
+    CourtOverride_ABI,
+    BankLienRegistry_ABI,
+    InheritanceSuccession_ABI,
+    PropertyTaxVault_ABI,
+    CitizenIdentityRegistry_ABI
+};

@@ -54,7 +54,11 @@ const confirmFundBlock = async (fundBlockId, bankReferenceId, bankUserId) => {
         let txHash = null;
         if (sale.onChainId) {
             try {
-                const receipt = await contractService.confirmFundsBlockedOnChain(sale.onChainId);
+                const receipt = await contractService.confirmFundsBlockedOnChain(
+                    sale.onChainId,
+                    bankReferenceId,
+                    fundBlock.blockedAmount
+                );
                 txHash = receipt.hash;
                 console.log(`Funds confirmed on-chain for SaleID: ${sale.onChainId}, Tx: ${txHash}`);
             } catch (err) {
@@ -64,7 +68,7 @@ const confirmFundBlock = async (fundBlockId, bankReferenceId, bankUserId) => {
 
         if (sale.status === SALE_STATUS.BUYER_SIGNED) {
             saleService.validateTransition(sale.status, SALE_STATUS.FUNDS_BLOCKED);
-            await SaleTransaction.updateStatus(fundBlock.transactionId, SALE_STATUS.FUNDS_BLOCKED, client);
+            await SaleTransaction.updateStatus(fundBlock.transactionId, SALE_STATUS.FUNDS_BLOCKED, null, client);
         }
 
         return { confirmed, txHash };

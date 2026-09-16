@@ -3,6 +3,7 @@ import api from './api';
 export const propertyService = {
     // ── Property Registration & Queries ────────────────────────────────────
     registerProperty: (data) => api.post('/properties', data),
+    reapplyProperty: (id, data) => api.post(`/properties/${id}/reapply`, data),
     getMyProperties: () => api.get('/properties/my'),
     searchProperties: (query) => api.get('/properties/search', { params: { q: query } }),
     getPropertyById: (id) => api.get(`/properties/${id}`),

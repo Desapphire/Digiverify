@@ -78,8 +78,45 @@ const getPropertyDocuments = async (propertyId) => {
     return Property.getDocuments(propertyId);
 };
 
+const { pool } = require('../config/db');
+
+/**
+ * Reapply for a rejected property.
+ */
+const reapplyProperty = async (propertyId, data, ownerWallet, userId) => {
+    console.log(`Reapplying property ${propertyId} with payload:`, JSON.stringify(data, null, 2));
+    const property = await Property.findById(propertyId);
+    if (!property) throw new AppError('Property not found.', 404);
+
+    if (property.ownerWallet?.toLowerCase() !== ownerWallet?.toLowerCase()) {
+        throw new AppError('You do not have permission to reapply for this property.', 403);
+    }
+
+    if (property.status !== 'rejected') {
+        throw new AppError('Only rejected property applications can be reapplied.', 400);
+    }
+
+    const updatedProperty = await Property.reapply(propertyId, data);
+
+    // Persist associated documents if provided
+    if (data.documents && Array.isArray(data.documents) && data.documents.length > 0) {
+        await pool.query('DELETE FROM property_documents WHERE property_id = $1', [propertyId]);
+        for (const doc of data.documents) {
+            await Property.addDocument({
+                propertyId: propertyId,
+                documentType: doc.type,
+                ipfsHash: doc.ipfsHash,
+                uploadedBy: userId
+            });
+        }
+    }
+
+    return updatedProperty;
+};
+
 module.exports = {
     registerProperty,
+    reapplyProperty,
     getProperty,
     getPropertiesByOwner,
     searchProperties,

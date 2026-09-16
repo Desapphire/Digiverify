@@ -176,6 +176,45 @@ const updateProfile = async (id, { email, phone, houseNumber, locality, city, pi
     return mapUser(result.rows[0]);
 };
 
+const updateReKyc = async (id, { name, phone, governmentIdHash, governmentIdType, birthdate, houseNumber, locality, city, pinCode, state, country, faceIdHash }) => {
+    const result = await pool.query(
+        `UPDATE users SET 
+            name = COALESCE($1, name),
+            phone = COALESCE($2, phone),
+            government_id_hash = COALESCE($3, government_id_hash),
+            government_id_type = COALESCE($4, government_id_type),
+            birthdate = COALESCE($5, birthdate),
+            house_number = COALESCE($6, house_number),
+            locality = COALESCE($7, locality),
+            city = COALESCE($8, city),
+            pin_code = COALESCE($9, pin_code),
+            state = COALESCE($10, state),
+            country = COALESCE($11, country),
+            face_id_hash = COALESCE($12, face_id_hash),
+            face_verified = CASE WHEN $12 IS NOT NULL THEN TRUE ELSE face_verified END,
+            kyc_status = 'pending',
+            admin_comments = 'Re-KYC submitted by citizen. Pending review.',
+            updated_at = NOW()
+         WHERE id = $13 RETURNING *`,
+        [
+            name || null,
+            phone || null,
+            governmentIdHash || null,
+            governmentIdType || null,
+            birthdate || null,
+            houseNumber || null,
+            locality || null,
+            city || null,
+            pinCode || null,
+            state || null,
+            country || null,
+            faceIdHash || null,
+            id
+        ]
+    );
+    return mapUser(result.rows[0]);
+};
+
 const deactivate = async (id) => {
     const result = await pool.query(
         'UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = $1 RETURNING *',
@@ -205,5 +244,7 @@ module.exports = {
     updateProfile,
     updateFaceVerified,
     updateFaceIdHash,
+    updateFaceId: updateFaceIdHash,
+    updateReKyc,
     deactivate,
 };

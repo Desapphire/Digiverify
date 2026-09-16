@@ -44,6 +44,44 @@ const registerProperty = catchAsync(async (req, res) => {
 });
 
 /**
+ * POST /api/properties/:id/reapply
+ */
+const reapplyProperty = catchAsync(async (req, res) => {
+    const uploadedList = [];
+    try {
+        // Resolve any temporary local cache hashes in the payload to real Pinata IPFS hashes
+        await tempStorage.resolveAllHashes(req.body, uploadedList);
+
+        const property = await propertyService.reapplyProperty(
+            req.params.id,
+            req.body,
+            req.user.walletAddress,
+            req.user.id
+        );
+
+        await auditService.log({
+            actionType: AUDIT_ACTIONS.PROPERTY_REGISTERED,
+            req,
+            entityId: property.id,
+            entityType: 'property',
+            metadata: { reapply: true, propertyCode: property.propertyCode }
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Property application successfully resubmitted for authority review.',
+            data: property
+        });
+    } catch (err) {
+        // Rollback: unpin files from Pinata if the registration failed
+        for (const hash of uploadedList) {
+            await tempStorage.unpinFromPinata(hash);
+        }
+        throw err;
+    }
+});
+
+/**
  * GET /api/properties/:id
  */
 const getProperty = catchAsync(async (req, res) => {
@@ -139,4 +177,73 @@ const getPropertyFreezeOrders = catchAsync(async (req, res) => {
     return res.status(200).json({ success: true, data: result.rows });
 });
 
-module.exports = { registerProperty, getProperty, getMyProperties, searchProperties, uploadDocument, getDocuments, getPropertyFreezeOrders };
+/**
+ * GET /api/properties/:id/metadata
+ * Standard ERC-721 Metadata JSON for NFT Explorers / Wallets (Etherscan, OpenSea, MetaMask).
+ */
+const getPropertyMetadata = catchAsync(async (req, res) => {
+    const property = await propertyService.getProperty(req.params.id);
+    if (!property) {
+        return res.status(404).json({ error: 'Property not found' });
+    }
+
+    const host = req.get('host') || 'localhost:5000';
+    const protocol = req.protocol || 'http';
+    const imageUri = `${protocol}://${host}/api/properties/${property.id}/certificate.svg`;
+
+    const metadata = {
+        name: `DigiVerify Land Title — ${property.propertyCode}`,
+        description: `Official Sovereign Land Title Deed & Ownership Certificate for Property ${property.propertyCode}, Survey #${property.surveyNumber || 'N/A'} located in ${property.district || ''}, ${property.state || ''}. Digitally authenticated by Revenue Authority and anchored on Ethereum Sepolia Testnet.`,
+        image: imageUri,
+        external_url: `https://sepolia.etherscan.io/token/0xbCB28DC4eF6242572c0a65D1643595C582106249`,
+        attributes: [
+            { trait_type: 'Property Code', value: property.propertyCode },
+            { trait_type: 'Survey Number', value: property.surveyNumber || 'N/A' },
+            { trait_type: 'Survey Details', value: property.surveyDetails || 'Revenue Subdivision' },
+            { trait_type: 'Area (Sq. Ft)', value: parseFloat(property.areaSqft) || 0 },
+            { trait_type: 'District', value: property.district || 'N/A' },
+            { trait_type: 'State', value: property.state || 'N/A' },
+            { trait_type: 'Coordinates', value: (property.geoLat && property.geoLng ? `${property.geoLat}, ${property.geoLng}` : property.coordinates) || 'N/A' },
+            { trait_type: 'First Owner', value: property.ownerWallet || property.ownerAddress || 'N/A' },
+            { trait_type: 'Title Status', value: 'Government Verified & Clear Title' },
+            { trait_type: 'Encumbrance Status', value: property.isEncumbered ? 'Encumbered' : 'Clear Title' },
+            { trait_type: 'Valuation (INR)', value: property.estimatedFairPrice ? `₹${Number(property.estimatedFairPrice).toLocaleString('en-IN')}` : 'N/A' },
+            { trait_type: 'Issuing Authority', value: 'Revenue Department Land Administration' },
+            { trait_type: 'Blockchain Network', value: 'Ethereum Sepolia Testnet (11155111)' }
+        ]
+    };
+
+    return res.status(200).json(metadata);
+});
+
+/**
+ * GET /api/properties/:id/certificate.svg
+ * Returns dynamic SVG Title Certificate for the property.
+ */
+const getPropertyCertificateSvg = catchAsync(async (req, res) => {
+    const property = await propertyService.getProperty(req.params.id);
+    if (!property) {
+        return res.status(404).send('Property not found');
+    }
+
+    const { generateCertificateSVG } = require('../services/nftMetadataService');
+    const svg = generateCertificateSVG(property);
+
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.status(200).send(svg);
+});
+
+module.exports = {
+    registerProperty,
+    reapplyProperty,
+    getProperty,
+    getMyProperties,
+    searchProperties,
+    uploadDocument,
+    getDocuments,
+    getPropertyFreezeOrders,
+    getPropertyMetadata,
+    getPropertyCertificateSvg
+};
+

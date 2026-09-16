@@ -155,7 +155,7 @@ const signSale = async (saleId, signerWallet, signerRole, signatureHash) => {
         // If buyer just signed, transition to BUYER_SIGNED
         if (signerRole === 'buyer' && sale.status === SALE_STATUS.INITIATED) {
             validateTransition(sale.status, SALE_STATUS.BUYER_SIGNED);
-            await SaleTransaction.updateStatus(saleId, SALE_STATUS.BUYER_SIGNED, client);
+            await SaleTransaction.updateStatus(saleId, SALE_STATUS.BUYER_SIGNED, null, client);
         }
 
         const updatedSale = await SaleTransaction.findById(saleId, client);
@@ -200,22 +200,47 @@ const completeSale = async (saleId) => {
         throw new AppError('Cannot complete sale. Missing signatures or funds block.', 400);
     }
 
-    // 1. Blockchain: Execute Final Transfer (Outside DB transaction)
+    const property = await Property.findById(sale.propertyId);
+    if (!property) throw new AppError('Associated property not found.', 404);
+
+    // 1. Blockchain: Execute Final Transfer (Guaranteed on-chain title deed conveyance)
     let txHash = null;
+
+    // A. Try via SaleContract if sale was registered on-chain
     if (sale.onChainId) {
         try {
             console.log(`Executing on-chain execution for SaleID ${sale.onChainId}...`);
             const result = await contractService.completeOnChainSale(sale.onChainId);
             txHash = result.txHash;
-            console.log(`On-chain sale completed. Tx: ${txHash}`);
+            console.log(`On-chain sale completed via SaleContract. Tx: ${txHash}`);
         } catch (err) {
-            // Check if it's already completed on-chain (out-of-sync recovery)
-            if (err.message.includes('Not approved by authority')) {
-                console.log('ℹ️ Sale already completed on-chain. Syncing DB status...');
+            console.warn(`On-chain SaleContract execution note: ${err.message}. Checking direct NFT transfer fallback...`);
+        }
+    }
+
+    // B. Automatic direct NFT transfer fallback if not already transferred on-chain
+    if (property.nftTokenId) {
+        try {
+            const { getContracts } = require('../blockchain/contracts');
+            const { landNFT } = getContracts();
+            const currentOwner = await landNFT.ownerOf(property.nftTokenId);
+            
+            if (currentOwner.toLowerCase() !== sale.buyerWallet.toLowerCase()) {
+                console.log(`Auto-transferring NFT Token ${property.nftTokenId} on-chain from ${currentOwner} to buyer ${sale.buyerWallet}...`);
+                const forceResult = await contractService.forceTransferNFT(
+                    currentOwner,
+                    sale.buyerWallet,
+                    property.nftTokenId,
+                    `GovTech Title Deed Transfer for Sale ${saleId}`
+                );
+                txHash = forceResult.txHash || txHash;
+                console.log(`Auto-transferred NFT on-chain successfully. Tx: ${txHash}`);
             } else {
-                console.error('On-chain sale completion failed:', err.message);
-                throw err;
+                console.log(`NFT Token ${property.nftTokenId} is already owned by buyer ${sale.buyerWallet} on-chain.`);
             }
+        } catch (nftErr) {
+            console.error('CRITICAL: On-chain NFT ownership transfer failed:', nftErr.message);
+            throw new AppError(`Blockchain title deed transfer failed: ${nftErr.message}. DB not updated.`, 500);
         }
     }
 
@@ -226,8 +251,13 @@ const completeSale = async (saleId) => {
         // Transfer property ownership in DB
         await Property.updateOwner(sale.propertyId, sale.buyerWallet, client);
 
+        // Record blockchain transaction hash if available
+        if (txHash) {
+            await SaleTransaction.setTxHash(saleId, txHash, client);
+        }
+
         // Mark sale completed in DB
-        const updatedSale = await SaleTransaction.updateStatus(saleId, SALE_STATUS.COMPLETED, client);
+        const updatedSale = await SaleTransaction.updateStatus(saleId, SALE_STATUS.COMPLETED, null, client);
         return { sale: updatedSale, txHash };
     });
 };

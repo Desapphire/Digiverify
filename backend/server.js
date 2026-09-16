@@ -18,6 +18,7 @@ const morgan = require('morgan');
 const env = require('./config/env');
 const { connectDB } = require('./config/db');
 const { apiLimiter } = require('./middlewares/rateLimiter');
+const requestTimeout = require('./middlewares/timeout');
 const errorHandler = require('./middlewares/errorHandler');
 const { startEventListeners } = require('./events/eventListener');
 
@@ -30,6 +31,8 @@ const saleRoutes = require('./routes/saleRoutes');
 const bankRoutes = require('./routes/bankRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const ipfsRoutes = require('./routes/ipfsRoutes');
+const mlRiskRoutes = require('./routes/mlRiskRoutes');
+const biometricRoutes = require('./routes/biometricRoutes');
 
 // ── Bootstrap ───────────────────────────────────────────
 const app = express();
@@ -54,6 +57,9 @@ if (!env.IS_PRODUCTION) {
     app.use(morgan('combined'));
 }
 
+// ── Request Timeout Middleware ─────────────────────────
+app.use(requestTimeout());
+
 // ── Rate Limiting ───────────────────────────────────────
 app.use('/api/', apiLimiter);
 
@@ -69,6 +75,8 @@ app.use('/api/sales', saleRoutes);
 app.use('/api/bank', bankRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ipfs', ipfsRoutes);
+app.use('/api/risk', mlRiskRoutes);
+app.use('/api/biometric', biometricRoutes);
 
 // ── Health Check ────────────────────────────────────────
 app.get('/', (req, res) => {
@@ -76,7 +84,7 @@ app.get('/', (req, res) => {
         success: true,
         message: 'Digiverify Land Registry API — Government-Grade Blockchain System',
         version: '2.0.0',
-        network: 'Avalanche Fuji C-Chain (Testnet)',
+        network: 'Ethereum Sepolia Testnet',
         chainId: env.BLOCKCHAIN.chainId,
     });
 });
@@ -144,6 +152,16 @@ app.get('/api/docs', (req, res) => {
                 'PUT /api/admin/bank/fund-block/:id/release': 'Release funds (bank_admin)',
                 'GET /api/admin/audit': 'Query audit logs (authority/court/admin)',
             },
+            risk: {
+                'GET /api/risk/sale/:saleId': 'Get ML fraud & price risk score for a sale transaction',
+                'GET /api/risk/property/:propertyId': 'Get ML fair valuation and pricing deviation for property',
+                'POST /api/risk/property/:propertyId/valuation': 'Evaluate property risk against proposed price',
+                'POST /api/risk/evaluate': 'Direct ML risk engine evaluation with custom payload',
+            },
+            biometric: {
+                'POST /api/biometric/verify-face': '1:1 Face Verification using AWS Rekognition (Selfie vs ID)',
+                'POST /api/biometric/liveness-check': 'Face detection, pose, and liveness quality check',
+            },
         },
     });
 });
@@ -176,7 +194,7 @@ const startServer = async () => {
             console.log(`\nDigiverify Land Registry API`);
             console.log(`   Environment : ${env.NODE_ENV}`);
             console.log(`   Port        : ${env.PORT}`);
-            console.log(`   Network     : Avalanche Fuji C-Chain`);
+            console.log(`   Network     : Ethereum Sepolia Testnet`);
             console.log(`   Chain ID    : ${env.BLOCKCHAIN.chainId}`);
             console.log(`   API Docs    : http://localhost:${env.PORT}/api/docs\n`);
         });

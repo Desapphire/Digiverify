@@ -6,6 +6,7 @@ const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const { encrypt } = require('../utils/crypto');
 const { generateNonce } = require('../utils/crypto');
+const { ethers } = require('ethers');
 const contractService = require('../blockchain/contractService');
 const AppError = require('../utils/AppError');
 
@@ -84,8 +85,37 @@ const approveKyc = async (userId, reason = null) => {
     const user = await User.findById(userId);
     if (!user) throw new AppError('User not found.', 404);
 
-    // Blockchain anchoring (Mock/Placeholder for identity contract)
-    console.log(`Anchoring KYC for user ${userId} (${user.walletAddress}) on-chain...`);
+    let txHash = null;
+    // On-chain Zero-Knowledge Identity Attestation in CitizenIdentityRegistry
+    if (user.walletAddress) {
+        try {
+            console.log(`Anchoring KYC for user ${userId} (${user.walletAddress}) to CitizenIdentityRegistry...`);
+            const idHash = user.governmentIdHash
+                ? (user.governmentIdHash.startsWith('0x') && user.governmentIdHash.length === 66 ? user.governmentIdHash : ethers.keccak256(ethers.toUtf8Bytes(user.governmentIdHash)))
+                : ethers.keccak256(ethers.toUtf8Bytes(user.id + (user.email || 'citizen')));
+            const bioHash = user.faceIdHash
+                ? (user.faceIdHash.startsWith('0x') && user.faceIdHash.length === 66 ? user.faceIdHash : ethers.keccak256(ethers.toUtf8Bytes(user.faceIdHash)))
+                : ethers.ZeroHash;
+            
+            const kycLevel = user.faceVerified ? 3 : 2; // Level 3: FULL_ATTESTED, Level 2: BIOMETRIC_PASS
+            const validityDuration = 31536000 * 5; // 5 years validity
+
+            const result = await contractService.attestCitizenIdentityOnChain(
+                user.walletAddress,
+                idHash,
+                bioHash,
+                kycLevel,
+                validityDuration,
+                reason || 'GovTech Level-3 Attested'
+            );
+            txHash = result?.txHash || null;
+            if (txHash) {
+                console.log(`✅ KYC On-chain Attested for ${user.walletAddress}: Tx ${txHash}`);
+            }
+        } catch (err) {
+            console.warn('⚠️ On-chain KYC attestation notice:', err.message);
+        }
+    }
 
     return User.updateKycStatus(userId, 'verified', null, reason);
 };
@@ -123,6 +153,7 @@ const bindFaceId = async (userId, faceIdHash) => {
         throw new AppError('Face ID already bound.', 400);
     }
 
+    await User.updateFaceVerified(userId, true);
     return User.updateFaceIdHash(userId, faceIdHash);
 };
 /**
@@ -161,5 +192,51 @@ const updateProfile = async (userId, { email, phone, houseNumber, locality, city
     });
 };
 
+/**
+ * Citizen re-submits KYC data.
+ */
+const reKyc = async (userId, { name, phone, governmentId, governmentIdType, birthdate, houseNumber, locality, city, pinCode, state, country, faceIdHash }) => {
+    const user = await User.findById(userId);
+    if (!user) throw new AppError('User not found.', 404);
 
-module.exports = { register, submitKyc, approveKyc, rejectKyc, getProfile, updateProfile, bindFaceId };
+    const governmentIdHash = governmentId ? encrypt(governmentId) : user.governmentIdHash;
+
+    const updatedUser = await User.updateReKyc(userId, {
+        name: name || user.name,
+        phone: phone || user.phone,
+        governmentIdHash,
+        governmentIdType: governmentIdType || user.governmentIdType,
+        birthdate: birthdate || user.birthdate,
+        houseNumber: houseNumber || user.houseNumber,
+        locality: locality || user.locality,
+        city: city || user.city,
+        pinCode: pinCode || user.pinCode,
+        state: state || user.state,
+        country: country || user.country || 'India',
+        faceIdHash: faceIdHash || user.faceIdHash
+    });
+
+    return updatedUser;
+};
+
+/**
+ * Authority requests citizen to perform Re-KYC.
+ */
+const requestReKyc = async (userId, reason = 'Re-KYC requested by Land Authority') => {
+    const user = await User.findById(userId);
+    if (!user) throw new AppError('User not found.', 404);
+
+    return User.updateKycStatus(userId, 'pending', null, reason);
+};
+
+module.exports = { 
+    register, 
+    submitKyc, 
+    approveKyc, 
+    rejectKyc, 
+    getProfile, 
+    updateProfile, 
+    bindFaceId,
+    reKyc,
+    requestReKyc
+};

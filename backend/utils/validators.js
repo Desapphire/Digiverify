@@ -102,6 +102,11 @@ const registerPropertySchema = z.object({
         district: z.string().max(128).optional(),
         state: z.string().max(128).optional(),
         documentHash: ipfsHash.optional(),
+        documents: z.array(z.object({
+            type: z.string(),
+            ipfsHash: z.string(),
+            description: z.string().optional()
+        })).optional(),
     }),
 });
 

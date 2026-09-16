@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+    timeout: 300000, // 5 minutes request timeout for Sepolia block times
     headers: {
         'Content-Type': 'application/json'
     }
@@ -26,18 +27,23 @@ api.interceptors.request.use((config) => {
     return config;
 }, (error) => Promise.reject(error));
 
-// Response Interceptor: Global Error Handling
+// Response Interceptor: Global Error Handling & Timeout/Rate-Limit Interception
 api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            // Optional: Handle token refresh or auto-logout here
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
                 window.location.href = '/login';
             }
+        } else if (error.code === 'ECONNABORTED' || error.response?.status === 504 || (error.message && error.message.includes('timeout'))) {
+            // Standardize timeout error message for UI consumption
+            error.userMessage = 'The request timed out. The server or external verification service took too long to respond. Please try again.';
+        } else if (error.response?.status === 429) {
+            error.userMessage = error.response?.data?.message || 'Too many requests. Please slow down and try again shortly.';
         }
+
         return Promise.reject(error);
     }
 );

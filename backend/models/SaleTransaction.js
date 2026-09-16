@@ -19,6 +19,9 @@ const mapSale = (row) => {
         smartContractAddr: row.smart_contract_addr,
         txHash: row.tx_hash,
         onChainId: row.on_chain_id,
+        riskScore: row.risk_score ? parseFloat(row.risk_score) : null,
+        riskLevel: row.risk_level || null,
+        riskReport: row.risk_report || null,
         status: row.status,
         expiryAt: row.expiry_at,
         adminComments: row.admin_comments,
@@ -30,6 +33,8 @@ const mapSale = (row) => {
         district: row.district,
         state: row.state,
         nftTokenId: row.nft_token_id,
+        areaSqft: row.area_sqft ? parseFloat(row.area_sqft) : null,
+        estimatedFairPrice: row.estimated_fair_price ? parseFloat(row.estimated_fair_price) : null,
     };
 };
 
@@ -38,17 +43,26 @@ const create = async (data, client = null) => {
     const expiryAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
     const result = await db.query(
         `INSERT INTO sale_transactions
-     (property_id, buyer_wallet, seller_wallet, sale_price, expiry_at)
-     VALUES ($1,$2,$3,$4,$5)
+     (property_id, buyer_wallet, seller_wallet, sale_price, expiry_at, risk_score, risk_level, risk_report)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
      RETURNING *`,
-        [data.propertyId, data.buyerWallet, data.sellerWallet, data.salePrice, expiryAt]
+        [
+            data.propertyId,
+            data.buyerWallet,
+            data.sellerWallet,
+            data.salePrice,
+            expiryAt,
+            data.riskScore || null,
+            data.riskLevel || null,
+            data.riskReport ? JSON.stringify(data.riskReport) : null
+        ]
     );
     return mapSale(result.rows[0]);
 };
 
 const findAll = async (limit = 50, offset = 0) => {
     const result = await pool.query(
-        `SELECT st.*, p.property_code, p.survey_number, p.district, p.state, p.nft_token_id 
+        `SELECT st.*, p.property_code, p.survey_number, p.district, p.state, p.nft_token_id, p.area_sqft, p.estimated_fair_price 
          FROM sale_transactions st
          LEFT JOIN properties p ON st.property_id = p.id
          ORDER BY st.created_at DESC LIMIT $1 OFFSET $2`,
@@ -60,7 +74,7 @@ const findAll = async (limit = 50, offset = 0) => {
 const findById = async (id, client = null) => {
     const db = client || pool;
     const result = await db.query(
-        `SELECT st.*, p.property_code, p.survey_number, p.district, p.state, p.nft_token_id 
+        `SELECT st.*, p.property_code, p.survey_number, p.district, p.state, p.nft_token_id, p.area_sqft, p.estimated_fair_price 
          FROM sale_transactions st
          LEFT JOIN properties p ON st.property_id = p.id
          WHERE st.id = $1 LIMIT 1`,
@@ -71,7 +85,7 @@ const findById = async (id, client = null) => {
 
 const findByProperty = async (propertyId) => {
     const result = await pool.query(
-        `SELECT st.*, p.property_code, p.survey_number, p.district, p.state, p.nft_token_id 
+        `SELECT st.*, p.property_code, p.survey_number, p.district, p.state, p.nft_token_id, p.area_sqft, p.estimated_fair_price 
          FROM sale_transactions st
          LEFT JOIN properties p ON st.property_id = p.id
          WHERE st.property_id = $1 ORDER BY st.created_at DESC`,
@@ -82,7 +96,7 @@ const findByProperty = async (propertyId) => {
 
 const findByWallet = async (walletAddress) => {
     const result = await pool.query(
-        `SELECT st.*, p.property_code, p.survey_number, p.district, p.state, p.nft_token_id 
+        `SELECT st.*, p.property_code, p.survey_number, p.district, p.state, p.nft_token_id, p.area_sqft, p.estimated_fair_price 
          FROM sale_transactions st
          LEFT JOIN properties p ON st.property_id = p.id
          WHERE LOWER(st.buyer_wallet) = LOWER($1) OR LOWER(st.seller_wallet) = LOWER($1)
@@ -103,9 +117,14 @@ const findActiveByProperty = async (propertyId) => {
 };
 
 const updateStatus = async (id, status, adminComments = null, client = null) => {
+    // If 3rd param is actually a pg client/connection
+    if (adminComments && typeof adminComments.query === 'function' && !client) {
+        client = adminComments;
+        adminComments = null;
+    }
     const db = client || pool;
     let result;
-    if (adminComments !== null) {
+    if (adminComments !== null && typeof adminComments === 'string') {
         result = await db.query(
             'UPDATE sale_transactions SET status = $1, admin_comments = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
             [status, adminComments, id]
@@ -194,8 +213,17 @@ const setOnChainId = async (id, onChainId, client = null) => {
     return mapSale(result.rows[0]);
 };
 
+const updateRiskReport = async (id, riskScore, riskLevel, riskReport, client = null) => {
+    const db = client || pool;
+    const result = await db.query(
+        'UPDATE sale_transactions SET risk_score = $1, risk_level = $2, risk_report = $3, updated_at = NOW() WHERE id = $4 RETURNING *',
+        [riskScore, riskLevel, JSON.stringify(riskReport), id]
+    );
+    return mapSale(result.rows[0]);
+};
+
 module.exports = {
     create, findById, findAll, findByProperty, findByWallet, findActiveByProperty,
     updateStatus, setBuyerSigned, setSellerSigned, setAuthoritySigned,
-    setFundsBlocked, setTxHash, setOnChainId, addApproval, getApprovals,
+    setFundsBlocked, setTxHash, setOnChainId, updateRiskReport, addApproval, getApprovals,
 };

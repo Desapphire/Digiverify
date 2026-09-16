@@ -4,10 +4,10 @@
 
 ![Digiverify Hero Banner](assets/hero_banner.png)
 
-### **Government-Grade Trustless Land Registry & Verification Platform**
-*Next-generation property tokenization, multi-signature transaction settlements, and tamper-proof judicial oversight on Avalanche.*
+### **Government-Grade Trustless Land Registry & Multi-Sig Conveyance Suite**
+*Next-generation digital land title tokenization, automated multi-signature escrow settlements, and tamper-proof judicial oversight on Ethereum Sepolia.*
 
-[![Blockchain](https://img.shields.io/badge/Blockchain-Avalanche_Fuji_(43113)-E84142?style=for-the-badge&logo=avalanche&logoColor=white)](https://testnet.snowtrace.io/)
+[![Blockchain](https://img.shields.io/badge/Blockchain-Ethereum_Sepolia_(11155111)-627EEA?style=for-the-badge&logo=ethereum&logoColor=white)](https://sepolia.etherscan.io/)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.28-363636?style=for-the-badge&logo=solidity&logoColor=white)](https://soliditylang.org/)
 [![Node.js](https://img.shields.io/badge/Backend-Node.js_/_Express_5-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/Frontend-React_19_/_Vite-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
@@ -23,9 +23,8 @@
 
 - [Overview](#overview)
 - [Key Features](#key-features)
-- [System Previews](#system-previews)
 - [System Architecture & Lifecycle](#system-architecture--lifecycle)
-- [Smart Contract Ecosystem](#smart-contract-ecosystem)
+- [Smart Contract Ecosystem (Ethereum Sepolia)](#smart-contract-ecosystem-ethereum-sepolia)
 - [Technical Stack](#technical-stack)
 - [Project Structure](#project-structure)
 - [Setup & Installation](#setup--installation)
@@ -42,95 +41,49 @@
 
 ## Overview
 
-Traditional land registry systems suffer from severe vulnerabilities: document forgery, fraudulent multiple sales of the same parcel, non-transparent bureaucratic processes, and slow judicial dispute resolution.
+Traditional land registry systems suffer from severe vulnerabilities: document forgery, fraudulent multiple sales of the same parcel, non-transparent bureaucratic delays, and slow judicial dispute resolution.
 
 **Digiverify** solves these systemic problems by combining:
-1. **ERC-721 Property Tokenization** on the **Avalanche Fuji C-Chain**, creating immutable, on-chain digital land titles.
-2. **ASBA-Style Bank Fund Blocking**, preventing escrow defaults and payment fraud during real estate transactions.
-3. **Cryptographic Multi-Signature Settlement**, requiring non-repudiable wallet signatures from the Seller, Buyer, and Government Land Authority.
-4. **Court Override & Dispute Protection**, allowing judicial authorities to freeze contested titles or reverse fraudulent transactions transparently on-chain.
-5. **Decentralized IPFS Storage**, securing survey reports, tax certificates, and title deeds backed by SHA-256 integrity hashes.
+1. **ERC-721 Property Tokenization** on **Ethereum Sepolia**, minting immutable, sovereign digital land titles with cadastral boundaries.
+2. **ASBA-Style Bank Fund Blocking & Liens**, locking buyer funds securely in escrow to prevent defaults and payment fraud.
+3. **Multi-Party Multi-Signature Settlement**, requiring non-repudiable wallet signatures from the Seller, Buyer, Bank Admin, and Government Registrar before deed finalization.
+4. **Judicial Injunction & Dispute Protection**, allowing legal authorities to freeze contested titles or reverse fraudulent transfers transparently on-chain.
+5. **Municipal Tax & Probate Governance**, managing succession claims, inheritance transfers, and property tax clearances on-chain.
+6. **Decentralized IPFS Storage**, securing deed documents and survey maps pinned via Pinata and immutably anchored on-chain.
 
 ---
 
 ## Key Features
 
-- **ERC-721 Digital Title Tokenization**: Land ownership is minted as a non-fungible token containing unique government parcel identifiers, boundary coordinates, and document hashes.
-- **3-Party Multi-Signature Settlement**: Enforces on-chain consensus where the Seller, Buyer, and Land Authority must each sign with their cryptographic wallets before ownership is transferred.
-- **ASBA-Style Fund Blocking Protocol**: Simulates an Applications Supported by Blocked Amount (ASBA) banking mechanism that locks buyer funds in their account and guarantees payout only upon on-chain deed finalization.
-- **Judicial Court Override**: Dedicated smart contract interface (`CourtOverride.sol`) empowering judicial authorities to freeze disputed properties, reverse illegal transfers, or cancel tainted transactions.
-- **Tamper-Proof Document Storage**: Deeds, survey maps, and revenue records are pinned to IPFS via Pinata, with their cryptographic hashes permanently anchored to the smart contract.
-- **Biometrics & KYC Wallet Binding**: User profiles are linked to verified government IDs, biometric captures, and dedicated cryptographic wallet addresses with recovery mechanisms.
+- **ERC-721 Digital Title Tokenization**: Land ownership is minted as a non-fungible token containing unique government parcel identifiers, cadastral survey coordinates, and document hashes.
+- **3-Party Multi-Signature Escrow**: Enforces automated on-chain consensus where the Seller, Buyer, and Land Authority must each sign with cryptographic wallets before ownership transfers.
+- **ASBA-Style Bank Fund Blocking**: Integrates banking fund-locking mechanisms that hold transaction funds in an account and guarantee payout only upon on-chain conveyance.
+- **Autonomous Title Conveyance**: Zero manual sync needed — once all signatures and bank locks are in place, smart contracts finalize deed transfer atomically.
+- **Judicial Emergency Freeze & Injunction**: Authorized court roles can freeze encumbered assets or execute judicial reversal orders with cryptographically verifiable case citations.
+- **Municipal Tax Vault & NOC**: Tracks municipal valuations, records payments, and issues verifiable Tax Clearance NOCs directly on-chain.
+- **Inheritance & Succession Protocol**: Formal probate workflows for legal heirs to stake inheritance claims with verification checkpoints.
+- **Soulbound Citizen Attestation**: On-chain cryptographic identity attestation linking citizen KYC verification status.
 
 ---
 
-## System Previews
+## Smart Contract Ecosystem (Ethereum Sepolia)
 
-### 1. Centralized Authority & Admin Dashboard
-Provides real-time oversight of pending KYC verifications, property registrations, survey reports, active sale pipelines, and system audit logs.
+The smart contract suite is written in Solidity `0.8.28`, compiled with Hardhat, and deployed on the **Ethereum Sepolia Testnet** (`Chain ID: 11155111`).
 
-![Admin Dashboard](assets/dashboard.png)
+| Contract | Purpose | Sepolia Testnet Address | Explorer |
+| :--- | :--- | :--- | :--- |
+| **`LandNFT`** | ERC-721 token representing title deeds with metadata, freeze status, and restricted transfer logic. | `0xbCB28DC4eF6242572c0a65D1643595C582106249` | [View on Etherscan](https://sepolia.etherscan.io/address/0xbCB28DC4eF6242572c0a65D1643595C582106249) |
+| **`LandRegistry`** | Cadastral registry, survey verification workflows, and minting authorizations. | `0xd6e6e94c053D204Ad535Ef8f2b01A1835696e9B1` | [View on Etherscan](https://sepolia.etherscan.io/address/0xd6e6e94c053D204Ad535Ef8f2b01A1835696e9B1) |
+| **`SaleContract`** | Multi-sig escrow sales, ASBA lien verification, revenue collection, and automated conveyance. | `0xA94321fA51b6F600Ef32Ab652965AC689D967b9B` | [View on Etherscan](https://sepolia.etherscan.io/address/0xA94321fA51b6F600Ef32Ab652965AC689D967b9B) |
+| **`CourtOverride`** | Judicial emergency module for freezing titles, cancelling fraudulent sales, and force-transfers. | `0x4437904bF4cff91E91c16bB135752038d3418B8C` | [View on Etherscan](https://sepolia.etherscan.io/address/0x4437904bF4cff91E91c16bB135752038d3418B8C) |
+| **`BankLienRegistry`**| Bank mortgage lien registry, collateralization checks, and encumbrance tracking. | `0x6E8953f0288820bDB77CA89eaAF6c54Ff1250300` | [View on Etherscan](https://sepolia.etherscan.io/address/0x6E8953f0288820bDB77CA89eaAF6c54Ff1250300) |
+| **`InheritanceSuccession`** | Probate claim submission, heir consensus, and court-authorized title succession. | `0x712a073f1849456b13c983195a62fc79D50F52B8` | [View on Etherscan](https://sepolia.etherscan.io/address/0x712a073f1849456b13c983195a62fc79D50F52B8) |
+| **`PropertyTaxVault`** | Annual tax assessment registry, payment ledger, and cryptographic NOC clearance. | `0x4bC7B4A62b7a97c40Bf4F028EbF043Fb0AbB7999` | [View on Etherscan](https://sepolia.etherscan.io/address/0x4bC7B4A62b7a97c40Bf4F028EbF043Fb0AbB7999) |
+| **`CitizenIdentityRegistry`** | Soulbound identity attestation for verified citizens and KYC level management. | `0xCaa02E5ba741c314c12563dBE2eABCd2d6c5c6a3` | [View on Etherscan](https://sepolia.etherscan.io/address/0xCaa02E5ba741c314c12563dBE2eABCd2d6c5c6a3) |
 
----
-
-### 2. Property Verification & Immutable Record Explorer
-Displays high-precision boundary coordinates, IPFS-backed legal documents (Title Deeds, Survey Reports, Encumbrance Certificates), and verifiable ownership history.
-
-![Property Details](assets/property_details.png)
-
----
-
-### 3. Multi-Signature Transaction Signing
-Enforces on-chain approval from all parties with direct Web3 wallet integration (MetaMask) to execute secure land transfers.
-
-![Multi-sig Flow](assets/sale_signature.png)
-
----
-
-## System Architecture & Lifecycle
-
-![System Architecture & Lifecycle](assets/lifecycle_flow.png)
-
-### Complete End-to-End Workflow
-
-1. **User Onboarding & KYC**:
-   - Users register with Aadhaar/Gov ID verification and biometric authentication.
-   - A Web3 wallet address is cryptographically bound to the user profile.
-2. **Property Submission & Verification**:
-   - Landowner submits parcel details, boundary coordinates, and legal documents.
-   - Documents are pinned to IPFS, and a document integrity hash is generated.
-   - A government surveyor reviews and approves the application.
-3. **NFT Minting & Registration**:
-   - Upon authority approval, `LandRegistry.sol` instructs `LandNFT.sol` to mint an ERC-721 token representing the verified parcel.
-4. **Sale Initiation & Fund Blocking**:
-   - Seller creates a formal sale agreement referencing the Buyer's wallet.
-   - Buyer initiates an ASBA-style bank fund block, locking transaction funds securely.
-5. **Multi-Signature Execution**:
-   - **Seller** signs the transfer transaction using MetaMask.
-   - **Buyer** inspects terms and signs the purchase transaction.
-   - **Regulatory Authority** applies the final cryptographic "seal".
-6. **Chain Settlement**:
-   - `SaleContract.sol` completes the transfer, burns/transfers the NFT, and triggers the payout.
-7. **Judicial Safeguards**:
-   - If a dispute arises at any stage, `CourtOverride.sol` allows designated judicial keys to freeze or revert the title.
-
----
-
-## Smart Contract Ecosystem
-
-The smart contracts are written in Solidity `0.8.28`, compiled with Hardhat, and deployed on the **Avalanche Fuji C-Chain**.
-
-| Contract | Purpose | Fuji Testnet Address |
-| :--- | :--- | :--- |
-| **`LandNFT`** | ERC-721 token representing title deeds with metadata, freeze status, and restricted transfer logic. | `0xf48B73bfE1ba268145221954631fBD04B4d9520E` |
-| **`LandRegistry`** | Manages property records, surveyor verification workflows, and minting authorizations. | `0x5eAD24C7aD38d31e5265230994Bf23859060f7F4` |
-| **`SaleContract`** | Orchestrates 3-party multi-signature sales, fund block confirmation, and ownership execution. | `0x45F28298B7bADaeA10EE7d74f89c0e6c07b13bDC` |
-| **`CourtOverride`** | Judicial emergency module for freezing titles, cancelling fraudulent sales, and reversing transfers. | `0xffD327f15609a033E8DF79DD77Eb29Ff52E980B8` |
-
-- **Network**: Avalanche Fuji C-Chain (Testnet)
-- **Chain ID**: `43113`
-- **RPC URL**: `https://api.avax-test.network/ext/bc/C/rpc`
-- **Explorer**: [Snowtrace Fuji](https://testnet.snowtrace.io/)
+- **Network**: Ethereum Sepolia Testnet
+- **Chain ID**: `11155111`
+- **Explorer**: [Sepolia Etherscan](https://sepolia.etherscan.io/)
 
 ---
 
@@ -138,11 +91,11 @@ The smart contracts are written in Solidity `0.8.28`, compiled with Hardhat, and
 
 | Layer | Technologies | Description |
 | :--- | :--- | :--- |
-| **Frontend** | React 19, Vite, Tailwind CSS, Framer Motion, Lucide React | Modern, responsive SPA with dark mode, interactive dashboards, and animations. |
-| **Backend API** | Node.js, Express 5, PostgreSQL (`pg`), JWT, bcrypt, Multer, Zod | Scalable REST API handling auth, property records, banking simulation, and IPFS orchestration. |
-| **Smart Contracts** | Solidity 0.8.28, OpenZeppelin Contracts v5, Hardhat, Ethers.js v6 | Secure, role-based, gas-optimized contracts implementing multi-sig and judicial overrides. |
-| **Decentralized Storage** | IPFS, Pinata API | Distributed, immutable storage for legal deeds, boundary files, and survey documents. |
-| **Security & Identity** | OpenSSL SHA-256, Helmet, Rate Limiting, CORS, Biometric Face Match | Defense-in-depth protection across web, database, and blockchain layers. |
+| **Frontend** | React 19, Vite, Tailwind CSS, Framer Motion, Lucide React | Modern, responsive SPA with role-specific dashboards, dark mode, and real-time status tracking. |
+| **Backend API** | Node.js, Express 5, PostgreSQL (`pg`), JWT, bcrypt, Multer, Zod | High-performance REST API handling transactions, banking simulation, auth, and IPFS orchestration. |
+| **Smart Contracts** | Solidity 0.8.28, OpenZeppelin v5, Hardhat, Ethers.js v6 | 8-contract modular suite with role-based access control, reentrancy guards, and multi-sig settlement. |
+| **Decentralized Storage** | IPFS, Pinata API | Distributed storage for deed documents, land surveys, and tax receipts. |
+| **Security & Identity** | AWS Rekognition, Web3 Signatures, SHA-256 Hashes, Rate Limiting | Biometric facial liveness matching, asymmetric ECDSA message verification, and anti-fraud filters. |
 
 ---
 
@@ -150,42 +103,35 @@ The smart contracts are written in Solidity `0.8.28`, compiled with Hardhat, and
 
 ```text
 Digiverify/
-├── assets/                  # High-resolution screenshots, banners & branding
-│   ├── hero_banner.png
-│   ├── lifecycle_flow.png
-│   ├── dashboard.png
-│   ├── property_details.png
-│   └── sale_signature.png
-│
 ├── backend/                 # Node.js Express 5 REST API
-│   ├── blockchain/          # Ethers.js contract wrappers & event listeners
-│   ├── config/              # Database pool, environment variables & SQL schema
-│   ├── controllers/         # Business logic (Auth, Property, Sales, Bank, Admin)
-│   ├── middlewares/         # JWT verification, role-based access control, file uploads
-│   ├── models/              # PostgreSQL query models & data access layer
+│   ├── blockchain/          # Ethers.js contract wrappers, ABIs & automated event listeners
+│   ├── config/              # Database connection pool, blockchain config & SQL schema
+│   ├── controllers/         # Business logic (Auth, Property, Sales, Bank, Admin, Biometric)
+│   ├── middlewares/         # JWT verification, RBAC, rate limiting, file uploads
+│   ├── models/              # PostgreSQL data access layer & query models
 │   ├── routes/              # Express API route endpoints
-│   ├── services/            # IPFS/Pinata pinning, biometric matching, notifications
-│   ├── uploads/             # Temporary local file storage prior to IPFS upload
-│   └── server.js            # Express server entry point
+│   ├── scripts/             # Administrative & synchronization CLI utilities
+│   ├── services/            # IPFS pinning, sale workflow state machines, biometric matching
+│   └── server.js            # Express application entry point
 │
 ├── contracts/               # Hardhat Solidity Smart Contracts
-│   ├── contracts/           # LandNFT.sol, LandRegistry.sol, SaleContract.sol, CourtOverride.sol
-│   ├── scripts/             # Deployment and test scripts (deploy.js, test-everything.js)
-│   ├── hardhat.config.js    # Avalanche Fuji network & compiler configuration
-│   └── deployments.json     # Deployed contract addresses & metadata
+│   ├── contracts/           # 8 Solidity smart contracts
+│   ├── scripts/             # Deployment and test scripts
+│   ├── hardhat.config.js    # Hardhat compiler & Sepolia network configuration
+│   └── deployments.json     # Deployed contract addresses & deployment metadata
 │
-└── frontend/                # React 19 + Vite Web Application
-    ├── public/              # Static assets, models, and brand logos
-    └── src/
-        ├── abis/            # Contract ABI definitions for Ethers.js
-        ├── assets/          # Component-level imagery
-        ├── context/         # AuthContext, Web3Context, ThemeContext
-        ├── layouts/         # AppLayout, AdminLayout, AuthLayout
-        ├── pages/
-        │   ├── Admin/       # Authority dashboard, verification, KYC, court dispute pages
-        │   ├── Auth/        # Login, registration, biometric capture
-        │   └── Dashboard/   # Property management, fund blocking, sales & transactions
-        └── services/        # Axios API clients & Web3 transaction helpers
+├── frontend/                # React 19 + Vite Web Application
+│   ├── public/              # Static brand assets and icons
+│   └── src/
+│       ├── context/         # AuthContext, Web3Context
+│       ├── layouts/         # AppLayout, AdminLayout, Sidebar layouts
+│       ├── pages/
+│       │   ├── Admin/       # Authority dashboards, KYC approval, revenue analytics, disputes
+│       │   ├── Auth/        # Login, registration, biometric capture
+│       │   └── Dashboard/   # Property management, purchase review, sales, fund blocking
+│       └── services/        # Axios API clients & Web3 transaction helpers
+│
+└── model/                   # Machine learning risk scoring & anomaly detection API
 ```
 
 ---
@@ -196,38 +142,38 @@ Digiverify/
 
 - **Node.js** `>= 18.x` & **npm** `>= 9.x`
 - **PostgreSQL** `>= 14.x`
-- **MetaMask** browser extension configured for Avalanche Fuji Testnet
-- Testnet AVAX from the [Avalanche Faucet](https://faucet.avax.network/)
+- **MetaMask** browser extension configured for **Ethereum Sepolia Testnet**
+- Testnet Sepolia ETH (from [Google Cloud Web3 Faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia) or [Alchemy Faucet](https://sepoliafaucet.com/))
 
 ---
 
 ### 1. Database Setup
 
 1. Start your local PostgreSQL server.
-2. Create a database named `digiverify`:
+2. Create the database:
    ```bash
    createdb digiverify
    ```
-3. Initialize the schema:
+3. Initialize the database schema:
    ```bash
    psql -d digiverify -f backend/config/schema.sql
    ```
 
 ---
 
-### 2. Smart Contract Deployment
+### 2. Smart Contract Setup
 
-*(Optional if using the already deployed Fuji testnet contracts)*
+The contracts are already compiled and deployed to Ethereum Sepolia. If you wish to recompile or redeploy:
 
 ```bash
 cd contracts
 npm install
 
 # Compile contracts
-npm run compile
+npx hardhat compile
 
-# Deploy to Avalanche Fuji Testnet
-npm run deploy:fuji
+# Deploy to Ethereum Sepolia
+npx hardhat run scripts/deploy.js --network sepolia
 ```
 
 ---
@@ -245,32 +191,17 @@ npm run deploy:fuji
    cp .env.example .env
    ```
 
-3. Configure your variables in `.env`:
-   ```ini
-   PORT=5000
-   NODE_ENV=development
+3. Configure your environment variables in `.env`:
+   - Set PostgreSQL credentials (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`).
+   - Set `SEPOLIA_RPC_URL` (e.g. from Alchemy or Infura).
+   - Set `SIGNER_PRIVATE_KEY` for the backend authority wallet.
+   - Set `PINATA_API_KEY` and `PINATA_SECRET_API_KEY` for IPFS uploads.
 
-   PGHOST=localhost
-   PGPORT=5432
-   PGUSER=postgres
-   PGPASSWORD=your_postgres_password
-   PGDATABASE=digiverify
-
-   JWT_SECRET=your_jwt_secret_min_32_chars
-   AVALANCHE_RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
-   CHAIN_ID=43113
-   SIGNER_PRIVATE_KEY=your_authority_wallet_private_key
-
-   LAND_NFT_ADDRESS=0xf48B73bfE1ba268145221954631fBD04B4d9520E
-   LAND_REGISTRY_ADDRESS=0x5eAD24C7aD38d31e5265230994Bf23859060f7F4
-   SALE_CONTRACT_ADDRESS=0x45F28298B7bADaeA10EE7d74f89c0e6c07b13bDC
-   ```
-
-4. Launch the backend server:
+4. Start the backend server:
    ```bash
    npm run dev
    ```
-   *The API will start at `http://localhost:5000`.*
+   *The backend API will start at `http://localhost:5000`.*
 
 ---
 
@@ -294,38 +225,32 @@ npm run deploy:fuji
 
 | Route Group | Path Prefix | Description |
 | :--- | :--- | :--- |
-| **Authentication** | `/api/auth` | User registration, login, JWT refresh, biometric verification. |
-| **Properties** | `/api/properties` | Registration, search, parcel metadata, deed hashes, ownership history. |
-| **Sales & Escrow** | `/api/sales` | Sale agreement creation, multi-sig status, on-chain execution triggers. |
-| **Banking (ASBA)** | `/api/bank` | Bank account linking, fund blocking simulation, lock verification. |
-| **IPFS Storage** | `/api/ipfs` | Pinata/IPFS document upload, hash retrieval, file verification. |
-| **Admin & Authority** | `/api/admin` | KYC review, property surveys, sale approval, dispute investigation, audit logs. |
-| **User & Profile** | `/api/users` | Wallet binding, profile updates, notification preferences, wallet recovery. |
+| **Authentication** | `/api/auth` | User registration, login, wallet binding, JWT token renewal. |
+| **Properties** | `/api/properties` | Property registration, survey approval, deed hashes, parcel search. |
+| **Sales & Escrow** | `/api/sales` | Multi-sig sale initiation, buyer signing, automated final settlement. |
+| **Banking (ASBA)** | `/api/bank` | Fund block creation, bank admin confirmation, lien status. |
+| **Biometrics** | `/api/biometric` | Facial liveness detection, AWS Rekognition identity matching. |
+| **Admin & Authority** | `/api/admin` | KYC attestation, survey review, dispute center, revenue analytics. |
+| **Risk & Analytics** | `/api/risk` | ML-driven transaction risk scoring and anomaly detection. |
 
 ---
 
 ## Security & Compliance
 
-- **Role-Based Access Control (RBAC)**: Smart contracts implement OpenZeppelin `AccessControl` with segregated `DEFAULT_ADMIN_ROLE`, `AUTHORITY_ROLE`, and `JUDGE_ROLE` permissions.
-- **Multi-Factor Identity Validation**: Combines password hashing via `bcrypt`, asymmetric cryptographic wallet signatures, and biometric facial matching.
-- **Non-Custodial Escrow**: Banking module simulates ASBA fund locking, guaranteeing that buyer funds remain in their bank account under a cryptographically verified lock until the title is conveyed.
-- **Cryptographic Document Verification**: Any uploaded document is hashed with SHA-256 before being stored on IPFS. The hash is immutably anchored on-chain to prevent subsequent modification.
-- **Judicial Redress Mechanism**: Prevents irreversible losses from compromised private keys or fraudulent submissions via formal court freeze and reversal functions.
+- **Role-Based Access Control (RBAC)**: Smart contracts implement OpenZeppelin `AccessControl` segregation (`DEFAULT_ADMIN_ROLE`, `AUTHORITY_ROLE`, `BANK_ROLE`, `COURT_ROLE`).
+- **Cryptographic Multi-Signature Settlement**: Eliminates unilateral transfers by requiring explicit on-chain authorizations from buyer, seller, bank, and regulatory authority.
+- **Automatic Fallback Reconciliation**: The backend guarantees that database status and blockchain token ownership stay 100% consistent across all transactions.
+- **Cryptographic Document Integrity**: Deed documents and boundary surveys are hashed with SHA-256 before upload and stored immutably on IPFS.
+- **Judicial Intervention**: Protects against fraud and lost keys through designated court injunction and title deed force-transfer capabilities.
 
 ---
 
 ## License
 
-This project is licensed under the **Apache License, Version 2.0**. You may obtain a copy of the License in the [LICENSE](LICENSE) file or at:
-
-```
-http://www.apache.org/licenses/LICENSE-2.0
-```
-
-Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the [LICENSE](LICENSE) for specific language governing permissions and limitations under the License.
+This project is licensed under the **Apache License, Version 2.0**. See the [LICENSE](LICENSE) file for full details.
 
 ---
 
 <div align="center">
-  <sub>Built by the <b>Team Desapphire</b></sub>
+  <sub>Built by <b>Team Desapphire</b></sub>
 </div>

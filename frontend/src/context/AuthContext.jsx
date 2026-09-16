@@ -4,24 +4,51 @@ import { jwtDecode } from 'jwt-decode';
 
 const AuthContext = createContext(null);
 
+const getSafeStorageToken = () => {
+    try {
+        const t = localStorage.getItem('token');
+        if (!t || t === 'undefined' || t === 'null') return null;
+        return t;
+    } catch {
+        return null;
+    }
+};
+
+const getSafeStorageUser = () => {
+    try {
+        const u = localStorage.getItem('user');
+        if (!u || u === 'undefined' || u === 'null') return null;
+        return JSON.parse(u);
+    } catch {
+        return null;
+    }
+};
+
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [token, setToken] = useState(localStorage.getItem('token') || null);
+    const [user, setUser] = useState(getSafeStorageUser);
+    const [token, setToken] = useState(getSafeStorageToken);
     const [loading, setLoading] = useState(true);
 
+    const logout = () => {
+        setToken(null);
+        setUser(null);
+        try {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+        } catch (_) {}
+    };
+
     useEffect(() => {
-        // Initialize user from token or API if token exists
         const initAuth = async () => {
-            if (token) {
+            const currentToken = getSafeStorageToken();
+            if (currentToken) {
                 try {
-                    const decoded = jwtDecode(token);
-                    // Check if token is expired
-                    if (decoded.exp * 1000 < Date.now()) {
+                    const decoded = jwtDecode(currentToken);
+                    if (decoded && decoded.exp && decoded.exp * 1000 < Date.now()) {
                         logout();
                     } else {
-                        // Optimistically set user from localStorage, then verify with API
-                        const savedUser = localStorage.getItem('user');
-                        if (savedUser) setUser(JSON.parse(savedUser));
+                        const savedUser = getSafeStorageUser();
+                        if (savedUser) setUser(savedUser);
 
                         const res = await authService.getMe();
                         if (res.data && res.data.data) {
@@ -30,13 +57,16 @@ export const AuthProvider = ({ children }) => {
                         }
                     }
                 } catch (error) {
+                    console.warn('Session verification error:', error);
                     logout();
                 }
+            } else {
+                logout();
             }
             setLoading(false);
         };
         initAuth();
-    }, [token]);
+    }, []);
 
     const login = async (email, password) => {
         const res = await authService.loginWithPassword({ email, password });
@@ -56,13 +86,6 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('token', accessToken);
         localStorage.setItem('user', JSON.stringify(userData));
         return userData;
-    };
-
-    const logout = () => {
-        setToken(null);
-        setUser(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
     };
 
     return (
