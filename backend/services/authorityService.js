@@ -6,6 +6,7 @@ const Property = require('../models/Property');
 const SaleTransaction = require('../models/SaleTransaction');
 const saleService = require('./saleService');
 const contractService = require('../blockchain/contractService');
+const nftMetadataService = require('./nftMetadataService');
 const { ethers } = require('ethers');
 const AppError = require('../utils/AppError');
 
@@ -16,33 +17,80 @@ const approveProperty = async (propertyId, reason = null) => {
     const property = await Property.findById(propertyId);
     if (!property) throw new AppError('Property not found.', 404);
 
-    if (property.status === 'active') {
-        throw new AppError('Property is already active.', 400);
+    if (property.status === 'active' && property.nftTokenId) {
+        throw new AppError('Property is already active and minted on-chain.', 400);
     }
 
-    // 1. Update status in DB
-    const updatedProperty = await Property.updateStatus(propertyId, 'active', reason);
-
-    // 2. Register Property on-chain (first step of blockchain lifecycle)
+    // 1. Register Property on-chain if not already registered.
+    //    This is idempotent — if already registered on-chain, it skips safely.
     console.log(`Registering property ${property.propertyCode} on-chain (authority approval) ...`);
-    await contractService.registerPropertyOnChain(
-        property.propertyCode,
-        property.ownerWallet,
-        property.documentHash || 'QmDefaultHash'
-    );
+    try {
+        const regResult = await contractService.registerPropertyOnChain(property);
+        if (regResult?.alreadyRegistered) {
+            console.log(`Property ${property.propertyCode} was already on-chain — skipping registration, proceeding to approve.`);
+        }
+    } catch (regErr) {
+        // If the contract reverts with "Property already registered", it means a previous
+        // partial approval attempt already pushed it. We can safely continue to approveProperty.
+        if (regErr.message && regErr.message.includes('Property already registered')) {
+            console.log(`Property ${property.propertyCode} already registered on-chain (caught revert), proceeding to approve.`);
+        } else {
+            // Any other on-chain registration error is real — rethrow
+            throw regErr;
+        }
+    }
 
-    // 3. Approve Property on-chain (mints NFT)
+    // 2. Generate and Pin ERC-721 Metadata and Deed Certificate to IPFS
+    let metadataURI;
+    try {
+        metadataURI = await nftMetadataService.generateAndPinNFTMetadata(property);
+    } catch (metaErr) {
+        console.warn('Metadata generation failed, fallback to default:', metaErr.message);
+        metadataURI = `https://gateway.pinata.cloud/ipfs/QmDefaultMetadata`;
+    }
+
+    // 3. Approve Property on-chain (mints LandNFT with IPFS metadata URI)
     let txHash = null;
-    const metadataURI = `https://localhost:5000/api/properties/${propertyId}`;
-    const result = await contractService.approvePropertyOnChain(
-        property.propertyCode,
-        metadataURI
-    );
-    txHash = result.txHash;
+    let tokenId = property.nftTokenId;
 
-    if (result.tokenId) {
-        await Property.setNftTokenId(propertyId, result.tokenId);
-        console.log(`NFT Minted for property ${propertyId}: TokenID ${result.tokenId}, Tx: ${txHash}`);
+    try {
+        const result = await contractService.approvePropertyOnChain(
+            property.propertyCode,
+            metadataURI
+        );
+        txHash = result.txHash;
+
+        if (result.tokenId) {
+            tokenId = result.tokenId;
+            await Property.setNftTokenId(propertyId, result.tokenId);
+            console.log(`NFT Minted for property ${propertyId}: TokenID ${result.tokenId}, Tx: ${txHash}, MetadataURI: ${metadataURI}`);
+        }
+    } catch (approveErr) {
+        // If already approved on-chain (e.g. previous request timed out but tx went through),
+        // read the existing tokenId from the on-chain record and continue to update DB.
+        if (approveErr.message && approveErr.message.includes('Not in PENDING state')) {
+            console.log(`Property ${property.propertyCode} already approved on-chain (recovered from timeout race). Reading token ID from chain...`);
+            try {
+                const { getContracts } = require('../blockchain/contracts');
+                const { landRegistry } = getContracts();
+                const onChainRecord = await landRegistry.propertyRecords(property.propertyCode);
+                if (onChainRecord && onChainRecord.tokenId) {
+                    tokenId = onChainRecord.tokenId.toString();
+                    await Property.setNftTokenId(propertyId, tokenId);
+                    console.log(`Recovered TokenID ${tokenId} for property ${property.propertyCode} from chain.`);
+                }
+            } catch (readErr) {
+                console.warn('Could not read tokenId from chain after PENDING state error:', readErr.message);
+            }
+        } else {
+            throw approveErr;
+        }
+    }
+
+    // 4. Update status in DB
+    const updatedProperty = await Property.updateStatus(propertyId, 'active', reason);
+    if (tokenId) {
+        updatedProperty.nftTokenId = tokenId;
     }
 
     return { property: updatedProperty, txHash };
@@ -79,10 +127,14 @@ const approveSaleTransaction = async (saleId, authorityWallet, signatureHash, re
             // Try to call buyerSign if not already done on-chain
             if (sale.buyerSigned) {
                 try {
-                    console.log(`Fallback: Ensuring BuyerSign on-chain for SaleID: ${sale.onChainId}...`);
-                    await contractService.buyerSignOnChain(sale.onChainId);
+                    const { getContracts } = require('../blockchain/contracts');
+                    const { saleContract } = getContracts();
+                    const onChainData = await saleContract.sales(sale.onChainId);
+                    if (onChainData.status === 0n || onChainData.status === 0) {
+                        console.log(`Ensuring BuyerSign on-chain for SaleID: ${sale.onChainId}...`);
+                        await contractService.buyerSignOnChain(sale.onChainId);
+                    }
                 } catch (e) {
-                    // Ignore if already signed or other non-critical error
                     console.log(`ℹ️ On-chain BuyerSign check: ${e.message}`);
                 }
             }
@@ -136,7 +188,20 @@ const rejectSaleTransaction = async (saleId, reason = null) => {
 const setEncumbrance = async (propertyId, flag, reason = null) => {
     const property = await Property.findById(propertyId);
     if (!property) throw new AppError('Property not found.', 404);
-    return Property.setEncumbrance(propertyId, flag, reason);
+    
+    const dbResult = await Property.setEncumbrance(propertyId, flag, reason);
+    
+    // Push encumbrance to blockchain if it's active on-chain
+    if (property.status === 'active' || property.status === 'frozen') {
+        try {
+            await contractService.setEncumbranceOnChain(property.propertyCode, flag, reason);
+            console.log(`Successfully synced encumbrance to blockchain for ${property.propertyCode}`);
+        } catch (err) {
+            console.error('Failed to sync encumbrance to blockchain:', err.message);
+        }
+    }
+    
+    return dbResult;
 };
 
 /**

@@ -35,7 +35,38 @@
     "anonymous": false,
     "inputs": [
       {
+        "indexed": true,
+        "internalType": "string",
+        "name": "propertyCode",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "ownerWallet",
+        "type": "address"
+      },
+      {
         "indexed": false,
+        "internalType": "uint256",
+        "name": "sharePercentageBps",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "ownershipType",
+        "type": "string"
+      }
+    ],
+    "name": "CoOwnerRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
         "internalType": "string",
         "name": "propertyCode",
         "type": "string"
@@ -45,6 +76,12 @@
         "internalType": "bool",
         "name": "isEncumbered",
         "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
       }
     ],
     "name": "EncumbranceStatusChanged",
@@ -54,7 +91,38 @@
     "anonymous": false,
     "inputs": [
       {
+        "indexed": true,
+        "internalType": "string",
+        "name": "propertyCode",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      },
+      {
         "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
         "internalType": "string",
         "name": "propertyCode",
         "type": "string"
@@ -63,6 +131,18 @@
         "indexed": true,
         "internalType": "uint256",
         "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "approvedAt",
         "type": "uint256"
       }
     ],
@@ -73,7 +153,7 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "string",
         "name": "propertyCode",
         "type": "string"
@@ -92,16 +172,40 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "string",
         "name": "propertyCode",
         "type": "string"
       },
       {
+        "indexed": false,
+        "internalType": "string",
+        "name": "surveyNumber",
+        "type": "string"
+      },
+      {
         "indexed": true,
         "internalType": "address",
-        "name": "owner",
+        "name": "originalOwner",
         "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "areaSqft",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "district",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "state",
+        "type": "string"
       }
     ],
     "name": "PropertySubmitted",
@@ -197,12 +301,57 @@
   },
   {
     "inputs": [],
+    "name": "COURT_ROLE",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "DEFAULT_ADMIN_ROLE",
     "outputs": [
       {
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "SALE_CONTRACT_ROLE",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "allPropertyCodes",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -234,19 +383,100 @@
         "type": "string"
       }
     ],
-    "name": "getPropertyRecord",
+    "name": "getCoOwners",
     "outputs": [
       {
         "components": [
           {
             "internalType": "address",
-            "name": "owner",
+            "name": "ownerWallet",
             "type": "address"
           },
+          {
+            "internalType": "uint256",
+            "name": "sharePercentageBps",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "ownershipType",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "isPrimary",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "addedAt",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct LandRegistry.CoOwner[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPropertyByTokenId",
+    "outputs": [
+      {
+        "components": [
           {
             "internalType": "string",
             "name": "propertyCode",
             "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "surveyNumber",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "surveyDetails",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "district",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "state",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "areaSqft",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "coordinates",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "originalOwner",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "currentOwner",
+            "type": "address"
           },
           {
             "internalType": "string",
@@ -259,6 +489,16 @@
             "type": "bool"
           },
           {
+            "internalType": "string",
+            "name": "encumbranceReason",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "estimatedFairPrice",
+            "type": "uint256"
+          },
+          {
             "internalType": "enum LandRegistry.RegistrationStatus",
             "name": "status",
             "type": "uint8"
@@ -266,6 +506,127 @@
           {
             "internalType": "uint256",
             "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "registeredAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "approvedAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "exists",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct LandRegistry.PropertyRecord",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_propertyCode",
+        "type": "string"
+      }
+    ],
+    "name": "getPropertyRecord",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "propertyCode",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "surveyNumber",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "surveyDetails",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "district",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "state",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "areaSqft",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "coordinates",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "originalOwner",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "currentOwner",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "documentHash",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "isEncumbered",
+            "type": "bool"
+          },
+          {
+            "internalType": "string",
+            "name": "encumbranceReason",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "estimatedFairPrice",
+            "type": "uint256"
+          },
+          {
+            "internalType": "enum LandRegistry.RegistrationStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "registeredAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "approvedAt",
             "type": "uint256"
           },
           {
@@ -296,6 +657,19 @@
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getTotalPropertiesCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -380,19 +754,98 @@
         "internalType": "string",
         "name": "",
         "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "propertyCoOwners",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "ownerWallet",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "sharePercentageBps",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "ownershipType",
+        "type": "string"
+      },
+      {
+        "internalType": "bool",
+        "name": "isPrimary",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "addedAt",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
       }
     ],
     "name": "propertyRecords",
     "outputs": [
       {
-        "internalType": "address",
-        "name": "owner",
-        "type": "address"
-      },
-      {
         "internalType": "string",
         "name": "propertyCode",
         "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "surveyNumber",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "surveyDetails",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "district",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "state",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "areaSqft",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "coordinates",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "originalOwner",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "currentOwner",
+        "type": "address"
       },
       {
         "internalType": "string",
@@ -405,6 +858,16 @@
         "type": "bool"
       },
       {
+        "internalType": "string",
+        "name": "encumbranceReason",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "estimatedFairPrice",
+        "type": "uint256"
+      },
+      {
         "internalType": "enum LandRegistry.RegistrationStatus",
         "name": "status",
         "type": "uint8"
@@ -412,6 +875,16 @@
       {
         "internalType": "uint256",
         "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "registeredAt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "approvedAt",
         "type": "uint256"
       },
       {
@@ -442,6 +915,132 @@
       }
     ],
     "name": "registerProperty",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_propertyCode",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_surveyNumber",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_surveyDetails",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_district",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_state",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_areaSqft",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "_coordinates",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "_owner",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "_documentHash",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_estimatedFairPrice",
+        "type": "uint256"
+      }
+    ],
+    "name": "registerPropertyWithCadastral",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_propertyCode",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_surveyNumber",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_surveyDetails",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_district",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_state",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_areaSqft",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "_coordinates",
+        "type": "string"
+      },
+      {
+        "internalType": "address[]",
+        "name": "_coOwnerWallets",
+        "type": "address[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "_sharesBps",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "_ownershipTypes",
+        "type": "string[]"
+      },
+      {
+        "internalType": "string",
+        "name": "_documentHash",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_estimatedFairPrice",
+        "type": "uint256"
+      }
+    ],
+    "name": "registerPropertyWithCoOwners",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -503,6 +1102,29 @@
   {
     "inputs": [
       {
+        "internalType": "string",
+        "name": "_propertyCode",
+        "type": "string"
+      },
+      {
+        "internalType": "bool",
+        "name": "_status",
+        "type": "bool"
+      },
+      {
+        "internalType": "string",
+        "name": "_reason",
+        "type": "string"
+      }
+    ],
+    "name": "setEncumbranceWithReason",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes4",
         "name": "interfaceId",
         "type": "bytes4"
@@ -517,6 +1139,43 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "tokenIdToCode",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_propertyCode",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "_newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "updatePropertyOwner",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   }
 ]

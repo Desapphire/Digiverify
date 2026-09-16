@@ -4,9 +4,12 @@ import { propertyService } from '../../services/property.service';
 import { useAuth } from '../../context/AuthContext';
 import {
     MapPin, CheckCircle2, Shield, AlertTriangle, ShieldAlert,
-    Lock, Eye, ArrowUpRight, PlusCircle, Search, Loader2, ExternalLink
+    Lock, Eye, ArrowUpRight, PlusCircle, Search, Loader2, ExternalLink,
+    Building, FileText, ChevronRight, Filter, Layers, Check, ShieldCheck,
+    RotateCcw
 } from 'lucide-react';
 import './PropertyPages.css';
+import './Dashboard.css';
 
 const MyProperties = () => {
     const navigate = useNavigate();
@@ -32,28 +35,36 @@ const MyProperties = () => {
     }, [user]);
 
     const statusConfig = {
-        active: { label: 'ACTIVE', color: '#00E5FF', bg: 'rgba(0, 229, 255, 0.1)', icon: CheckCircle2 },
-        verified: { label: 'VERIFIED', color: '#00E5FF', bg: 'rgba(0, 229, 255, 0.1)', icon: CheckCircle2 },
-        pending: { label: 'PENDING', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.1)', icon: AlertTriangle },
-        frozen: { label: 'FROZEN', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.1)', icon: Lock },
-        under_dispute: { label: 'DISPUTED', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.1)', icon: AlertTriangle },
-        pending_transfer: { label: 'TRANSFER', color: '#A855F7', bg: 'rgba(168, 85, 247, 0.1)', icon: ArrowUpRight },
-        rejected: { label: 'REJECTED', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.1)', icon: ShieldAlert },
+        active: { label: 'VERIFIED', color: '#065F46', bg: '#ECFDF5', border: '#A7F3D0', icon: CheckCircle2 },
+        verified: { label: 'VERIFIED', color: '#065F46', bg: '#ECFDF5', border: '#A7F3D0', icon: CheckCircle2 },
+        pending: { label: 'UNDER REVIEW', color: '#92400E', bg: '#FEF3C7', border: '#FDE68A', icon: AlertTriangle },
+        frozen: { label: 'FROZEN', color: '#1E40AF', bg: '#EFF6FF', border: '#BFDBFE', icon: Lock },
+        under_dispute: { label: 'DISPUTED', color: '#991B1B', bg: '#FEF2F2', border: '#FECACA', icon: AlertTriangle },
+        pending_transfer: { label: 'BEING TRANSFERRED', color: '#1E40AF', bg: '#EFF6FF', border: '#BFDBFE', icon: ArrowUpRight },
+        rejected: { label: 'REJECTED', color: '#991B1B', bg: '#FEF2F2', border: '#FECACA', icon: ShieldAlert },
     };
 
     const getStatusConfig = (status) => statusConfig[status] || statusConfig.pending;
 
     // Filter and search — also matches propertyCode (e.g. "MA-2026-00006")
     const filtered = properties.filter(p => {
-        if (filter !== 'all' && p.status !== filter) return false;
+        if (filter === 'active' && !(p.status === 'active' || p.status === 'verified')) return false;
+        if (filter === 'pending' && p.status !== 'pending') return false;
+        if (filter === 'pending_transfer' && p.status !== 'pending_transfer') return false;
+        if (filter === 'frozen_or_dispute' && !(p.status === 'frozen' || p.status === 'under_dispute')) return false;
+        if (filter === 'rejected' && p.status !== 'rejected') return false;
+        if (filter !== 'all' && filter !== 'active' && filter !== 'pending' && filter !== 'pending_transfer' && filter !== 'frozen_or_dispute' && filter !== 'rejected' && p.status !== filter) return false;
+
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
-            return (p.surveyNumber?.toLowerCase().includes(q) ||
+            return (
+                p.surveyNumber?.toLowerCase().includes(q) ||
                 p.propertyCode?.toLowerCase().includes(q) ||
                 p.district?.toLowerCase().includes(q) ||
                 p.state?.toLowerCase().includes(q) ||
                 p.addressLine?.toLowerCase().includes(q) ||
-                p.id?.toString().includes(q));
+                p.id?.toString().includes(q)
+            );
         }
         return true;
     });
@@ -62,229 +73,397 @@ const MyProperties = () => {
         all: properties.length,
         active: properties.filter(p => p.status === 'active' || p.status === 'verified').length,
         pending: properties.filter(p => p.status === 'pending').length,
-        frozen: properties.filter(p => p.status === 'frozen').length,
-        under_dispute: properties.filter(p => p.status === 'under_dispute').length,
+        pending_transfer: properties.filter(p => p.status === 'pending_transfer').length,
+        frozen_or_dispute: properties.filter(p => p.status === 'frozen' || p.status === 'under_dispute').length,
+        rejected: properties.filter(p => p.status === 'rejected').length,
     };
 
     if (loading) {
         return (
-            <div style={{ display: 'flex', height: '100vh', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', height: '80vh', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse">
-                    <Loader2 style={{ width: '3rem', height: '3rem', color: '#00E5FF' }} className="animate-spin" />
-                    <p style={{ fontWeight: 600, letterSpacing: '0.05em', fontSize: '0.875rem', color: '#00E5FF' }}>Loading properties, please wait...</p>
+                    <Loader2 style={{ width: '2.5rem', height: '2.5rem', color: '#1E40AF' }} className="animate-spin" />
+                    <p style={{ fontWeight: 600, letterSpacing: '0.02em', fontSize: '0.875rem', color: '#1E40AF' }}>Loading your properties...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="w-full max-w-[1400px] mx-auto p-4 md:p-8 animate-fade-in">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                <div>
-                    <h1 className="text-4xl font-black tracking-tight mb-2" style={{ letterSpacing: '-0.02em', color: 'white' }}>
-                        My Properties
-                    </h1>
-                    <p style={{ color: 'hsl(220,15%,60%)', fontSize: '0.95rem' }}>
-                        Showing {properties.length} registered properties on the blockchain
-                    </p>
+        <div className="dashboard-container">
+
+            {/* ─── Page Header ─── */}
+            <div className="profile-header-card">
+                <div className="profile-header-main">
+                    <div className="profile-avatar-box">
+                        <Building size={32} />
+                    </div>
+                    <div>
+                        <div className="profile-badge-top">
+                            <ShieldCheck size={14} className="text-blue-600" />
+                            <span>OFFICIAL LAND REGISTRY</span>
+                        </div>
+                        <h1 className="profile-title">My Registered Properties</h1>
+                        <p className="profile-subtitle">
+                            Properties you own that are verified and recorded. ({properties.length} Total Properties)
+                        </p>
+                    </div>
                 </div>
-                <button
-                    className="cyber-btn-hollow"
-                    onClick={() => navigate('/register-property')}
-                    style={{ '--btn-color': '#00E5FF', padding: '0.85rem 1.5rem', width: 'auto', alignSelf: 'flex-start', textTransform: 'capitalize' }}
-                >
-                    <PlusCircle size={18} /> Register New Property
-                </button>
+
+                <div className="profile-header-actions">
+                    <button
+                        className="gov-primary-btn"
+                        onClick={() => navigate('/register-property')}
+                    >
+                        <PlusCircle size={16} /> Register New Property
+                    </button>
+                </div>
             </div>
 
-            {/* Dash Bar */}
-            <div className="cyber-hud-bar">
-                <div className="cyber-search-wrapper">
-                    <Search className="cyber-search-icon" size={16} />
-                    <input
-                        type="text"
-                        placeholder="Search by Survey No, District, or State..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        style={{ fontFamily: 'inherit' }}
-                    />
-                </div>
-                <div className="cyber-filter-container">
-                    {Object.entries(statusCounts).map(([key, count]) => (
+            {/* ─── Search & Filter Command Bar ─── */}
+            <div className="gov-white-panel mb-6" style={{ padding: '1.25rem 1.5rem' }}>
+                <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
+                    {/* Search Bar */}
+                    <div style={{ position: 'relative', flex: 1, minWidth: '260px' }}>
+                        <Search size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
+                        <input
+                            type="text"
+                            placeholder="Search by survey number, property code, district, or state..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '0.65rem 1rem 0.65rem 2.5rem',
+                                borderRadius: '10px',
+                                border: '1px solid #CBD5E1',
+                                background: '#F8FAFC',
+                                fontSize: '0.85rem',
+                                color: '#0F172A',
+                                outline: 'none'
+                            }}
+                        />
+                    </div>
+
+                    {/* Filter Pills */}
+                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
                         <button
-                            key={key}
-                            className={`cyber-filter-btn ${filter === key ? 'active' : ''}`}
-                            onClick={() => setFilter(key)}
-                            style={{ textTransform: 'capitalize' }}
+                            className={`gov-filter-pill ${filter === 'all' ? 'active' : ''}`}
+                            onClick={() => setFilter('all')}
                         >
-                            {key === 'all' ? 'All' : key.replace('_', ' ')} ({count})
+                            All Properties ({statusCounts.all})
                         </button>
-                    ))}
+                        <button
+                            className={`gov-filter-pill ${filter === 'active' ? 'active' : ''}`}
+                            onClick={() => setFilter('active')}
+                        >
+                            Verified ({statusCounts.active})
+                        </button>
+                        <button
+                            className={`gov-filter-pill ${filter === 'pending' ? 'active' : ''}`}
+                            onClick={() => setFilter('pending')}
+                        >
+                            Under Review ({statusCounts.pending})
+                        </button>
+                        <button
+                            className={`gov-filter-pill ${filter === 'pending_transfer' ? 'active' : ''}`}
+                            onClick={() => setFilter('pending_transfer')}
+                        >
+                            Being Sold/Transferred ({statusCounts.pending_transfer})
+                        </button>
+                        <button
+                            className={`gov-filter-pill ${filter === 'frozen_or_dispute' ? 'active' : ''}`}
+                            onClick={() => setFilter('frozen_or_dispute')}
+                        >
+                            Disputed / Frozen ({statusCounts.frozen_or_dispute})
+                        </button>
+                        <button
+                            className={`gov-filter-pill ${filter === 'rejected' ? 'active' : ''}`}
+                            onClick={() => setFilter('rejected')}
+                            style={{
+                                borderColor: filter === 'rejected' ? '#DC2626' : undefined,
+                                color: filter === 'rejected' ? '#FFFFFF' : statusCounts.rejected > 0 ? '#DC2626' : undefined,
+                                backgroundColor: filter === 'rejected' ? '#DC2626' : undefined
+                            }}
+                        >
+                            Rejected ({statusCounts.rejected})
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {/* Property Grid */}
+            {/* ─── Property Grid ─── */}
             {filtered.length === 0 ? (
-                <div className="empty-state max-w-2xl mx-auto mt-12" style={{ border: '1px dashed rgba(0,229,255,0.3)', background: 'rgba(0,229,255,0.02)' }}>
-                    <Search size={48} style={{ opacity: 0.5, marginBottom: '1.5rem', color: '#00E5FF', display: 'inline-block' }} />
-                    <p style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem', color: 'white' }}>
-                        {properties.length === 0 ? 'No Properties Registered' : 'No properties match your search'}
-                    </p>
-                    <p style={{ marginBottom: '1.5rem', color: 'hsl(220,15%,60%)' }}>
-                        {properties.length === 0 ? 'Start by registering your first property to the system.' : 'Try adjusting your search query or clear the filters.'}
+                <div className="gov-white-panel text-center" style={{ padding: '3.5rem 1.5rem', borderStyle: 'dashed' }}>
+                    <Building size={42} style={{ color: '#94A3B8', margin: '0 auto 1rem auto' }} />
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', marginBottom: '0.35rem' }}>
+                        {properties.length === 0 ? 'No Properties Added Yet' : 'No Properties Match Your Filter'}
+                    </h3>
+                    <p style={{ color: '#64748B', fontSize: '0.85rem', maxWidth: '460px', margin: '0 auto 1.25rem auto' }}>
+                        {properties.length === 0
+                            ? 'Start by registering your first property to verify and record ownership.'
+                            : 'Try adjusting your search terms or switching filters to find what you are looking for.'}
                     </p>
                     {properties.length === 0 && (
-                        <button className="cyber-btn-hollow" onClick={() => navigate('/register-property')} style={{ '--btn-color': '#00E5FF', textTransform: 'capitalize' }}>
-                            <PlusCircle size={16} /> Register Property
+                        <button className="gov-primary-btn" onClick={() => navigate('/register-property')}>
+                            <PlusCircle size={16} /> Register First Property
                         </button>
                     )}
                 </div>
             ) : (
-                <div className="cyber-grid-layout">
-                    {filtered.map((prop, idx) => {
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.35rem' }}>
+                    {filtered.map((prop) => {
                         const sc = getStatusConfig(prop.status);
-                        
+                        const StatusIcon = sc.icon;
+                        const isClear = !prop.encumbranceStatus;
+
                         return (
                             <div
                                 key={prop.id}
-                                className="cyber-property-card"
-                                style={{ 
-                                    '--tier-color': sc.color, 
-                                    '--tier-color-hover': sc.color,
-                                    '--tier-glow': sc.bg,
-                                    animationDelay: `${idx * 0.05}s`
+                                className="gov-white-panel"
+                                style={{
+                                    padding: '1.5rem',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'space-between',
+                                    gap: '1.25rem',
+                                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                                    cursor: 'pointer'
                                 }}
                                 onClick={() => navigate(`/properties/${prop.id}`)}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-3px)';
+                                    e.currentTarget.style.borderColor = '#CBD5E1';
+                                    e.currentTarget.style.boxShadow = '0 10px 24px -6px rgba(15, 23, 42, 0.08)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.borderColor = '#E2E8F0';
+                                    e.currentTarget.style.boxShadow = '0 1px 3px rgba(15, 23, 42, 0.04)';
+                                }}
                             >
-                                <div className="cyber-card-glow-orb" style={{ background: sc.color }}></div>
-                                
                                 <div>
-                                    <div className="flex justify-between items-start mb-4">
+                                    {/* Card Header: Survey Number & Status Pill */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.85rem', gap: '0.5rem' }}>
                                         <div>
-                                            <h3 className="text-xl font-bold tracking-tight text-white mb-1">
-                                                {prop.surveyNumber}
-                                            </h3>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                                                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em' }}>
+                                                    Survey #{prop.surveyNumber}
+                                                </span>
+                                            </div>
                                             {prop.propertyCode && (
-                                                <p style={{ fontSize: '0.7rem', fontFamily: 'JetBrains Mono, monospace', color: prop.status === 'frozen' ? '#3B82F6' : 'rgba(255,255,255,0.35)', marginTop: '0.1rem' }}>
+                                                <span style={{
+                                                    display: 'inline-block',
+                                                    marginTop: '0.2rem',
+                                                    fontSize: '0.72rem',
+                                                    fontFamily: 'JetBrains Mono, monospace',
+                                                    fontWeight: 700,
+                                                    color: '#1E40AF',
+                                                    background: '#EFF6FF',
+                                                    border: '1px solid #DBEAFE',
+                                                    padding: '0.1rem 0.45rem',
+                                                    borderRadius: '4px'
+                                                }}>
                                                     {prop.propertyCode}
-                                                </p>
+                                                </span>
                                             )}
                                         </div>
-                                        <div 
-                                            className="cyber-badge" 
-                                            style={{ 
-                                                '--badge-color': sc.color, 
-                                                '--badge-bg': sc.bg,
-                                                '--badge-border': `rgba(255,255,255,0.1)`,
-                                                textTransform: 'uppercase'
+
+                                        <div
+                                            style={{
+                                                background: sc.bg,
+                                                color: sc.color,
+                                                border: `1px solid ${sc.border}`,
+                                                fontSize: '0.68rem',
+                                                fontWeight: 800,
+                                                padding: '0.25rem 0.6rem',
+                                                borderRadius: '6px',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '0.3rem',
+                                                letterSpacing: '0.03em'
                                             }}
                                         >
-                                            <div className="cyber-badge-dot" style={{ background: sc.color, boxShadow: `0 0 8px ${sc.color}` }}></div>
+                                            <StatusIcon size={12} />
                                             {sc.label}
                                         </div>
                                     </div>
-                                    
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'hsl(220,15%,60%)', fontSize: '0.85rem', fontWeight: 500, marginBottom: '1rem' }}>
-                                        <MapPin size={14} style={{ color: sc.color }} />
-                                        {prop.district}{prop.state ? `, ${prop.state}` : ''}
+
+                                    {/* Location */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#64748B', fontSize: '0.82rem', fontWeight: 500, marginBottom: '1.1rem' }}>
+                                        <MapPin size={14} style={{ color: '#1E40AF', flexShrink: 0 }} />
+                                        <span>{prop.district}{prop.state ? `, ${prop.state}` : ''}</span>
                                     </div>
 
-                                    <div className="cyber-data-grid">
-                                        <div className="cyber-data-item">
-                                            <div className="label">Area</div>
-                                            <div className="value">{prop.areaSqft ? prop.areaSqft.toLocaleString() + ' sq.ft' : 'N/A'}</div>
+                                    {/* Area and Legal Status Grid */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem', marginBottom: '1rem' }}>
+                                        <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '0.65rem 0.85rem', borderRadius: '8px' }}>
+                                            <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: '#64748B', fontWeight: 700, display: 'block', marginBottom: '0.15rem' }}>Total Area</span>
+                                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0F172A' }}>
+                                                {prop.areaSqft ? `${Number(prop.areaSqft).toLocaleString()} sq.ft` : 'N/A'}
+                                            </span>
                                         </div>
-                                        <div className="cyber-data-item">
-                                            <div className="label">Encumbrance</div>
-                                            <div className="value" style={{ color: !prop.encumbranceStatus ? '#00E5FF' : '#FF007F' }}>
-                                                {!prop.encumbranceStatus ? 'Clear' : 'Flagged'}
-                                            </div>
+
+                                        <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '0.65rem 0.85rem', borderRadius: '8px' }}>
+                                            <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: '#64748B', fontWeight: 700, display: 'block', marginBottom: '0.15rem' }}>Legal Status</span>
+                                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: isClear ? '#065F46' : '#991B1B' }}>
+                                                {isClear ? 'Clear Title' : 'Has Legal Issues'}
+                                            </span>
                                         </div>
                                     </div>
-                                    
+
+                                    {/* Digital Certificate Link */}
                                     {prop.nftTokenId && (
-                                        <div style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                                            <a 
-                                                href={`https://testnet.snowtrace.io/nft/0xE94d65289Cc088f597C077938A6D7Fc0974196fe/${prop.nftTokenId}`}
-                                                target="_blank" 
+                                        <div style={{ marginBottom: '0.85rem' }}>
+                                            <a
+                                                href={`https://sepolia.etherscan.io/token/0xbCB28DC4eF6242572c0a65D1643595C582106249?a=${prop.nftTokenId}`}
+                                                target="_blank"
                                                 rel="noopener noreferrer"
-                                                style={{ color: '#00E5FF', fontFamily: 'JetBrains Mono', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', background: 'rgba(0,229,255,0.05)', padding: '0.4rem 0.75rem', borderRadius: '6px', border: '1px solid rgba(0,229,255,0.2)' }}
+                                                style={{
+                                                    color: '#1E40AF',
+                                                    fontFamily: 'JetBrains Mono, monospace',
+                                                    fontSize: '0.72rem',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.35rem',
+                                                    textDecoration: 'none',
+                                                    background: '#EFF6FF',
+                                                    padding: '0.35rem 0.65rem',
+                                                    borderRadius: '6px',
+                                                    border: '1px solid #BFDBFE',
+                                                    fontWeight: 600
+                                                }}
                                                 onClick={(e) => e.stopPropagation()}
                                             >
-                                                Digital Title #{prop.nftTokenId} <ExternalLink size={12} />
+                                                Digital Certificate #{prop.nftTokenId} <ExternalLink size={11} />
                                             </a>
                                         </div>
                                     )}
 
-                                    {/* Frozen / Dispute Alert Banner */}
+                                    {/* Status Alerts if frozen / dispute */}
                                     {prop.status === 'frozen' && (
                                         <div style={{
-                                            marginTop: '0.75rem',
-                                            padding: '0.6rem 0.85rem',
+                                            padding: '0.6rem 0.75rem',
                                             borderRadius: '8px',
-                                            background: 'rgba(59,130,246,0.08)',
-                                            border: '1px solid rgba(59,130,246,0.25)',
-                                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                            background: '#EFF6FF',
+                                            border: '1px solid #BFDBFE',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.45rem',
+                                            marginBottom: '0.85rem'
                                         }}>
-                                            <Lock size={12} style={{ color: '#3B82F6', flexShrink: 0 }} />
-                                            <span style={{ fontSize: '0.72rem', color: '#93c5fd', fontWeight: 600, lineHeight: 1.4 }}>
-                                                Property frozen by court order — all transfers suspended.
-                                            </span>
-                                        </div>
-                                    )}
-                                    {prop.status === 'under_dispute' && (
-                                        <div style={{
-                                            marginTop: '0.75rem',
-                                            padding: '0.6rem 0.85rem',
-                                            borderRadius: '8px',
-                                            background: 'rgba(239,68,68,0.07)',
-                                            border: '1px solid rgba(239,68,68,0.2)',
-                                            display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                        }}>
-                                            <AlertTriangle size={12} style={{ color: '#EF4444', flexShrink: 0 }} />
-                                            <span style={{ fontSize: '0.72rem', color: '#fca5a5', fontWeight: 600, lineHeight: 1.4 }}>
-                                                Property under active legal dispute.
+                                            <Lock size={13} style={{ color: '#1E40AF', flexShrink: 0 }} />
+                                            <span style={{ fontSize: '0.72rem', color: '#1E40AF', fontWeight: 600 }}>
+                                                Frozen by court order &bull; Transfers temporarily blocked
                                             </span>
                                         </div>
                                     )}
 
-                                    {prop.adminComments && (
+                                    {prop.status === 'under_dispute' && (
                                         <div style={{
-                                            marginTop: '0.75rem',
-                                            padding: '0.6rem 0.85rem',
+                                            padding: '0.6rem 0.75rem',
                                             borderRadius: '8px',
-                                            background: 'rgba(245,158,11,0.05)',
-                                            border: '1px solid rgba(245,158,11,0.2)',
+                                            background: '#FEF2F2',
+                                            border: '1px solid #FECACA',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.45rem',
+                                            marginBottom: '0.85rem'
                                         }}>
-                                            <span style={{ fontSize: '0.55rem', fontWeight: 700, textTransform: 'uppercase', color: '#F59E0B', display: 'block', marginBottom: '0.2rem' }}>Administration Note</span>
-                                            <span style={{ fontSize: '0.72rem', color: '#fcd34d', lineHeight: 1.4, display: 'block' }}>
-                                                {prop.adminComments}
+                                            <AlertTriangle size={13} style={{ color: '#991B1B', flexShrink: 0 }} />
+                                            <span style={{ fontSize: '0.72rem', color: '#991B1B', fontWeight: 600 }}>
+                                                Active dispute on this property
                                             </span>
+                                        </div>
+                                    )}
+
+                                    {prop.status === 'rejected' && (
+                                        <div style={{
+                                            padding: '0.75rem 0.9rem',
+                                            borderRadius: '8px',
+                                            background: '#FEF2F2',
+                                            border: '1px solid #FECACA',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '6px',
+                                            marginBottom: '0.85rem'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.45rem', flexWrap: 'wrap' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                                                    <ShieldAlert size={14} style={{ color: '#DC2626', flexShrink: 0 }} />
+                                                    <span style={{ fontSize: '0.72rem', color: '#991B1B', fontWeight: 800, textTransform: 'uppercase' }}>
+                                                        Registration Rejected
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate(`/reapply-property/${prop.id}`);
+                                                    }}
+                                                    style={{
+                                                        fontSize: '0.72rem',
+                                                        fontWeight: 700,
+                                                        color: '#FFFFFF',
+                                                        backgroundColor: '#DC2626',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        padding: '2px 8px',
+                                                        cursor: 'pointer',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px'
+                                                    }}
+                                                >
+                                                    <RotateCcw size={11} /> Reapply Now
+                                                </button>
+                                            </div>
+                                            <p style={{ fontSize: '0.78rem', color: '#7F1D1D', margin: 0, lineHeight: 1.4 }}>
+                                                <strong>Reason:</strong> {prop.adminComments || 'Document verification failed or cadastral boundary discrepancy.'}
+                                            </p>
                                         </div>
                                     )}
                                 </div>
 
-                                <div>
-                                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '1rem', wordBreak: 'break-all' }}>
-                                        Record ID: {prop.id}
-                                    </div>
-                                    
-                                    <div className="cyber-actions" style={{ position: 'relative', zIndex: 10 }}>
+                                {/* Actions Row */}
+                                <div style={{ paddingTop: '0.85rem', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: '0.7rem', color: '#64748B', fontFamily: 'JetBrains Mono, monospace' }}>
+                                        ID: {prop.id?.slice(0, 8)}...
+                                    </span>
+
+                                    <div style={{ display: 'flex', gap: '0.45rem' }}>
                                         <button
-                                            className="cyber-btn-hollow"
-                                            onClick={(e) => { e.stopPropagation(); navigate(`/properties/${prop.id}`); }}
-                                            style={{ '--btn-color': '#9ca3af', textTransform: 'capitalize' }}
+                                            className="gov-cancel-btn"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                navigate(`/properties/${prop.id}`);
+                                            }}
+                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
                                         >
-                                            <Eye size={16} /> View Details
+                                            <Eye size={13} /> View Details
                                         </button>
+
+                                        {prop.status === 'rejected' && (
+                                            <button
+                                                className="gov-primary-btn"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigate(`/reapply-property/${prop.id}`);
+                                                }}
+                                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', backgroundColor: '#2563EB' }}
+                                            >
+                                                <RotateCcw size={13} /> Reapply Application
+                                            </button>
+                                        )}
+
                                         {(prop.status === 'active' || prop.status === 'verified') && (
                                             <button
-                                                className="cyber-btn-hollow"
-                                                onClick={(e) => { e.stopPropagation(); navigate(`/properties/${prop.id}`); }}
-                                                style={{ '--btn-color': sc.color, textTransform: 'capitalize' }}
+                                                className="gov-primary-btn"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigate(`/properties/${prop.id}`);
+                                                }}
+                                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
                                             >
-                                                <ArrowUpRight size={16} /> Sell Property
+                                                <ArrowUpRight size={13} /> Manage Property
                                             </button>
                                         )}
                                     </div>
@@ -294,6 +473,7 @@ const MyProperties = () => {
                     })}
                 </div>
             )}
+
         </div>
     );
 };

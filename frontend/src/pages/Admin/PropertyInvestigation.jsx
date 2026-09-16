@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminService } from '../../services/admin.service';
 import {
     ShieldAlert, AlertTriangle, Search, Ban, Loader2,
     Building2, MapPin, Wallet, ChevronDown,
     ChevronUp, CheckCircle2, UploadCloud, FileText,
-    XCircle, RefreshCcw, Clock, ArrowRight
+    XCircle, RefreshCcw, Clock, ArrowRight, BrainCircuit,
+    Shield, ShieldCheck, User, Scale, FileCheck, ExternalLink, Copy,
+    Users, Percent, Lock, Unlock, Gavel, Printer, Check
 } from 'lucide-react';
 
 const PropertyInvestigation = () => {
@@ -13,41 +15,112 @@ const PropertyInvestigation = () => {
     const [query, setQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const [properties, setProperties] = useState([]);
+    const [allProperties, setAllProperties] = useState([]);
     const [searched, setSearched] = useState(false);
     const [expandedProp, setExpandedProp] = useState(null);
+    const [activeSubTab, setActiveSubTab] = useState('details'); // details, coOwners, legal
     const [actionLoading, setActionLoading] = useState(null);
-    const [walletData, setWalletData] = useState({});
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [copiedId, setCopiedId] = useState('');
 
-    // ── Freeze modal state ────────────────────────────────
-    const [freezeModal, setFreezeModal] = useState(null); // { propId }
+    // ── Modals ─────────────────────────────────────────────
+    const [freezeModal, setFreezeModal] = useState(null); // { propId, propertyCode }
     const [freezeReason, setFreezeReason] = useState('');
     const [freezeHash, setFreezeHash] = useState('');
-    const [freezeFile, setFreezeFile] = useState(null);
     const [freezeUploading, setFreezeUploading] = useState(false);
 
-    // ── Encumbrance modal state ───────────────────────────
-    const [encumbranceModal, setEncumbranceModal] = useState(null); // { propId }
+    const [encumbranceModal, setEncumbranceModal] = useState(null); // { propId, propertyCode }
     const [encumbranceReason, setEncumbranceReason] = useState('');
 
-    // ── Force Transfer (Reverse Sale) modal state ─────────
-    const [forceTransferModal, setForceTransferModal] = useState(null); // { propId }
+    const [forceTransferModal, setForceTransferModal] = useState(null); // { propId, propertyCode }
     const [forceNewOwner, setForceNewOwner] = useState('');
     const [forceReason, setForceReason] = useState('');
     const [forceHash, setForceHash] = useState('');
-    const [forceFile, setForceFile] = useState(null);
     const [forceUploading, setForceUploading] = useState(false);
 
-    // ── Reverse-freeze modal state ────────────────────────
-    const [reverseModal, setReverseModal] = useState(null); // { propId, freezeOrderId }
+    const [reverseModal, setReverseModal] = useState(null); // { propId, freezeOrderId, propertyCode }
     const [reverseHash, setReverseHash] = useState('');
     const [reverseReason, setReverseReason] = useState('');
-    const [reverseFile, setReverseFile] = useState(null);
     const [reverseUploading, setReverseUploading] = useState(false);
 
-    // ── Ledger History modal state ────────────────────────
     const [historyModal, setHistoryModal] = useState(null); // { propId, propertyCode }
     const [historyData, setHistoryData] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(false);
+
+    useEffect(() => {
+        loadAllProperties();
+    }, []);
+
+    const loadAllProperties = async () => {
+        setLoading(true);
+        try {
+            const res = await adminService.listProperties();
+            const list = res.data?.data || [];
+            setAllProperties(list);
+            setProperties(list);
+        } catch (err) {
+            console.error('Failed to load properties', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCopy = (text, id) => {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(''), 2000);
+    };
+
+    const handleSearch = (e, directQuery = null) => {
+        if (e) e.preventDefault();
+        const term = (directQuery !== null ? directQuery : query).toLowerCase().trim();
+        setSearched(true);
+
+        let filtered = allProperties;
+        if (term) {
+            filtered = filtered.filter(p =>
+                (p.id || '').toLowerCase().includes(term) ||
+                (p.propertyCode || '').toLowerCase().includes(term) ||
+                (p.surveyNumber || '').toLowerCase().includes(term) ||
+                (p.district || '').toLowerCase().includes(term) ||
+                (p.ownerWallet || '').toLowerCase().includes(term) ||
+                (p.state || '').toLowerCase().includes(term) ||
+                (p.locality || '').toLowerCase().includes(term)
+            );
+        }
+
+        if (statusFilter !== 'all') {
+            filtered = filtered.filter(p => {
+                if (statusFilter === 'locked') return p.encumbranceStatus === true;
+                return (p.status || '').toLowerCase() === statusFilter;
+            });
+        }
+
+        setProperties(filtered);
+    };
+
+    const applyStatusFilter = (st) => {
+        setStatusFilter(st);
+        let filtered = allProperties;
+        const term = query.toLowerCase().trim();
+        if (term) {
+            filtered = filtered.filter(p =>
+                (p.id || '').toLowerCase().includes(term) ||
+                (p.propertyCode || '').toLowerCase().includes(term) ||
+                (p.surveyNumber || '').toLowerCase().includes(term) ||
+                (p.district || '').toLowerCase().includes(term) ||
+                (p.ownerWallet || '').toLowerCase().includes(term)
+            );
+        }
+        if (st !== 'all') {
+            filtered = filtered.filter(p => {
+                if (st === 'locked') return p.encumbranceStatus === true;
+                return (p.status || '').toLowerCase() === st;
+            });
+        }
+        setProperties(filtered);
+    };
 
     // ── Upload court document to IPFS ─────────────────────
     const uploadDoc = async (file, setUploading, setHash) => {
@@ -56,7 +129,7 @@ const PropertyInvestigation = () => {
         try {
             const res = await adminService.uploadCourtDocument(file);
             const hash = res.data?.data?.ipfsHash || res.data?.ipfsHash || res.data?.hash || '';
-            if (!hash) throw new Error('No hash returned from IPFS upload');
+            if (!hash) throw new Error('No IPFS hash returned');
             setHash(hash);
         } catch (err) {
             alert(err.response?.data?.message || 'Document upload failed. Please try again.');
@@ -65,111 +138,66 @@ const PropertyInvestigation = () => {
         }
     };
 
-    const handleSearch = async (e) => {
-        e.preventDefault();
-        if (!query.trim()) return;
-        setLoading(true);
-        setSearched(true);
-        try {
-            const res = await adminService.listProperties();
-            const all = res.data?.data || [];
-            const q = query.toLowerCase().trim();
-            const filtered = all.filter(p =>
-                (p.id || '').toLowerCase().includes(q) ||
-                (p.propertyCode || '').toLowerCase().includes(q) ||
-                (p.surveyNumber || '').toLowerCase().includes(q) ||
-                (p.district || '').toLowerCase().includes(q) ||
-                (p.ownerWallet || '').toLowerCase().includes(q) ||
-                (p.state || '').toLowerCase().includes(q)
-            );
-            setProperties(filtered);
-        } catch (err) {
-            console.error('Search failed:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Bug 1 fix: open modal — court uploads PDF, hash auto-filled
-    const openFreezeModal = (propId) => {
-        setFreezeReason('');
-        setFreezeHash('');
-        setFreezeFile(null);
-        setFreezeModal({ propId });
-    };
-
+    // ── Action Handlers ────────────────────────────────────
     const handleFreeze = async () => {
         if (!freezeHash.trim() || freezeHash.trim().length < 10) {
-            alert('Court Order Hash must be at least 10 characters (IPFS hash).');
+            alert('A valid court stay order document is required.');
             return;
         }
         const { propId } = freezeModal;
         setFreezeModal(null);
         setActionLoading(propId);
         try {
-            await adminService.freezeProperty(propId, freezeReason.trim() || undefined, freezeHash.trim());
-            handleSearch({ preventDefault: () => { } });
+            await adminService.freezeProperty(propId, freezeReason.trim() || 'Court Injunction', freezeHash.trim());
+            await loadAllProperties();
         } catch (err) {
-            alert(err.response?.data?.message || 'Freeze failed');
+            alert(err.response?.data?.message || 'Property freeze failed');
         } finally {
             setActionLoading(null);
         }
     };
 
-    // Bug 2 fix: open modal — court uploads PDF, hash auto-filled
-    const openReverseModal = (propId, freezeOrderId) => {
-        setReverseHash('');
-        setReverseReason('');
-        setReverseFile(null);
-        setReverseModal({ propId, freezeOrderId });
-    };
-
     const handleReverseFreeze = async () => {
         if (!reverseHash.trim() || reverseHash.trim().length < 10) {
-            alert('Court Order Hash must be at least 10 characters (IPFS hash).');
+            alert('A valid court decree document is required.');
             return;
         }
         const { propId, freezeOrderId } = reverseModal;
         setReverseModal(null);
         setActionLoading(propId);
         try {
-            await adminService.reverseFreezeOrder(freezeOrderId, reverseHash.trim(), reverseReason.trim() || undefined);
-            handleSearch({ preventDefault: () => { } });
+            await adminService.reverseFreezeOrder(freezeOrderId, reverseHash.trim(), reverseReason.trim() || 'Court Order Lifted');
+            await loadAllProperties();
         } catch (err) {
-            alert(err.response?.data?.message || 'Reverse freeze failed');
+            alert(err.response?.data?.message || 'Failed to lift court freeze');
         } finally {
             setActionLoading(null);
         }
     };
 
-    const handleSetEncumbrance = (propId) => {
-        setEncumbranceReason('');
-        setEncumbranceModal({ propId });
-    };
-
     const submitEncumbrance = async () => {
-        if (!encumbranceReason.trim()) return alert('Please provide a reason for the encumbrance.');
+        if (!encumbranceReason.trim()) return alert('Please enter the reason for locking this property.');
         const { propId } = encumbranceModal;
         setActionLoading(propId);
         try {
             await adminService.setEncumbrance(propId, true, encumbranceReason.trim());
             setEncumbranceModal(null);
-            handleSearch({ preventDefault: () => { } });
+            await loadAllProperties();
         } catch (err) {
-            alert(err.response?.data?.message || 'Failed to set encumbrance');
+            alert(err.response?.data?.message || 'Failed to lock property');
         } finally {
             setActionLoading(null);
         }
     };
 
     const handleClearEncumbrance = async (propId) => {
-        if (!window.confirm('Clear the encumbrance on this property?')) return;
+        if (!window.confirm('Unlock this property? This will remove the officer lock status.')) return;
         setActionLoading(propId);
         try {
             await adminService.setEncumbrance(propId, false);
-            handleSearch({ preventDefault: () => { } });
+            await loadAllProperties();
         } catch (err) {
-            alert(err.response?.data?.message || 'Failed to clear encumbrance');
+            alert(err.response?.data?.message || 'Failed to unlock property');
         } finally {
             setActionLoading(null);
         }
@@ -177,7 +205,7 @@ const PropertyInvestigation = () => {
 
     const submitForceTransfer = async () => {
         if (!forceNewOwner.trim() || !forceReason.trim() || !forceHash) {
-            return alert('Please fill in all fields and upload the court order.');
+            return alert('Please provide the new owner wallet address, reason, and uploaded court decree.');
         }
         const { propId } = forceTransferModal;
         setActionLoading(propId);
@@ -189,9 +217,9 @@ const PropertyInvestigation = () => {
                 courtOrderHash: forceHash
             });
             setForceTransferModal(null);
-            handleSearch({ preventDefault: () => { } });
+            await loadAllProperties();
         } catch (err) {
-            alert(err.response?.data?.message || 'Force transfer failed');
+            alert(err.response?.data?.message || 'Court transfer failed');
         } finally {
             setActionLoading(null);
         }
@@ -210,894 +238,1044 @@ const PropertyInvestigation = () => {
         }
     };
 
-    const loadOwnerData = async (wallet) => {
-        if (walletData[wallet]) return;
-        try {
-            const res = await adminService.lookupWallet(wallet);
-            setWalletData(prev => ({ ...prev, [wallet]: res.data?.data }));
-        } catch (err) {
-            console.error('Owner lookup failed:', err);
-        }
-    };
-
-    const expandProp = (propId, ownerWallet) => {
-        if (expandedProp === propId) {
-            setExpandedProp(null);
-        } else {
-            setExpandedProp(propId);
-            if (ownerWallet) loadOwnerData(ownerWallet);
-        }
-    };
-
     const shortenWallet = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '—';
 
-    const statusStyle = (status) => {
-        switch (status) {
-            case 'active': return { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: '#22c55e' };
-            case 'frozen': return { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#ef4444' };
-            case 'pending': return { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.2)', text: '#eab308' };
-            default: return { bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.1)', text: 'rgba(255,255,255,0.5)' };
+    const getStatusStyle = (status) => {
+        switch (status?.toLowerCase()) {
+            case 'active':
+            case 'verified':
+                return { bg: '#ECFDF5', border: '#A7F3D0', text: '#047857', label: 'Registered & Active' };
+            case 'pending':
+                return { bg: '#FEF3C7', border: '#FDE68A', text: '#B45309', label: 'Pending Review' };
+            case 'frozen':
+            case 'under_dispute':
+                return { bg: '#FEF2F2', border: '#FECACA', text: '#B91C1C', label: 'Court Stay / Frozen' };
+            case 'rejected':
+                return { bg: '#FEF2F2', border: '#FECACA', text: '#B91C1C', label: 'Rejected' };
+            default:
+                return { bg: '#F1F5F9', border: '#E2E8F0', text: '#475569', label: (status || 'Unknown').toUpperCase() };
         }
     };
 
     return (
-        <div className="dashboard-container">
+        <div style={{ width: '100%', maxWidth: '1280px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+                gap: '1rem',
+                backgroundColor: '#FFFFFF',
+                padding: '1.5rem 1.75rem',
+                borderRadius: '12px',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
+            }}>
                 <div>
-                    <h1 className="dashboard-title">
-                        Property <span style={{ color: '#ef4444' }}>Investigation</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            backgroundColor: '#EFF6FF',
+                            border: '1px solid #BFDBFE',
+                            color: '#1D4ED8',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '9999px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em'
+                        }}>
+                            <Building2 size={12} />
+                            Title & Land Investigation
+                        </span>
+                        <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            backgroundColor: '#ECFDF5',
+                            border: '1px solid #A7F3D0',
+                            color: '#047857',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '9999px'
+                        }}>
+                            Ethereum Sepolia Testnet
+                        </span>
+                    </div>
+                    <h1 style={{
+                        fontSize: '1.65rem',
+                        fontWeight: 800,
+                        color: '#0F172A',
+                        letterSpacing: '-0.02em',
+                        margin: 0
+                    }}>
+                        Check Property & Legal Title
                     </h1>
-                    <p className="text-muted mt-2" style={{ fontSize: '0.9rem' }}>
-                        Search properties for pre-court intervention — freeze, encumber, or flag disputes.
+                    <p style={{ fontSize: '0.875rem', color: '#64748B', marginTop: '4px', margin: 0 }}>
+                        Search any property, verify co-owners and boundary coordinates, apply judicial stay orders, or transfer titles.
                     </p>
                 </div>
-                <button onClick={() => navigate('/authority')} className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>← Back</button>
-            </div>
 
-            {/* Warning */}
-            <div style={{
-                padding: '0.75rem 1rem', borderRadius: '0.75rem', marginBottom: '1.5rem',
-                background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)',
-                display: 'flex', alignItems: 'center', gap: '0.75rem',
-            }}>
-                <ShieldAlert size={18} style={{ color: '#ef4444', flexShrink: 0 }} />
-                <p style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(239,68,68,0.8)' }}>
-                    <strong>AUTHORITY ACTION:</strong> Investigation actions restrict on-chain property rights.
-                    Disputed/frozen status suspends all associated transactions until official resolution.
-                </p>
-            </div>
-
-            {/* Search */}
-            <form onSubmit={handleSearch} className="glass-panel p-5 mb-6">
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <div style={{ flex: 1, position: 'relative' }}>
-                        <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
-                        <input
-                            type="text"
-                            placeholder="Search by property code, survey number, district, owner wallet..."
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            className="input-premium"
-                            style={{ paddingLeft: 40, fontSize: '0.88rem', width: '100%' }}
-                        />
-                    </div>
-                    <button type="submit" disabled={loading} style={{
-                        padding: '0.6rem 1.5rem', borderRadius: '0.5rem', fontSize: '0.82rem', fontWeight: 700,
-                        background: 'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(127,29,29,0.12))',
-                        color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)',
-                        display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
-                        opacity: loading ? 0.5 : 1,
-                    }}>
-                        {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-                        Investigate
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                        onClick={() => window.print()}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '8px 14px',
+                            backgroundColor: '#FFFFFF',
+                            border: '1px solid #CBD5E1',
+                            borderRadius: '8px',
+                            color: '#334155',
+                            fontSize: '0.82rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                        }}
+                    >
+                        <Printer size={14} /> Print Report
+                    </button>
+                    <button
+                        onClick={() => navigate('/authority')}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '8px 14px',
+                            backgroundColor: '#FFFFFF',
+                            border: '1px solid #CBD5E1',
+                            borderRadius: '8px',
+                            color: '#334155',
+                            fontSize: '0.82rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                        }}
+                    >
+                        ← Dashboard
                     </button>
                 </div>
-            </form>
+            </div>
 
-            {/* Results */}
+            {/* Omni Search & Filter Bar */}
+            <div style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: '12px',
+                border: '1px solid #E2E8F0',
+                padding: '1.5rem',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem'
+            }}>
+                {/* Search Form */}
+                <form onSubmit={(e) => handleSearch(e)} style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        flex: '1 1 320px',
+                        backgroundColor: '#F8FAFC',
+                        border: '1px solid #CBD5E1',
+                        borderRadius: '8px',
+                        padding: '10px 14px',
+                        boxSizing: 'border-box'
+                    }}>
+                        <Search size={18} style={{ color: '#64748B', flexShrink: 0 }} />
+                        <input
+                            type="text"
+                            placeholder="Search by Survey Number, Property Code, District, State, or Owner Wallet..."
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            style={{
+                                width: '100%',
+                                border: 'none',
+                                background: 'transparent',
+                                outline: 'none',
+                                padding: 0,
+                                margin: 0,
+                                fontSize: '0.9rem',
+                                color: '#0F172A',
+                                boxShadow: 'none'
+                            }}
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            padding: '12px 24px',
+                            backgroundColor: '#0F172A',
+                            color: '#FFFFFF',
+                            fontSize: '0.85rem',
+                            fontWeight: 700,
+                            borderRadius: '8px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            whiteSpace: 'nowrap'
+                        }}
+                    >
+                        {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                        Search Properties
+                    </button>
+                </form>
+
+                {/* Status Filter Pills */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderTop: '1px solid #F1F5F9', paddingTop: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {[
+                            { key: 'all', label: `All Properties (${allProperties.length})` },
+                            { key: 'active', label: 'Registered & Active' },
+                            { key: 'pending', label: 'Pending Review' },
+                            { key: 'frozen', label: 'Court Stay / Frozen' },
+                            { key: 'locked', label: 'Locked / Encumbered' }
+                        ].map(f => {
+                            const isActive = statusFilter === f.key;
+                            return (
+                                <button
+                                    key={f.key}
+                                    onClick={() => applyStatusFilter(f.key)}
+                                    style={{
+                                        padding: '6px 14px',
+                                        borderRadius: '6px',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        border: isActive ? '1px solid #0F172A' : '1px solid #E2E8F0',
+                                        backgroundColor: isActive ? '#0F172A' : '#F8FAFC',
+                                        color: isActive ? '#FFFFFF' : '#475569',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    {f.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <button
+                        onClick={loadAllProperties}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: 'none',
+                            border: 'none',
+                            color: '#2563EB',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <RefreshCcw size={11} className={loading ? 'animate-spin' : ''} /> Refresh List
+                    </button>
+                </div>
+            </div>
+
+            {/* Loading State */}
             {loading && (
-                <div className="glass-panel p-8 flex items-center justify-center">
-                    <Loader2 size={32} className="animate-spin" style={{ color: '#ef4444' }} />
+                <div style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '12px',
+                    border: '1px solid #E2E8F0',
+                    padding: '3.5rem 2rem',
+                    textAlign: 'center'
+                }}>
+                    <Loader2 size={36} className="animate-spin" style={{ color: '#2563EB', margin: '0 auto 12px auto' }} />
+                    <p style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0F172A', margin: '0 0 4px 0' }}>
+                        Searching Land Titles & Court Registries...
+                    </p>
+                    <p style={{ fontSize: '0.82rem', color: '#64748B', margin: 0 }}>
+                        Checking LandRegistry and CourtOverride smart contract states
+                    </p>
                 </div>
             )}
 
-            {searched && !loading && properties.length === 0 && (
-                <div className="glass-panel p-8 flex flex-col items-center justify-center" style={{ opacity: 0.5 }}>
-                    <Building2 size={48} style={{ marginBottom: '1rem', color: 'rgba(255,255,255,0.3)' }} />
-                    <p style={{ color: 'rgba(255,255,255,0.4)' }}>No properties match the search criteria.</p>
+            {/* Empty State */}
+            {!loading && properties.length === 0 && (
+                <div style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '12px',
+                    border: '1px solid #E2E8F0',
+                    padding: '3.5rem 2rem',
+                    textAlign: 'center'
+                }}>
+                    <div style={{
+                        width: '54px',
+                        height: '54px',
+                        borderRadius: '50%',
+                        backgroundColor: '#F1F5F9',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 12px auto',
+                        color: '#94A3B8'
+                    }}>
+                        <Building2 size={26} />
+                    </div>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A', margin: '0 0 4px 0' }}>No Properties Found</h3>
+                    <p style={{ fontSize: '0.82rem', color: '#64748B', margin: 0 }}>
+                        No property titles matched your filter or search criteria.
+                    </p>
                 </div>
             )}
 
-            {properties.length > 0 && (
-                <div style={{ marginBottom: '0.75rem', fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)' }}>
-                    {properties.length} propert{properties.length !== 1 ? 'ies' : 'y'} found
-                </div>
-            )}
+            {/* Properties List */}
+            {!loading && properties.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {properties.map((p) => {
+                        const isExpanded = expandedProp === p.id;
+                        const statusBadge = getStatusStyle(p.status);
+                        const isFrozen = p.status === 'frozen' || p.status === 'under_dispute';
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {properties.map(p => {
-                    const sc = statusStyle(p.status);
-                    const isExpanded = expandedProp === p.id;
-                    const isActing = actionLoading === p.id;
-                    const ownerInfo = walletData[p.ownerWallet];
-
-                    return (
-                        <div key={p.id} className="glass-panel" style={{ padding: 0, overflow: 'hidden', borderColor: p.status === 'frozen' ? 'rgba(239,68,68,0.15)' : undefined }}>
-                            {/* Row */}
-                            <div onClick={() => expandProp(p.id, p.ownerWallet)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', cursor: 'pointer' }}>
-                                <div className="flex items-center gap-4">
-                                    <div style={{
-                                        width: 44, height: 44, borderRadius: '12px',
-                                        background: sc.bg, border: `1px solid ${sc.border}`,
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: sc.text, flexShrink: 0,
-                                    }}>
-                                        <Building2 size={20} />
-                                    </div>
-                                    <div>
-                                        <p style={{ fontWeight: 700, color: 'white', fontSize: '0.92rem' }}>
-                                            {p.propertyCode || 'No Code'}
-                                            <span style={{ fontWeight: 400, color: 'rgba(255,255,255,0.4)', marginLeft: 8, fontSize: '0.78rem' }}>
-                                                Survey: {p.surveyNumber || '—'}
-                                            </span>
-                                        </p>
-                                        <div className="flex items-center gap-4" style={{ marginTop: 4 }}>
-                                            <span className="flex items-center gap-1" style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)' }}>
-                                                <MapPin size={11} /> {p.district || '—'}, {p.state || '—'}
-                                            </span>
-                                            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>
-                                                <Wallet size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />{shortenWallet(p.ownerWallet)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    <span style={{
-                                        fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase',
-                                        letterSpacing: '0.04em', padding: '3px 10px', borderRadius: '9999px',
-                                        background: sc.bg, border: `1px solid ${sc.border}`, color: sc.text,
-                                    }}>
-                                        {p.status}
-                                    </span>
-                                    {p.encumbranceStatus && (
-                                        <span style={{
-                                            fontSize: '0.6rem', fontWeight: 800, padding: '2px 8px', borderRadius: '9999px',
-                                            background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.2)', color: '#eab308',
-                                        }}>
-                                            ENCUMBERED
-                                        </span>
-                                    )}
-                                    {isExpanded ? <ChevronUp size={16} style={{ color: 'rgba(255,255,255,0.3)' }} /> : <ChevronDown size={16} style={{ color: 'rgba(255,255,255,0.3)' }} />}
-                                </div>
-                            </div>
-
-                            {/* Expanded */}
-                            {isExpanded && (
-                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.04)', padding: '1rem 1.25rem 1.25rem' }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.25rem' }}>
-                                        {/* Property Details */}
+                        return (
+                            <div
+                                key={p.id}
+                                style={{
+                                    backgroundColor: '#FFFFFF',
+                                    borderRadius: '12px',
+                                    border: isExpanded ? '1px solid #3B82F6' : '1px solid #E2E8F0',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                                    overflow: 'hidden',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                {/* Main Card Summary */}
+                                <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
                                         <div>
-                                            <h4 style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)', marginBottom: '0.75rem' }}>Property Record</h4>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                                                <DetailField label="Property ID" value={p.id} mono />
-                                                <DetailField label="Property Code" value={p.propertyCode || '—'} />
-                                                <DetailField label="Survey Number" value={p.surveyNumber || '—'} />
-                                                <DetailField label="District / State" value={`${p.district || '—'}, ${p.state || '—'}`} />
-                                                <DetailField label="Area" value={p.areaSqft ? `${p.areaSqft} sqft` : '—'} />
-                                                <DetailField label="Owner Wallet" value={p.ownerWallet || '—'} mono />
-                                                <DetailField label="NFT Token" value={p.nftTokenId || 'Not minted'} mono isLink={!!p.nftTokenId} linkHref={p.nftTokenId ? `https://testnet.snowtrace.io/nft/0xE94d65289Cc088f597C077938A6D7Fc0974196fe/${p.nftTokenId}` : ''} />
-                                                <DetailField label="Doc Hash" value={p.documentHash || 'None'} mono isLink={!!p.documentHash} linkHref={p.documentHash ? `https://ipfs.io/ipfs/${p.documentHash}` : ''} />
-                                                <DetailField label="Status" value={p.status?.toUpperCase()} />
-                                                <DetailField label="Encumbrance" value={p.encumbranceStatus ? `YES${p.encumbranceReason ? ` (${p.encumbranceReason})` : ''}` : 'CLEAR'} />
-                                                <DetailField label="Registered" value={p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'} />
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                                                    {p.propertyCode || 'Property Title'}
+                                                </h3>
+                                                <span style={{
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 700,
+                                                    color: '#334155',
+                                                    backgroundColor: '#F1F5F9',
+                                                    padding: '2px 8px',
+                                                    borderRadius: '4px',
+                                                    border: '1px solid #E2E8F0'
+                                                }}>
+                                                    Survey #{p.surveyNumber || '—'}
+                                                </span>
+                                                {p.nftTokenId && (
+                                                    <span style={{
+                                                        fontFamily: 'monospace',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 700,
+                                                        color: '#4338CA',
+                                                        backgroundColor: '#EEF2FF',
+                                                        padding: '2px 8px',
+                                                        borderRadius: '4px',
+                                                        border: '1px solid #C7D2FE'
+                                                    }}>
+                                                        LandNFT #{p.nftTokenId}
+                                                    </span>
+                                                )}
                                             </div>
+                                            <p style={{ fontSize: '0.82rem', color: '#64748B', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <MapPin size={13} color="#94A3B8" /> {p.locality ? `${p.locality}, ` : ''}{p.district}, {p.state}
+                                            </p>
                                         </div>
 
-                                        {/* Owner Info */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                            <span style={{
+                                                backgroundColor: statusBadge.bg,
+                                                border: `1px solid ${statusBadge.border}`,
+                                                color: statusBadge.text,
+                                                fontSize: '0.72rem',
+                                                fontWeight: 700,
+                                                padding: '3px 10px',
+                                                borderRadius: '9999px',
+                                                textTransform: 'uppercase'
+                                            }}>
+                                                {statusBadge.label}
+                                            </span>
+                                            {p.encumbranceStatus && (
+                                                <span style={{
+                                                    backgroundColor: '#FEF3C7',
+                                                    border: '1px solid #FDE68A',
+                                                    color: '#92400E',
+                                                    fontSize: '0.72rem',
+                                                    fontWeight: 700,
+                                                    padding: '3px 10px',
+                                                    borderRadius: '9999px',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}>
+                                                    <Lock size={11} /> LOCKED
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* 4 Stat Overview Grid */}
+                                    <div style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                                        gap: '10px',
+                                        backgroundColor: '#F8FAFC',
+                                        padding: '12px 14px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #E2E8F0',
+                                        fontSize: '0.82rem'
+                                    }}>
                                         <div>
-                                            <h4 style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)', marginBottom: '0.75rem' }}>Owner Identity</h4>
-                                            {ownerInfo?.user ? (
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                                                    <DetailField label="Name" value={ownerInfo.user.name || '—'} />
-                                                    <DetailField label="Email" value={ownerInfo.user.email || '—'} />
-                                                    <DetailField label="KYC Status" value={ownerInfo.user.kycStatus || '—'} />
-                                                    <DetailField label="Role" value={ownerInfo.user.role?.toUpperCase() || '—'} />
-                                                    <DetailField label="User ID" value={ownerInfo.user.id} mono />
-                                                    <DetailField label="Registered" value={ownerInfo.user.createdAt ? new Date(ownerInfo.user.createdAt).toLocaleString() : '—'} />
-                                                </div>
-                                            ) : (
-                                                <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>
-                                                    {ownerInfo === undefined ? 'Loading owner data...' : 'No linked user found for this wallet.'}
-                                                </p>
-                                            )}
-
-                                            {/* Related Sales */}
-                                            {ownerInfo?.sales?.length > 0 && (
-                                                <div style={{ marginTop: '1rem' }}>
-                                                    <h4 style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)', marginBottom: '0.5rem' }}>
-                                                        Related Transactions ({ownerInfo.sales.length})
-                                                    </h4>
-                                                    {ownerInfo.sales.slice(0, 3).map(tx => (
-                                                        <div key={tx.id} style={{
-                                                            padding: '0.5rem 0.75rem', borderRadius: '0.4rem', marginBottom: '0.3rem',
-                                                            background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.03)',
-                                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                                        }}>
-                                                            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)' }}>
-                                                                ₹{tx.salePrice?.toLocaleString()}
-                                                            </span>
-                                                            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>
-                                                                {tx.status?.replace(/_/g, ' ')}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
+                                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', display: 'block' }}>Area</span>
+                                            <span style={{ fontWeight: 700, color: '#0F172A' }}>{p.areaSqft ? `${p.areaSqft} sq.ft` : '—'}</span>
+                                        </div>
+                                        <div>
+                                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', display: 'block' }}>Circle Rate Valuation</span>
+                                            <span style={{ fontWeight: 800, color: '#047857' }}>
+                                                {p.circleRateValuation || p.estimatedFairPrice ? `₹${Number(p.circleRateValuation || p.estimatedFairPrice).toLocaleString()}` : '—'}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', display: 'block' }}>Primary Owner</span>
+                                            <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0F172A' }}>
+                                                {shortenWallet(p.ownerWallet)}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', display: 'block' }}>Co-Owners</span>
+                                            <span style={{ fontWeight: 700, color: '#334155' }}>
+                                                {p.coOwners && p.coOwners.length > 0 ? `${p.coOwners.length} Registered` : 'Single Owner'}
+                                            </span>
                                         </div>
                                     </div>
 
-                                    {/* Actions */}
-                                    <div style={{ borderTop: '1px solid rgba(239,68,68,0.1)', paddingTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                        {p.status !== 'frozen' && (
-                                            <button onClick={() => openFreezeModal(p.id)} disabled={isActing} style={{
-                                                padding: '0.45rem 1rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700,
-                                                background: 'rgba(59,130,246,0.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.25)',
-                                                display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', opacity: isActing ? 0.5 : 1,
-                                            }}>
-                                                {isActing ? <Loader2 size={13} className="animate-spin" /> : <Ban size={13} />} Freeze Property
-                                            </button>
-                                        )}
-                                        {p.status === 'frozen' && (
-                                            <button onClick={() => openReverseModal(p.id, p.freezeOrderId || p.id)} disabled={isActing} style={{
-                                                padding: '0.45rem 1rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700,
-                                                background: 'rgba(34,197,94,0.08)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)',
-                                                display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', opacity: isActing ? 0.5 : 1,
-                                            }}>
-                                                {isActing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCcw size={13} />} Reverse Freeze
-                                            </button>
-                                        )}
-                                        {!p.encumbranceStatus ? (
-                                            <button onClick={() => handleSetEncumbrance(p.id)} disabled={isActing} style={{
-                                                padding: '0.45rem 1rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700,
-                                                background: 'rgba(234,88,12,0.1)', color: '#f97316', border: '1px solid rgba(234,88,12,0.25)',
-                                                display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', opacity: isActing ? 0.5 : 1,
-                                            }}>
-                                                <AlertTriangle size={13} /> Set Encumbrance
-                                            </button>
-                                        ) : (
-                                            <button onClick={() => handleClearEncumbrance(p.id)} disabled={isActing} style={{
-                                                padding: '0.45rem 1rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700,
-                                                background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)',
-                                                display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', opacity: isActing ? 0.5 : 1,
-                                            }}>
-                                                <CheckCircle2 size={13} /> Clear Encumbrance
-                                            </button>
-                                        )}
-                                        {/* Force Transfer / Reverse Sale */}
-                                        <button onClick={() => {
-                                            setForceNewOwner('');
-                                            setForceReason('');
-                                            setForceHash('');
-                                            setForceFile(null);
-                                            setForceTransferModal({ propId: p.id });
-                                        }} disabled={isActing} style={{
-                                            padding: '0.45rem 1rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700,
-                                            background: 'rgba(168,85,247,0.1)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.25)',
-                                            display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', opacity: isActing ? 0.5 : 1,
+                                    {/* Legal Notices / Stay Orders */}
+                                    {isFrozen && (
+                                        <div style={{
+                                            backgroundColor: '#FEF2F2',
+                                            border: '1px solid #FECACA',
+                                            borderRadius: '8px',
+                                            padding: '10px 14px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            color: '#991B1B',
+                                            fontSize: '0.82rem',
+                                            fontWeight: 600
                                         }}>
-                                            <RefreshCcw size={13} /> Reverse / Force Transfer
-                                        </button>
-                                        {/* View Detailed History  */}
-                                        <button onClick={() => fetchPropertyHistory(p.id, p.propertyCode)} style={{
-                                            padding: '0.45rem 1rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700,
-                                            background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)',
-                                            display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', marginLeft: 'auto',
-                                        }}>
-                                            <Clock size={13} /> Detailed History
+                                            <AlertTriangle size={16} color="#DC2626" />
+                                            <span>
+                                                Active Judicial Freeze: Sales, transfers, and mortgages are frozen on-chain.
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Action Buttons Bar */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', paddingTop: '6px' }}>
+                                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                            {/* Freeze / Lift Freeze */}
+                                            {isFrozen ? (
+                                                <button
+                                                    onClick={() => setReverseModal({ propId: p.id, freezeOrderId: p.freezeOrderId || p.id, propertyCode: p.propertyCode })}
+                                                    disabled={actionLoading === p.id}
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '5px',
+                                                        padding: '7px 12px',
+                                                        backgroundColor: '#047857',
+                                                        color: '#FFFFFF',
+                                                        borderRadius: '6px',
+                                                        border: 'none',
+                                                        fontSize: '0.78rem',
+                                                        fontWeight: 700,
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <CheckCircle2 size={13} /> Lift Stay Order
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setFreezeModal({ propId: p.id, propertyCode: p.propertyCode })}
+                                                    disabled={actionLoading === p.id}
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '5px',
+                                                        padding: '7px 12px',
+                                                        backgroundColor: '#B91C1C',
+                                                        color: '#FFFFFF',
+                                                        borderRadius: '6px',
+                                                        border: 'none',
+                                                        fontSize: '0.78rem',
+                                                        fontWeight: 700,
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <Ban size={13} /> Apply Court Freeze
+                                                </button>
+                                            )}
+
+                                            {/* Lock / Unlock (Encumbrance) */}
+                                            {p.encumbranceStatus ? (
+                                                <button
+                                                    onClick={() => handleClearEncumbrance(p.id)}
+                                                    disabled={actionLoading === p.id}
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '5px',
+                                                        padding: '7px 12px',
+                                                        backgroundColor: '#F8FAFC',
+                                                        color: '#334155',
+                                                        border: '1px solid #CBD5E1',
+                                                        borderRadius: '6px',
+                                                        fontSize: '0.78rem',
+                                                        fontWeight: 600,
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <Unlock size={13} /> Unlock Property
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setEncumbranceModal({ propId: p.id, propertyCode: p.propertyCode })}
+                                                    disabled={actionLoading === p.id}
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '5px',
+                                                        padding: '7px 12px',
+                                                        backgroundColor: '#F8FAFC',
+                                                        color: '#334155',
+                                                        border: '1px solid #CBD5E1',
+                                                        borderRadius: '6px',
+                                                        fontSize: '0.78rem',
+                                                        fontWeight: 600,
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <Lock size={13} /> Lock (Dispute)
+                                                </button>
+                                            )}
+
+                                            {/* Force Transfer */}
+                                            <button
+                                                onClick={() => setForceTransferModal({ propId: p.id, propertyCode: p.propertyCode })}
+                                                disabled={actionLoading === p.id}
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '5px',
+                                                    padding: '7px 12px',
+                                                    backgroundColor: '#F8FAFC',
+                                                    color: '#334155',
+                                                    border: '1px solid #CBD5E1',
+                                                    borderRadius: '6px',
+                                                    fontSize: '0.78rem',
+                                                    fontWeight: 600,
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <Gavel size={13} /> Transfer Title (Court)
+                                            </button>
+
+                                            {/* History */}
+                                            <button
+                                                onClick={() => fetchPropertyHistory(p.id, p.propertyCode)}
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '5px',
+                                                    padding: '7px 12px',
+                                                    backgroundColor: '#F8FAFC',
+                                                    color: '#334155',
+                                                    border: '1px solid #CBD5E1',
+                                                    borderRadius: '6px',
+                                                    fontSize: '0.78rem',
+                                                    fontWeight: 600,
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <Clock size={13} /> History Ledger
+                                            </button>
+                                        </div>
+
+                                        <button
+                                            onClick={() => setExpandedProp(isExpanded ? null : p.id)}
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                padding: '7px 14px',
+                                                backgroundColor: isExpanded ? '#EFF6FF' : '#F1F5F9',
+                                                border: isExpanded ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
+                                                borderRadius: '6px',
+                                                color: isExpanded ? '#1D4ED8' : '#334155',
+                                                fontSize: '0.78rem',
+                                                fontWeight: 700,
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {isExpanded ? (
+                                                <>Hide Details <ChevronUp size={14} /></>
+                                            ) : (
+                                                <>View Deep Inspection <ChevronDown size={14} /></>
+                                            )}
                                         </button>
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
 
-            {/* Footer */}
-            <div className="mt-8 flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.72rem', fontWeight: 600 }}>
-                <ShieldAlert size={14} style={{ color: '#ef4444' }} />
-                Official intervention actions are logged to the central audit ledger.
-            </div>
+                                {/* Expanded Inspection Drawer */}
+                                {isExpanded && (
+                                    <div style={{ backgroundColor: '#F8FAFC', borderTop: '1px solid #E2E8F0', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                        {/* Sub Tabs */}
+                                        <div style={{ display: 'flex', gap: '6px', borderBottom: '1px solid #E2E8F0', paddingBottom: '2px' }}>
+                                            {[
+                                                { key: 'details', label: 'Land Survey & Geometry', icon: MapPin },
+                                                { key: 'coOwners', label: `Co-Owners (${p.coOwners?.length || 0})`, icon: Users },
+                                                { key: 'legal', label: 'Legal Status & Hashes', icon: Scale }
+                                            ].map(st => {
+                                                const Icon = st.icon;
+                                                const isActive = activeSubTab === st.key;
+                                                return (
+                                                    <button
+                                                        key={st.key}
+                                                        onClick={() => setActiveSubTab(st.key)}
+                                                        style={{
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px',
+                                                            padding: '8px 14px',
+                                                            borderRadius: '6px 6px 0 0',
+                                                            border: isActive ? '1px solid #CBD5E1' : '1px solid transparent',
+                                                            borderBottom: isActive ? '2px solid #2563EB' : '2px solid transparent',
+                                                            backgroundColor: isActive ? '#FFFFFF' : 'transparent',
+                                                            color: isActive ? '#1D4ED8' : '#64748B',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: 700,
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        <Icon size={13} /> {st.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
 
-            {/* ── Encumbrance Reason Modal ── */}
-            {encumbranceModal && (
-                <div onClick={() => setEncumbranceModal(null)} style={{
-                    position: 'fixed', inset: 0, zIndex: 9999,
-                    background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem',
-                }}>
-                    <div onClick={e => e.stopPropagation()} style={{
-                        width: '100%', maxWidth: '440px',
-                        background: 'rgba(15,10,25,0.97)',
-                        border: '1px solid rgba(239,68,68,0.3)',
-                        borderTop: '3px solid #ef4444',
-                        borderRadius: '16px', padding: '2rem', position: 'relative',
-                        boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
-                    }}>
-                        <button onClick={() => setEncumbranceModal(null)} style={{
-                            position: 'absolute', top: '1rem', right: '1rem',
-                            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '8px', width: '30px', height: '30px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', color: '#9ca3af',
-                        }}><XCircle size={14} /></button>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                            <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <ShieldAlert size={18} style={{ color: '#ef4444' }} />
-                            </div>
-                            <div>
-                                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', margin: 0 }}>Set Encumbrance</h3>
-                                <p style={{ fontSize: '0.72rem', color: '#6b7280', margin: 0 }}>Document the legal basis for flagging this property</p>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div>
-                                <label style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>
-                                    Reason <span style={{ color: '#ef4444' }}>*</span>
-                                </label>
-                                <textarea
-                                    rows={3}
-                                    placeholder="e.g. Bank lien registered by HDFC Bank — Loan A/C #XXXXXX"
-                                    value={encumbranceReason}
-                                    onChange={e => setEncumbranceReason(e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '0.85rem', background: 'rgba(0,0,0,0.4)',
-                                        border: '1px solid rgba(239,68,68,0.25)', borderRadius: '8px',
-                                        color: 'white', fontFamily: 'inherit', fontSize: '0.88rem',
-                                        resize: 'vertical', outline: 'none', lineHeight: 1.5,
-                                    }}
-                                />
-                            </div>
-
-                            <button
-                                onClick={submitEncumbrance}
-                                disabled={!encumbranceReason.trim() || actionLoading === encumbranceModal?.propId}
-                                style={{
-                                    padding: '0.85rem', borderRadius: '10px',
-                                    background: encumbranceReason.trim() ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.04)',
-                                    color: encumbranceReason.trim() ? '#f87171' : '#6b7280',
-                                    fontWeight: 700, fontSize: '0.88rem', cursor: encumbranceReason.trim() ? 'pointer' : 'not-allowed',
-                                    border: `1px solid ${encumbranceReason.trim() ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.05)'}`,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                                    transition: 'all 0.2s',
-                                }}
-                            >
-                                {actionLoading === encumbranceModal?.propId
-                                    ? <><Loader2 size={16} className="animate-spin" /> Setting Encumbrance...</>
-                                    : <><ShieldAlert size={16} /> Confirm Encumbrance</>}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Force Transfer (Reverse Sale) Modal ── */}
-            {forceTransferModal && (
-                <div onClick={() => setForceTransferModal(null)} style={{
-                    position: 'fixed', inset: 0, zIndex: 9999,
-                    background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem',
-                }}>
-                    <div onClick={e => e.stopPropagation()} style={{
-                        width: '100%', maxWidth: '460px',
-                        background: 'rgba(15,10,25,0.97)',
-                        border: '1px solid rgba(168,85,247,0.3)',
-                        borderTop: '3px solid #a855f7',
-                        borderRadius: '16px', padding: '2rem', position: 'relative',
-                        boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
-                    }}>
-                        <button onClick={() => setForceTransferModal(null)} style={{
-                            position: 'absolute', top: '1rem', right: '1rem',
-                            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '8px', width: '30px', height: '30px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', color: '#9ca3af',
-                        }}><XCircle size={14} /></button>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                            <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <RefreshCcw size={18} style={{ color: '#c084fc' }} />
-                            </div>
-                            <div>
-                                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', margin: 0 }}>Reverse Transfer</h3>
-                                <p style={{ fontSize: '0.72rem', color: '#6b7280', margin: 0 }}>Forcefully transfer property ownership</p>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div>
-                                <label style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>
-                                    New Owner Wallet <span style={{ color: '#ef4444' }}>*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="0x..."
-                                    value={forceNewOwner}
-                                    onChange={e => setForceNewOwner(e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '0.85rem', background: 'rgba(0,0,0,0.4)',
-                                        border: '1px solid rgba(168,85,247,0.25)', borderRadius: '8px',
-                                        color: 'white', fontFamily: 'monospace', fontSize: '0.88rem',
-                                        outline: 'none',
-                                    }}
-                                />
-                            </div>
-
-                            <div>
-                                <label style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>
-                                    Reason <span style={{ color: '#ef4444' }}>*</span>
-                                </label>
-                                <textarea
-                                    rows={2}
-                                    placeholder="e.g. Fraudulent transaction reversal per High Court Order"
-                                    value={forceReason}
-                                    onChange={e => setForceReason(e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '0.85rem', background: 'rgba(0,0,0,0.4)',
-                                        border: '1px solid rgba(168,85,247,0.25)', borderRadius: '8px',
-                                        color: 'white', fontFamily: 'inherit', fontSize: '0.88rem',
-                                        resize: 'vertical', outline: 'none', lineHeight: 1.5,
-                                    }}
-                                />
-                            </div>
-
-                            {/* ── File Upload Zone ── */}
-                            <div>
-                                <label style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>
-                                    Court Order Document <span style={{ color: '#ef4444' }}>*</span>
-                                </label>
-                                <label htmlFor="force-doc-upload" style={{
-                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                    gap: '0.5rem', padding: '1.25rem',
-                                    border: `2px dashed ${forceHash ? 'rgba(34,197,94,0.5)' : 'rgba(168,85,247,0.3)'}`,
-                                    borderRadius: '10px', cursor: forceUploading ? 'wait' : 'pointer',
-                                    background: forceHash ? 'rgba(34,197,94,0.04)' : 'rgba(168,85,247,0.04)',
-                                    transition: 'all 0.2s',
-                                }}>
-                                    {forceUploading ? (
-                                        <><Loader2 size={22} style={{ color: '#c084fc' }} className="animate-spin" />
-                                        <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>Uploading to IPFS...</span></>
-                                    ) : forceHash ? (
-                                        <><CheckCircle2 size={22} style={{ color: '#22c55e' }} />
-                                        <span style={{ fontSize: '0.78rem', color: '#22c55e', fontWeight: 600 }}>Document uploaded </span>
-                                        <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>{forceFile?.name}</span></>
-                                    ) : (
-                                        <><UploadCloud size={22} style={{ color: '#c084fc' }} />
-                                        <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>Click to upload court order</span>
-                                        <span style={{ fontSize: '0.65rem', color: '#4b5563' }}>PDF or JPG · max 10 MB</span></>
-                                    )}
-                                </label>
-                                <input
-                                    id="force-doc-upload"
-                                    type="file"
-                                    accept="application/pdf,image/jpeg,image/jpg"
-                                    style={{ display: 'none' }}
-                                    onChange={e => {
-                                        const f = e.target.files?.[0];
-                                        if (f) {
-                                            setForceFile(f);
-                                            uploadDoc(f, setForceUploading, setForceHash);
-                                        }
-                                    }}
-                                />
-                            </div>
-
-                            <button
-                                onClick={submitForceTransfer}
-                                disabled={!forceNewOwner.trim() || !forceReason.trim() || !forceHash || actionLoading === forceTransferModal?.propId}
-                                style={{
-                                    padding: '0.85rem', borderRadius: '10px',
-                                    background: (forceNewOwner.trim() && forceReason.trim() && forceHash) ? 'rgba(168,85,247,0.15)' : 'rgba(255,255,255,0.04)',
-                                    color: (forceNewOwner.trim() && forceReason.trim() && forceHash) ? '#d8b4fe' : '#6b7280',
-                                    fontWeight: 700, fontSize: '0.88rem', cursor: (forceNewOwner.trim() && forceReason.trim() && forceHash) ? 'pointer' : 'not-allowed',
-                                    border: `1px solid ${(forceNewOwner.trim() && forceReason.trim() && forceHash) ? 'rgba(168,85,247,0.3)' : 'rgba(255,255,255,0.05)'}`,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                                    transition: 'all 0.2s',
-                                    marginTop: '0.5rem'
-                                }}
-                            >
-                                {actionLoading === forceTransferModal?.propId
-                                    ? <><Loader2 size={16} className="animate-spin" /> Processing Transfer...</>
-                                    : <><RefreshCcw size={16} /> Execute Force Transfer</>}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Property History (Ledger) Modal ── */}
-            {historyModal && (
-                <div onClick={() => setHistoryModal(null)} style={{
-                    position: 'fixed', inset: 0, zIndex: 9999,
-                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem',
-                }}>
-                    <div onClick={e => e.stopPropagation()} style={{
-                        width: '100%', maxWidth: '650px', maxHeight: '85vh',
-                        background: 'rgba(15,10,25,0.95)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '16px', display: 'flex', flexDirection: 'column', position: 'relative',
-                        boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
-                        overflow: 'hidden'
-                    }}>
-                        <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <Clock size={18} style={{ color: '#fff' }} />
-                                </div>
-                                <div>
-                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', margin: 0 }}>Ledger History</h3>
-                                    <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: 0 }}>Property {historyModal.propertyCode}</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setHistoryModal(null)} style={{
-                                background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280'
-                            }}><XCircle size={24} /></button>
-                        </div>
-
-                        <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
-                            {historyLoading ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '3rem 0', color: '#6b7280' }}>
-                                    <Loader2 size={32} className="animate-spin" style={{ marginBottom: '1rem', color: '#60a5fa' }} />
-                                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Loading timeline...</span>
-                                </div>
-                            ) : historyData.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '3rem 0', color: '#6b7280', fontSize: '0.85rem' }}>
-                                    No historical events found for this property.
-                                </div>
-                            ) : (
-                                <div style={{ position: 'relative' }}>
-                                    {/* Timeline line */}
-                                    <div style={{ position: 'absolute', top: 0, bottom: 0, left: '20px', width: '2px', background: 'rgba(255,255,255,0.05)' }}></div>
-                                    
-                                    {historyData.map((event, idx) => {
-                                        // Colors based on event type
-                                        let color = '#3b82f6';
-                                        let bg = 'rgba(59,130,246,0.1)';
-                                        let border = 'rgba(59,130,246,0.2)';
-                                        let Icon = FileText;
-                                        let title = "Unknown Event";
-
-                                        if (event.eventType === 'SALE_COMPLETED') {
-                                            color = '#22c55e'; bg = 'rgba(34,197,94,0.1)'; border = 'rgba(34,197,94,0.2)';
-                                            Icon = CheckCircle2; title = "Property Transferred (Sale)";
-                                        } else if (event.eventType === 'SALE_INITIATED') {
-                                            color = '#3b82f6'; bg = 'rgba(59,130,246,0.1)'; border = 'rgba(59,130,246,0.2)';
-                                            Icon = FileText; title = "Sale Initiated";
-                                        } else if (event.eventType === 'COURT_FREEZE') {
-                                            color = '#ef4444'; bg = 'rgba(239,68,68,0.1)'; border = 'rgba(239,68,68,0.3)';
-                                            Icon = Ban; title = "Court Freeze Order Applied";
-                                        } else if (event.eventType === 'COURT_REVERSAL') {
-                                            color = '#eab308'; bg = 'rgba(234,179,8,0.1)'; border = 'rgba(234,179,8,0.3)';
-                                            Icon = RefreshCcw; title = "Court Freeze Reversed";
-                                        } else if (event.eventType === 'COURT_FORCE_TRANSFER') {
-                                            color = '#a855f7'; bg = 'rgba(168,85,247,0.1)'; border = 'rgba(168,85,247,0.3)';
-                                            Icon = ShieldAlert; title = "Judicial Force Transfer";
-                                        }
-
-                                        return (
-                                            <div key={event.id} style={{ display: 'flex', gap: '1.5rem', marginBottom: idx === historyData.length - 1 ? 0 : '1.5rem', position: 'relative', zIndex: 1 }}>
-                                                {/* Node */}
-                                                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#0a0a0a', border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                    <Icon size={18} style={{ color }} />
-                                                </div>
-
-                                                {/* Content Card */}
-                                                <div style={{ flex: 1, background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: `1px solid ${border}`, padding: '1.25rem' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                                                        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>{title}</h4>
-                                                        <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{new Date(event.timestamp).toLocaleString()}</span>
-                                                    </div>
-
-                                                    {/* Event Details */}
-                                                    {event.eventType === 'SALE_COMPLETED' && (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Amount:</span>
-                                                                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#22c55e' }}>₹{event.data.price?.toLocaleString()}</span>
-                                                            </div>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '8px' }}>
-                                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                                    <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#6b7280', fontWeight: 700 }}>From</span>
-                                                                    <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontFamily: 'monospace' }}>{event.data.seller.substring(0,10)}...{event.data.seller.substring(event.data.seller.length-4)}</span>
-                                                                </div>
-                                                                <ArrowRight size={14} style={{ color: '#6b7280', margin: '0 0.5rem' }} />
-                                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                                    <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#6b7280', fontWeight: 700 }}>To</span>
-                                                                    <span style={{ fontSize: '0.75rem', color: '#e5e7eb', fontFamily: 'monospace' }}>{event.data.buyer.substring(0,10)}...{event.data.buyer.substring(event.data.buyer.length-4)}</span>
-                                                                </div>
-                                                            </div>
+                                        {/* Sub Tab 1: Details */}
+                                        {activeSubTab === 'details' && (
+                                            <div style={{ backgroundColor: '#FFFFFF', padding: '1.25rem', borderRadius: '10px', border: '1px solid #E2E8F0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                                                <DetailField label="Property Code" value={p.propertyCode} mono />
+                                                <DetailField label="Survey Number" value={p.surveyNumber} />
+                                                <DetailField label="District / Taluk" value={p.district} />
+                                                <DetailField label="State" value={p.state} />
+                                                <DetailField label="Area" value={p.areaSqft ? `${p.areaSqft} sq.ft` : '—'} />
+                                                <DetailField label="GPS Coordinates" value={p.coordinates || 'GPS Location Verified'} mono />
+                                                <DetailField label="Circle Rate Valuation" value={p.circleRateValuation || p.estimatedFairPrice ? `₹${Number(p.circleRateValuation || p.estimatedFairPrice).toLocaleString()}` : '—'} />
+                                                <DetailField label="Registration Date" value={p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '—'} />
+                                                
+                                                {p.documentHash && (
+                                                    <div style={{ gridColumn: '1 / -1' }}>
+                                                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                                                            Official Deed IPFS Hash
+                                                        </span>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: '#0F172A', backgroundColor: '#F8FAFC', padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', flex: 1, wordBreak: 'break-all' }}>
+                                                                {p.documentHash}
+                                                            </span>
+                                                            <a
+                                                                href={`https://gateway.pinata.cloud/ipfs/${p.documentHash}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                style={{
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '4px',
+                                                                    padding: '6px 12px',
+                                                                    backgroundColor: '#EFF6FF',
+                                                                    color: '#1D4ED8',
+                                                                    borderRadius: '6px',
+                                                                    border: '1px solid #BFDBFE',
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: 700,
+                                                                    textDecoration: 'none'
+                                                                }}
+                                                            >
+                                                                <ExternalLink size={12} /> View Deed
+                                                            </a>
                                                         </div>
-                                                    )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
 
-                                                    {(event.eventType === 'COURT_FREEZE' || event.eventType === 'COURT_FORCE_TRANSFER') && (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                <span style={{ fontSize: '0.75rem', color: '#ef4444' }}>Status:</span>
-                                                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: event.data.isActive ? '#ef4444' : '#6b7280' }}>
-                                                                    {event.data.isActive ? 'ACTIVE' : 'LIFTED'}
+                                        {/* Sub Tab 2: Co-Owners */}
+                                        {activeSubTab === 'coOwners' && (
+                                            <div style={{ backgroundColor: '#FFFFFF', padding: '1.25rem', borderRadius: '10px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                {(!p.coOwners || p.coOwners.length === 0) ? (
+                                                    <p style={{ fontSize: '0.82rem', color: '#64748B', margin: 0 }}>This parcel is registered under a single primary titleholder ({shortenWallet(p.ownerWallet)}).</p>
+                                                ) : (
+                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
+                                                        {p.coOwners.map((co, idx) => (
+                                                            <div key={idx} style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                <div>
+                                                                    <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                        {co.name || shortenWallet(co.walletAddress)}
+                                                                        {co.isPrimary && (
+                                                                            <span style={{ fontSize: '0.62rem', backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: 800, padding: '1px 5px', borderRadius: '4px' }}>
+                                                                                PRIMARY
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <span style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: '#64748B', display: 'block', marginTop: '2px' }}>
+                                                                        {co.walletAddress}
+                                                                    </span>
+                                                                </div>
+                                                                <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#047857', backgroundColor: '#ECFDF5', padding: '4px 8px', borderRadius: '6px', border: '1px solid #A7F3D0' }}>
+                                                                    {co.sharePercentage ? `${co.sharePercentage}%` : `${((co.sharePercentageBps || 0) / 100).toFixed(2)}%`}
                                                                 </span>
                                                             </div>
-                                                            <div style={{ background: 'rgba(239,68,68,0.05)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.1)' }}>
-                                                                <p style={{ margin: 0, fontSize: '0.8rem', color: '#fca5a5', lineHeight: 1.5 }}>
-                                                                    <strong style={{ color: 'white' }}>Reason:</strong> {event.data.reason}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {event.eventType === 'COURT_REVERSAL' && (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                                <p style={{ margin: 0, fontSize: '0.8rem', color: '#d1d5db', lineHeight: 1.5 }}>
-                                                                    <strong style={{ color: 'white' }}>Reason:</strong> {event.data.reason || 'No specific reason provided'}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
-                                        )
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                                        )}
+
+                                        {/* Sub Tab 3: Legal Status */}
+                                        {activeSubTab === 'legal' && (
+                                            <div style={{ backgroundColor: '#FFFFFF', padding: '1.25rem', borderRadius: '10px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                <DetailField label="Smart Contract Status" value={p.status} />
+                                                {p.encumbranceReason && (
+                                                    <DetailField label="Officer Lock Reason" value={p.encumbranceReason} />
+                                                )}
+                                                {p.nftTokenId && (
+                                                    <div>
+                                                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                                                            On-Chain Token Verification
+                                                        </span>
+                                                        <a
+                                                            href={`https://sepolia.etherscan.io/token/0xbCB28DC4eF6242572c0a65D1643595C582106249?a=${p.nftTokenId}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px',
+                                                                fontSize: '0.8rem',
+                                                                fontWeight: 700,
+                                                                color: '#2563EB',
+                                                                textDecoration: 'none'
+                                                            }}
+                                                        >
+                                                            Verify LandNFT #{p.nftTokenId} on Ethereum Sepolia Etherscan <ExternalLink size={12} />
+                                                        </a>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
-            {/* ── Freeze Modal ── */}
+            {/* ── Modal: Freeze Property ── */}
             {freezeModal && (
-                <div onClick={() => setFreezeModal(null)} style={{
-                    position: 'fixed', inset: 0, zIndex: 9999,
-                    background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem',
-                }}>
-                    <div onClick={e => e.stopPropagation()} style={{
-                        width: '100%', maxWidth: '460px',
-                        background: 'rgba(15,10,25,0.97)',
-                        border: '1px solid rgba(59,130,246,0.3)',
-                        borderTop: '3px solid #3b82f6',
-                        borderRadius: '16px', padding: '2rem', position: 'relative',
-                        boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
-                    }}>
-                        <button onClick={() => setFreezeModal(null)} style={{
-                            position: 'absolute', top: '1rem', right: '1rem',
-                            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '8px', width: '30px', height: '30px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', color: '#9ca3af',
-                        }}><XCircle size={14} /></button>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                            <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Ban size={18} style={{ color: '#60a5fa' }} />
+                <ModalOverlay onClose={() => setFreezeModal(null)}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#DC2626' }}>
+                                <Ban size={20} />
                             </div>
                             <div>
-                                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', margin: 0 }}>Freeze Property</h3>
-                                <p style={{ fontSize: '0.72rem', color: '#6b7280', margin: 0 }}>Upload the court order PDF to generate the IPFS hash</p>
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>Apply Court Stay Order (Freeze)</h3>
+                                <span style={{ fontSize: '0.78rem', color: '#64748B' }}>Property: {freezeModal.propertyCode}</span>
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            {/* ── File Upload Zone ── */}
-                            <div>
-                                <label style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>
-                                    Court Order Document <span style={{ color: '#ef4444' }}>*</span>
-                                </label>
-                                <label htmlFor="freeze-doc-upload" style={{
-                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                    gap: '0.5rem', padding: '1.25rem',
-                                    border: `2px dashed ${freezeHash ? 'rgba(34,197,94,0.5)' : 'rgba(59,130,246,0.3)'}`,
-                                    borderRadius: '10px', cursor: freezeUploading ? 'wait' : 'pointer',
-                                    background: freezeHash ? 'rgba(34,197,94,0.04)' : 'rgba(59,130,246,0.04)',
-                                    transition: 'all 0.2s',
-                                }}>
-                                    {freezeUploading ? (
-                                        <><Loader2 size={22} style={{ color: '#60a5fa' }} className="animate-spin" />
-                                        <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>Uploading to IPFS...</span></>
-                                    ) : freezeHash ? (
-                                        <><CheckCircle2 size={22} style={{ color: '#22c55e' }} />
-                                        <span style={{ fontSize: '0.78rem', color: '#22c55e', fontWeight: 600 }}>Document uploaded </span>
-                                        <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>{freezeFile?.name}</span></>
-                                    ) : (
-                                        <><UploadCloud size={22} style={{ color: '#60a5fa' }} />
-                                        <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>Click to upload court order</span>
-                                        <span style={{ fontSize: '0.65rem', color: '#4b5563' }}>PDF or JPG · max 10 MB</span></>
-                                    )}
-                                </label>
-                                <input
-                                    id="freeze-doc-upload"
-                                    type="file"
-                                    accept="application/pdf,image/jpeg,image/jpg"
-                                    style={{ display: 'none' }}
-                                    onChange={e => {
-                                        const f = e.target.files?.[0];
-                                        if (f) { setFreezeFile(f); setFreezeHash(''); uploadDoc(f, setFreezeUploading, setFreezeHash); }
-                                    }}
-                                />
-                            </div>
-
-                            {/* ── IPFS Hash (read-only, auto-filled) ── */}
-                            {freezeHash && (
-                                <div style={{ padding: '0.65rem 0.85rem', borderRadius: '8px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)' }}>
-                                    <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#22c55e', marginBottom: '0.3rem' }}>IPFS Hash (auto-generated)</p>
-                                    <p style={{ fontSize: '0.72rem', fontFamily: 'monospace', color: '#86efac', wordBreak: 'break-all', margin: 0 }}>{freezeHash}</p>
-                                </div>
-                            )}
-
-                            {/* ── Reason ── */}
-                            <div>
-                                <label style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', display: 'block', marginBottom: '0.4rem' }}>
-                                    Reason <span style={{ color: '#6b7280', fontWeight: 400 }}>(optional)</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="Judicial reason for freeze"
-                                    value={freezeReason}
-                                    onChange={e => setFreezeReason(e.target.value)}
-                                    className="input-premium"
-                                    style={{ width: '100%', fontSize: '0.82rem' }}
-                                />
-                            </div>
+                        <div>
+                            <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>Court Order / Injunction Reason *</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. High Court Civil Stay WP-2026-9812 pending title dispute"
+                                value={freezeReason}
+                                onChange={(e) => setFreezeReason(e.target.value)}
+                                style={{ width: '100%', padding: '10px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                            />
                         </div>
 
-                        <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
-                            <button onClick={() => setFreezeModal(null)} style={{
-                                padding: '0.5rem 1rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600,
-                                background: 'rgba(255,255,255,0.05)', color: '#9ca3af', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
-                            }}>Cancel</button>
-                            <button onClick={handleFreeze} disabled={!freezeHash || freezeUploading} style={{
-                                padding: '0.5rem 1.25rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 700,
-                                background: 'linear-gradient(135deg,rgba(59,130,246,0.2),rgba(37,99,235,0.15))',
-                                color: '#60a5fa', border: '1px solid rgba(59,130,246,0.35)', cursor: (!freezeHash || freezeUploading) ? 'not-allowed' : 'pointer',
-                                display: 'flex', alignItems: 'center', gap: 5,
-                                opacity: (!freezeHash || freezeUploading) ? 0.45 : 1,
-                            }}><Ban size={13} /> Confirm Freeze</button>
+                        <div>
+                            <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>Upload Certified Court Document (PDF) *</label>
+                            <input
+                                type="file"
+                                accept=".pdf,image/*"
+                                onChange={(e) => uploadDoc(e.target.files[0], setFreezeUploading, setFreezeHash)}
+                                style={{ width: '100%', fontSize: '0.82rem' }}
+                            />
+                            {freezeUploading && <span style={{ fontSize: '0.75rem', color: '#2563EB', marginTop: '4px', display: 'block' }}>Uploading to IPFS...</span>}
+                            {freezeHash && <span style={{ fontSize: '0.72rem', fontFamily: 'monospace', color: '#059669', marginTop: '4px', display: 'block' }}>IPFS: {freezeHash}</span>}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+                            <button onClick={() => setFreezeModal(null)} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+                                Cancel
+                            </button>
+                            <button onClick={handleFreeze} disabled={freezeUploading || !freezeHash} style={{ padding: '8px 18px', borderRadius: '6px', border: 'none', background: '#B91C1C', color: '#FFFFFF', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}>
+                                Freeze Property
+                            </button>
                         </div>
                     </div>
-                </div>
+                </ModalOverlay>
             )}
 
-            {/* ── Reverse Freeze Modal ── */}
+            {/* ── Modal: Reverse Freeze (Lift Stay) ── */}
             {reverseModal && (
-                <div onClick={() => setReverseModal(null)} style={{
-                    position: 'fixed', inset: 0, zIndex: 9999,
-                    background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem',
-                }}>
-                    <div onClick={e => e.stopPropagation()} style={{
-                        width: '100%', maxWidth: '460px',
-                        background: 'rgba(15,10,25,0.97)',
-                        border: '1px solid rgba(34,197,94,0.3)',
-                        borderTop: '3px solid #22c55e',
-                        borderRadius: '16px', padding: '2rem', position: 'relative',
-                        boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
-                    }}>
-                        <button onClick={() => setReverseModal(null)} style={{
-                            position: 'absolute', top: '1rem', right: '1rem',
-                            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '8px', width: '30px', height: '30px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', color: '#9ca3af',
-                        }}><XCircle size={14} /></button>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                            <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <RefreshCcw size={18} style={{ color: '#22c55e' }} />
+                <ModalOverlay onClose={() => setReverseModal(null)}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
+                                <CheckCircle2 size={20} />
                             </div>
                             <div>
-                                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'white', margin: 0 }}>Reverse Court Freeze</h3>
-                                <p style={{ fontSize: '0.72rem', color: '#6b7280', margin: 0 }}>Upload the reversal court order PDF to generate the IPFS hash</p>
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>Lift Court Stay Order</h3>
+                                <span style={{ fontSize: '0.78rem', color: '#64748B' }}>Property: {reverseModal.propertyCode}</span>
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            {/* ── File Upload Zone ── */}
-                            <div>
-                                <label style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', display: 'block', marginBottom: '0.5rem' }}>
-                                    Reversal Court Order Document <span style={{ color: '#ef4444' }}>*</span>
-                                </label>
-                                <label htmlFor="reverse-doc-upload" style={{
-                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                    gap: '0.5rem', padding: '1.25rem',
-                                    border: `2px dashed ${reverseHash ? 'rgba(34,197,94,0.5)' : 'rgba(34,197,94,0.25)'}`,
-                                    borderRadius: '10px', cursor: reverseUploading ? 'wait' : 'pointer',
-                                    background: reverseHash ? 'rgba(34,197,94,0.06)' : 'rgba(34,197,94,0.03)',
-                                    transition: 'all 0.2s',
-                                }}>
-                                    {reverseUploading ? (
-                                        <><Loader2 size={22} style={{ color: '#22c55e' }} className="animate-spin" />
-                                        <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>Uploading to IPFS...</span></>
-                                    ) : reverseHash ? (
-                                        <><CheckCircle2 size={22} style={{ color: '#22c55e' }} />
-                                        <span style={{ fontSize: '0.78rem', color: '#22c55e', fontWeight: 600 }}>Document uploaded </span>
-                                        <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>{reverseFile?.name}</span></>
-                                    ) : (
-                                        <><UploadCloud size={22} style={{ color: '#22c55e' }} />
-                                        <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>Click to upload reversal court order</span>
-                                        <span style={{ fontSize: '0.65rem', color: '#4b5563' }}>PDF or JPG · max 10 MB</span></>
-                                    )}
-                                </label>
-                                <input
-                                    id="reverse-doc-upload"
-                                    type="file"
-                                    accept="application/pdf,image/jpeg,image/jpg"
-                                    style={{ display: 'none' }}
-                                    onChange={e => {
-                                        const f = e.target.files?.[0];
-                                        if (f) { setReverseFile(f); setReverseHash(''); uploadDoc(f, setReverseUploading, setReverseHash); }
-                                    }}
-                                />
-                            </div>
-
-                            {/* ── IPFS Hash (read-only, auto-filled) ── */}
-                            {reverseHash && (
-                                <div style={{ padding: '0.65rem 0.85rem', borderRadius: '8px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)' }}>
-                                    <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#22c55e', marginBottom: '0.3rem' }}>IPFS Hash (auto-generated)</p>
-                                    <p style={{ fontSize: '0.72rem', fontFamily: 'monospace', color: '#86efac', wordBreak: 'break-all', margin: 0 }}>{reverseHash}</p>
-                                </div>
-                            )}
-
-                            {/* ── Reason ── */}
-                            <div>
-                                <label style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', display: 'block', marginBottom: '0.4rem' }}>
-                                    Reason <span style={{ color: '#6b7280', fontWeight: 400 }}>(optional)</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="Reason for lifting the freeze"
-                                    value={reverseReason}
-                                    onChange={e => setReverseReason(e.target.value)}
-                                    className="input-premium"
-                                    style={{ width: '100%', fontSize: '0.82rem' }}
-                                />
-                            </div>
+                        <div>
+                            <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>Court Order Vacation / Dismissal Reason *</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. Injunction dismissed as per final judgment dated 16-Sep-2026"
+                                value={reverseReason}
+                                onChange={(e) => setReverseReason(e.target.value)}
+                                style={{ width: '100%', padding: '10px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                            />
                         </div>
 
-                        <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
-                            <button onClick={() => setReverseModal(null)} style={{
-                                padding: '0.5rem 1rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600,
-                                background: 'rgba(255,255,255,0.05)', color: '#9ca3af', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
-                            }}>Cancel</button>
-                            <button onClick={handleReverseFreeze} disabled={!reverseHash || reverseUploading} style={{
-                                padding: '0.5rem 1.25rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 700,
-                                background: 'linear-gradient(135deg,rgba(34,197,94,0.15),rgba(21,128,61,0.12))',
-                                color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)',
-                                cursor: (!reverseHash || reverseUploading) ? 'not-allowed' : 'pointer',
-                                display: 'flex', alignItems: 'center', gap: 5,
-                                opacity: (!reverseHash || reverseUploading) ? 0.45 : 1,
-                            }}><RefreshCcw size={13} /> Confirm Reversal</button>
+                        <div>
+                            <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>Upload Vacation Order / Judgment (PDF) *</label>
+                            <input
+                                type="file"
+                                accept=".pdf,image/*"
+                                onChange={(e) => uploadDoc(e.target.files[0], setReverseUploading, setReverseHash)}
+                                style={{ width: '100%', fontSize: '0.82rem' }}
+                            />
+                            {reverseUploading && <span style={{ fontSize: '0.75rem', color: '#2563EB', marginTop: '4px', display: 'block' }}>Uploading to IPFS...</span>}
+                            {reverseHash && <span style={{ fontSize: '0.72rem', fontFamily: 'monospace', color: '#059669', marginTop: '4px', display: 'block' }}>IPFS: {reverseHash}</span>}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+                            <button onClick={() => setReverseModal(null)} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+                                Cancel
+                            </button>
+                            <button onClick={handleReverseFreeze} disabled={reverseUploading || !reverseHash} style={{ padding: '8px 18px', borderRadius: '6px', border: 'none', background: '#047857', color: '#FFFFFF', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}>
+                                Lift Freeze
+                            </button>
                         </div>
                     </div>
-                </div>
+                </ModalOverlay>
             )}
+
+            {/* ── Modal: Lock Property (Encumbrance) ── */}
+            {encumbranceModal && (
+                <ModalOverlay onClose={() => setEncumbranceModal(null)}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B45309' }}>
+                                <Lock size={20} />
+                            </div>
+                            <div>
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>Lock Property for Investigation</h3>
+                                <span style={{ fontSize: '0.78rem', color: '#64748B' }}>Property: {encumbranceModal.propertyCode}</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>Officer Lock Reason *</label>
+                            <textarea
+                                rows={3}
+                                placeholder="e.g. Under municipal tax audit / boundary dispute review"
+                                value={encumbranceReason}
+                                onChange={(e) => setEncumbranceReason(e.target.value)}
+                                style={{ width: '100%', padding: '10px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                            <button onClick={() => setEncumbranceModal(null)} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+                                Cancel
+                            </button>
+                            <button onClick={submitEncumbrance} style={{ padding: '8px 18px', borderRadius: '6px', border: 'none', background: '#0F172A', color: '#FFFFFF', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}>
+                                Lock Property
+                            </button>
+                        </div>
+                    </div>
+                </ModalOverlay>
+            )}
+
+            {/* ── Modal: Force Title Transfer ── */}
+            {forceTransferModal && (
+                <ModalOverlay onClose={() => setForceTransferModal(null)}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1D4ED8' }}>
+                                <Gavel size={20} />
+                            </div>
+                            <div>
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>Transfer Title by Court Decree</h3>
+                                <span style={{ fontSize: '0.78rem', color: '#64748B' }}>Property: {forceTransferModal.propertyCode}</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>New Owner Web3 Wallet Address *</label>
+                            <input
+                                type="text"
+                                placeholder="0x..."
+                                value={forceNewOwner}
+                                onChange={(e) => setForceNewOwner(e.target.value)}
+                                style={{ width: '100%', fontFamily: 'monospace', padding: '10px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                            />
+                        </div>
+
+                        <div>
+                            <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>Judicial Decree Reason *</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. Civil Court Partition Suit Final Decree Execution"
+                                value={forceReason}
+                                onChange={(e) => setForceReason(e.target.value)}
+                                style={{ width: '100%', padding: '10px 12px', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                            />
+                        </div>
+
+                        <div>
+                            <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>Upload Certified Court Decree (PDF) *</label>
+                            <input
+                                type="file"
+                                accept=".pdf,image/*"
+                                onChange={(e) => uploadDoc(e.target.files[0], setForceUploading, setForceHash)}
+                                style={{ width: '100%', fontSize: '0.82rem' }}
+                            />
+                            {forceUploading && <span style={{ fontSize: '0.75rem', color: '#2563EB', marginTop: '4px', display: 'block' }}>Uploading to IPFS...</span>}
+                            {forceHash && <span style={{ fontSize: '0.72rem', fontFamily: 'monospace', color: '#059669', marginTop: '4px', display: 'block' }}>IPFS: {forceHash}</span>}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                            <button onClick={() => setForceTransferModal(null)} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+                                Cancel
+                            </button>
+                            <button onClick={submitForceTransfer} disabled={forceUploading || !forceHash || !forceNewOwner} style={{ padding: '8px 18px', borderRadius: '6px', border: 'none', background: '#2563EB', color: '#FFFFFF', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}>
+                                Transfer Title
+                            </button>
+                        </div>
+                    </div>
+                </ModalOverlay>
+            )}
+
+            {/* ── Modal: History Ledger ── */}
+            {historyModal && (
+                <ModalOverlay onClose={() => setHistoryModal(null)}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '80vh', overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E2E8F0', paddingBottom: '10px' }}>
+                            <div>
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>Title History & Blockchain Events</h3>
+                                <span style={{ fontSize: '0.78rem', color: '#64748B' }}>Property: {historyModal.propertyCode}</span>
+                            </div>
+                            <button onClick={() => setHistoryModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}>
+                                <XCircle size={20} />
+                            </button>
+                        </div>
+
+                        {historyLoading ? (
+                            <div style={{ padding: '2rem', textAlign: 'center' }}>
+                                <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px auto', color: '#2563EB' }} />
+                                <span style={{ fontSize: '0.82rem', color: '#64748B' }}>Loading history ledger...</span>
+                            </div>
+                        ) : historyData.length === 0 ? (
+                            <p style={{ fontSize: '0.82rem', color: '#94A3B8', textAlign: 'center', padding: '1.5rem 0' }}>No historical events recorded for this property.</p>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {historyData.map((ev, i) => (
+                                    <div key={i} style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 12px', fontSize: '0.8rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontWeight: 800, color: '#0F172A', fontFamily: 'monospace' }}>{ev.eventType}</span>
+                                            <span style={{ fontSize: '0.7rem', color: '#94A3B8' }}>{new Date(ev.timestamp).toLocaleString()}</span>
+                                        </div>
+                                        {ev.data && (
+                                            <pre style={{ margin: '6px 0 0 0', fontSize: '0.7rem', color: '#475569', whiteSpace: 'pre-wrap', wordBreak: 'break-all', backgroundColor: '#FFFFFF', padding: '6px', borderRadius: '4px', border: '1px solid #E2E8F0' }}>
+                                                {JSON.stringify(ev.data, null, 2)}
+                                            </pre>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </ModalOverlay>
+            )}
+
+            {/* Footer */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                fontSize: '0.75rem',
+                color: '#94A3B8',
+                paddingTop: '1rem',
+                borderTop: '1px solid #E2E8F0'
+            }}>
+                <ShieldCheck size={14} color="#2563EB" />
+                <span>DigiVerify Land Registry — Cadastral Verification & Title Enforcement</span>
+            </div>
         </div>
     );
 };
 
-const DetailField = ({ label, value, mono = false, isLink = false, linkHref = '' }) => (
+const DetailField = ({ label, value, mono = false }) => (
     <div>
-        <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)', marginBottom: 3 }}>{label}</p>
-        {isLink && value !== 'None' && value !== 'Not minted' ? (
-            <a href={linkHref} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8rem', fontWeight: 500, color: '#60a5fa', fontFamily: mono ? 'monospace' : 'inherit', wordBreak: 'break-all', textDecoration: 'underline' }}>{value}</a>
-        ) : (
-            <p style={{ fontSize: '0.8rem', fontWeight: 500, color: 'rgba(255,255,255,0.75)', fontFamily: mono ? 'monospace' : 'inherit', wordBreak: 'break-all' }}>{value}</p>
-        )}
+        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>{label}</span>
+        <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: '#0F172A', wordBreak: 'break-all', ...(mono ? { fontFamily: 'monospace', fontSize: '0.8rem' } : {}) }}>
+            {value || '—'}
+        </p>
+    </div>
+);
+
+const ModalOverlay = ({ children, onClose }) => (
+    <div style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.6)',
+        backdropFilter: 'blur(4px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+        padding: '1rem'
+    }}>
+        <div style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: '12px',
+            border: '1px solid #E2E8F0',
+            maxWidth: '520px',
+            width: '100%',
+            padding: '1.75rem',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+        }}>
+            {children}
+        </div>
     </div>
 );
 

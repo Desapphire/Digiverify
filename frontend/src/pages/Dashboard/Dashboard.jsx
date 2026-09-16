@@ -6,13 +6,15 @@ import { saleService } from '../../services/sale.service';
 import {
     Wallet, Activity, ShieldCheck, Building, CheckCircle2,
     Clock, AlertTriangle, ArrowUpRight, ArrowDownLeft,
-    Bell, XCircle, MapPin, ExternalLink
+    Bell, XCircle, MapPin, ExternalLink, Copy, Search,
+    FileText, KeyRound, ChevronRight, Sparkles, Layers,
+    ShieldAlert, Lock, RotateCcw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './Dashboard.css';
-import './PropertyPages.css'; // Import the new Cyberpunk UI framework
+import './PropertyPages.css';
 
-const DashboardHome = () => {
+const Dashboard = () => {
     const { user } = useAuth();
     const { account, connectWallet, isConnecting } = useWeb3();
     const navigate = useNavigate();
@@ -21,6 +23,7 @@ const DashboardHome = () => {
     const [sales, setSales] = useState([]);
     const [loading, setLoading] = useState(true);
     const [walletError, setWalletError] = useState('');
+    const [copiedWallet, setCopiedWallet] = useState(false);
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -69,22 +72,30 @@ const DashboardHome = () => {
         }
     };
 
+    const handleCopyWallet = (address) => {
+        if (!address) return;
+        navigator.clipboard.writeText(address);
+        setCopiedWallet(true);
+        setTimeout(() => setCopiedWallet(false), 2000);
+    };
 
     // Derived stats
     const activeSales = sales.filter(s => s.sellerWallet?.toLowerCase() === user?.walletAddress?.toLowerCase() && s.status !== 'completed' && s.status !== 'cancelled');
     const activePurchases = sales.filter(s => s.buyerWallet?.toLowerCase() === user?.walletAddress?.toLowerCase() && s.status !== 'completed' && s.status !== 'cancelled');
+    const verifiedCount = properties.filter(p => p.status === 'active' || p.status === 'verified').length;
+    const rejectedProperties = properties.filter(p => p.status === 'rejected');
 
     // Notifications derived from data
     const notifications = [];
     sales.forEach(sale => {
         if (sale.status === 'completed') {
-            notifications.push({ id: `${sale.id}-comp`, type: 'success', icon: CheckCircle2, text: `Sale completed for property record`, time: sale.updatedAt || sale.createdAt });
+            notifications.push({ id: `${sale.id}-comp`, type: 'success', icon: CheckCircle2, text: `Property sale completed successfully`, time: sale.updatedAt || sale.createdAt });
         }
         if (sale.status === 'cancelled') {
-            notifications.push({ id: `${sale.id}-cancel`, type: 'danger', icon: XCircle, text: `Sale cancelled for property record`, time: sale.updatedAt || sale.createdAt });
+            notifications.push({ id: `${sale.id}-cancel`, type: 'danger', icon: XCircle, text: `Property transfer was cancelled`, time: sale.updatedAt || sale.createdAt });
         }
         if (sale.status === 'pending_signatures' || sale.status === 'initiated') {
-            notifications.push({ id: `${sale.id}-pending`, type: 'warning', icon: Clock, text: `Sale awaiting signatures`, time: sale.createdAt });
+            notifications.push({ id: `${sale.id}-pending`, type: 'warning', icon: Clock, text: `Transfer waiting for signatures`, time: sale.createdAt });
         }
     });
 
@@ -93,233 +104,513 @@ const DashboardHome = () => {
             notifications.push({ id: `${prop.id}-rejected`, type: 'danger', icon: XCircle, text: `Property registration rejected — Survey #${prop.surveyNumber}`, time: prop.updatedAt || prop.createdAt });
         }
         if (prop.status === 'frozen') {
-            notifications.push({ id: `${prop.id}-frozen`, type: 'danger', icon: AlertTriangle, text: `${prop.propertyCode || 'Property'} (Survey #${prop.surveyNumber}) frozen by court order — all transfers suspended.`, time: prop.updatedAt || prop.createdAt });
+            notifications.push({ id: `${prop.id}-frozen`, type: 'danger', icon: Lock, text: `${prop.propertyCode || 'Property'} (Survey #${prop.surveyNumber}) is temporarily frozen by court order.`, time: prop.updatedAt || prop.createdAt });
         }
         if (prop.status === 'under_dispute') {
-            notifications.push({ id: `${prop.id}-dispute`, type: 'warning', icon: AlertTriangle, text: `${prop.propertyCode || 'Property'} (Survey #${prop.surveyNumber}) is under active legal dispute.`, time: prop.updatedAt || prop.createdAt });
+            notifications.push({ id: `${prop.id}-dispute`, type: 'warning', icon: AlertTriangle, text: `${prop.propertyCode || 'Property'} (Survey #${prop.surveyNumber}) is currently under dispute.`, time: prop.updatedAt || prop.createdAt });
         }
     });
 
-    if (user?.kycStatus === 'pending') {
-        notifications.push({ id: 'kyc-pending', type: 'warning', icon: AlertTriangle, text: 'Identity verification is pending review', time: user.updatedAt });
+    if (user?.kycStatus === 'approved' || user?.kycStatus === 'verified') {
+        notifications.push({ id: 'kyc-approved', type: 'success', icon: CheckCircle2, text: 'Identity verified successfully on blockchain', time: user.updatedAt || user.createdAt });
+    } else if (user?.kycStatus === 'pending') {
+        notifications.push({ id: 'kyc-pending', type: 'warning', icon: Clock, text: 'Identity verification is under review', time: user.updatedAt || user.createdAt });
+    } else if (user?.kycStatus === 'rejected') {
+        notifications.push({ id: 'kyc-rejected', type: 'danger', icon: AlertTriangle, text: 'Identity verification needs action or re-submission', time: user.updatedAt || user.createdAt });
     }
-    if (user?.kycStatus === 'rejected') {
-        notifications.push({ id: 'kyc-rejected', type: 'danger', icon: XCircle, text: 'Identity verification was rejected — please resubmit', time: user.updatedAt });
-    }
-    
+
     // Sort by time, most recent first
     notifications.sort((a, b) => new Date(b.time) - new Date(a.time));
 
     // Loading State
     if (loading) {
         return (
-            <div style={{ display: 'flex', height: '100vh', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', height: '80vh', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse">
-                    <Activity style={{ width: '3rem', height: '3rem', color: '#00E5FF' }} className="animate-spin" />
-                    <p style={{ fontWeight: 600, letterSpacing: '0.05em', fontSize: '0.875rem', color: '#00E5FF' }}>Loading Dashboard Data...</p>
+                    <Activity style={{ width: '2.5rem', height: '2.5rem', color: '#1E40AF' }} className="animate-spin" />
+                    <p style={{ fontWeight: 600, letterSpacing: '0.02em', fontSize: '0.875rem', color: '#1E40AF' }}>Loading Dashboard...</p>
                 </div>
             </div>
         );
     }
 
-    const StatCard = ({ icon: Icon, label, value, color, onClick }) => (
-        <div
-            className="cyber-property-card"
-            onClick={onClick}
-            style={{
-                '--tier-color': color, 
-                '--tier-color-hover': color,
-                cursor: onClick ? 'pointer' : 'default',
-                display: 'flex', flexDirection: 'column', 
-                justifyContent: 'center', gap: '0.5rem',
-                padding: '1.25rem',
-                minHeight: '130px'
-            }}
-        >
-            <div className="cyber-card-glow-orb" style={{ background: color, top: '-2rem', right: '-2rem', width: '5rem', height: '5rem', opacity: 0.15 }}></div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative', zIndex: 10 }}>
-                <div style={{ padding: '0.5rem', borderRadius: '10px', background: 'rgba(0,0,0,0.4)', border: `1px solid ${color}40`, boxShadow: `0 0 10px ${color}20` }}>
-                    <Icon size={16} style={{ color }} />
-                </div>
-                <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.08em', color: '#d1d5db' }}>{label}</span>
-            </div>
-            <p style={{ fontSize: '2rem', fontWeight: 800, color: 'white', margin: 0, marginTop: '0.25rem', textShadow: `0 0 12px ${color}40`, position: 'relative', zIndex: 10 }}>{value}</p>
-        </div>
-    );
+    const isVerified = user?.kycStatus === 'approved' || user?.kycStatus === 'verified';
+    const isPending = user?.kycStatus === 'pending';
+    const displayedWallet = account || user?.walletAddress || '';
 
     return (
-        <div className="dashboard-container animate-fade-in" style={{ maxWidth: '1400px' }}>
+        <div className="dashboard-container">
 
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 mt-2">
-                <div>
-                    <h1 className="text-4xl font-black tracking-tight mb-3 text-white">
-                        Welcome, <span style={{ color: '#00E5FF', textShadow: '0 0 15px rgba(0,229,255,0.4)' }}>{user?.name || 'Citizen'}</span>
-                    </h1>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                        <div className="cyber-badge" style={{ 
-                            '--badge-color': user?.kycStatus === 'approved' || user?.kycStatus === 'verified' ? '#00E5FF' : user?.kycStatus === 'pending' ? '#F59E0B' : '#EF4444',
-                            '--badge-bg': 'rgba(0,0,0,0.4)',
-                            fontWeight: 700, padding: '0.5rem 1rem'
-                        }}>
-                            Identity Check: {user?.kycStatus?.toUpperCase() || 'UNKNOWN'}
+            {/* ─── Hero Banner ─── */}
+            <div className="dashboard-hero">
+                <div className="dashboard-hero-content">
+                    <div className="hero-left">
+                        <div className="hero-pretitle">
+                            <ShieldCheck size={16} className="text-blue-600" />
+                            <span>LAND REGISTRY PORTAL</span>
                         </div>
-                        
-                        {/* Wallet Badge */}
-                        <div className="cyber-badge" style={{ '--badge-bg': 'rgba(0,0,0,0.4)', '--badge-color': '#A855F7', '--badge-border': 'rgba(168,85,247,0.3)', padding: '0.5rem 1rem', display: 'flex', gap: '0.6rem' }}>
-                            <Wallet size={16} />
-                            {account ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span style={{ fontFamily: 'inherit', fontWeight: 600, color: (user?.walletAddress && account.toLowerCase() === user.walletAddress.toLowerCase()) ? '#00E5FF' : 'white' }}>
-                                        {account.slice(0, 6)}...{account.slice(-4)}
-                                        {user?.walletAddress && account.toLowerCase() !== user.walletAddress.toLowerCase() && ' (Mismatch)'}
-                                        {!user?.walletAddress && ' (Unlinked)'}
+                        <h1 className="dashboard-hero-title">
+                            Welcome back, <span className="hero-name">{user?.name || 'User'}</span>
+                        </h1>
+                        <p className="dashboard-hero-subtitle">
+                            Manage your properties, check verification status, and buy or sell land safely.
+                        </p>
+
+                        <div className="hero-pills-row">
+                            {/* Identity Status Pill */}
+                            <div className={`gov-identity-pill ${isVerified ? 'verified' : isPending ? 'pending' : 'action-required'}`}>
+                                {isVerified ? (
+                                    <>
+                                        <CheckCircle2 size={14} />
+                                        <span>Verified Citizen</span>
+                                    </>
+                                ) : isPending ? (
+                                    <>
+                                        <Clock size={14} />
+                                        <span>Verification Pending</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <AlertTriangle size={14} />
+                                        <span>Action Required: Re-KYC</span>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Citizen ID Badge */}
+                            <div className="gov-meta-pill">
+                                <span className="pill-label">ID:</span>
+                                <span className="pill-val font-mono">{user?.id ? user.id.slice(0, 8) + '...' : 'N/A'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Web3 Wallet Card */}
+                    <div className="hero-wallet-card">
+                        <div className="wallet-card-header">
+                            <div className="wallet-icon-box">
+                                <Wallet size={18} />
+                            </div>
+                            <div>
+                                <div className="wallet-card-label">Connected Wallet</div>
+                                <div className="wallet-network-tag">Avalanche Network</div>
+                            </div>
+                        </div>
+
+                        {displayedWallet ? (
+                            <div className="wallet-info-row">
+                                <div className="wallet-address-chip" title={displayedWallet}>
+                                    <span className="address-text">
+                                        {displayedWallet.slice(0, 6)}...{displayedWallet.slice(-4)}
                                     </span>
-                                    {!user?.walletAddress && (
-                                        <button onClick={handleLinkWallet} className="cyber-btn-hollow" style={{ '--btn-color': '#00E5FF', fontSize: '0.65rem', padding: '0.2rem 0.6rem' }}>
-                                            Link Account
-                                        </button>
-                                    )}
+                                    <button
+                                        className="wallet-copy-btn"
+                                        onClick={() => handleCopyWallet(displayedWallet)}
+                                        title="Copy wallet address"
+                                    >
+                                        {copiedWallet ? <CheckCircle2 size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                                    </button>
                                 </div>
-                            ) : (
+
+                                {!user?.walletAddress && account && (
+                                    <button onClick={handleLinkWallet} className="wallet-action-btn link-btn">
+                                        Link to ID
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="wallet-connect-wrapper">
                                 <button
                                     onClick={handleConnectWallet}
                                     disabled={isConnecting}
-                                    style={{ background: 'none', border: 'none', color: '#00E5FF', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                                    className="wallet-action-btn connect-btn"
                                 >
+                                    <Wallet size={14} />
                                     {isConnecting ? 'Connecting...' : 'Connect Wallet'}
                                 </button>
-                            )}
-                        </div>
+                            </div>
+                        )}
+
+                        {walletError && (
+                            <div className="wallet-error-text">
+                                <AlertTriangle size={12} /> {walletError}
+                            </div>
+                        )}
                     </div>
-                    {walletError && (
-                        <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#EF4444', marginTop: '0.75rem' }}>{walletError}</p>
-                    )}
                 </div>
             </div>
 
-            {/* Stats Grid */}
+            {/* Action Required Banner if Property Application Rejected */}
+            {rejectedProperties.length > 0 && (
+                <div style={{
+                    backgroundColor: '#FEF2F2',
+                    border: '1px solid #FECACA',
+                    borderLeft: '5px solid #DC2626',
+                    borderRadius: '12px',
+                    padding: '1.25rem 1.5rem',
+                    marginBottom: '1.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '1rem',
+                    boxShadow: '0 1px 3px rgba(220, 38, 38, 0.05)'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '10px',
+                            backgroundColor: '#FEE2E2',
+                            border: '1px solid #FCA5A5',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#DC2626',
+                            flexShrink: 0
+                        }}>
+                            <ShieldAlert size={20} />
+                        </div>
+                        <div>
+                            <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#991B1B', margin: 0 }}>
+                                Property Registration Rejected ({rejectedProperties.length} Application{rejectedProperties.length > 1 ? 's' : ''})
+                            </h4>
+                            <p style={{ fontSize: '0.82rem', color: '#B91C1C', margin: '2px 0 0 0' }}>
+                                The Land Authority officer has provided feedback on <strong>{rejectedProperties[0].propertyCode || 'your application'}</strong>: "{rejectedProperties[0].adminComments || 'Document verification failed'}". You can correct the details and reapply.
+                            </p>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                            onClick={() => navigate(`/reapply-property/${rejectedProperties[0].id}`)}
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '9px 18px',
+                                backgroundColor: '#2563EB',
+                                color: '#FFFFFF',
+                                border: 'none',
+                                borderRadius: '8px',
+                                fontWeight: 700,
+                                fontSize: '0.85rem',
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.2)'
+                            }}
+                        >
+                            <RotateCcw size={14} /> Review & Reapply
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Action Required Banner if Re-KYC requested */}
+            {!isVerified && !isPending && (
+                <div style={{
+                    backgroundColor: '#FFFBEB',
+                    border: '1px solid #FDE68A',
+                    borderRadius: '12px',
+                    padding: '1.25rem 1.5rem',
+                    marginBottom: '1.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '1rem',
+                    boxShadow: '0 1px 3px rgba(217, 119, 6, 0.05)'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '10px',
+                            backgroundColor: '#FEF3C7',
+                            border: '1px solid #FCD34D',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#D97706',
+                            flexShrink: 0
+                        }}>
+                            <AlertTriangle size={20} />
+                        </div>
+                        <div>
+                            <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#92400E', margin: 0 }}>
+                                Identity Verification Needs Attention (Action Required)
+                            </h4>
+                            <p style={{ fontSize: '0.82rem', color: '#78350F', margin: '2px 0 0 0' }}>
+                                The Land Authority has requested updated details or re-upload for your identity check.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => navigate('/reapply-kyc')}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '9px 18px',
+                            backgroundColor: '#2563EB',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            fontSize: '0.85rem',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 6px rgba(37, 99, 235, 0.2)'
+                        }}
+                    >
+                        Reapply KYC <ArrowRight size={14} />
+                    </button>
+                </div>
+            )}
+
+            {/* ─── 4 Clean Stat Cards ─── */}
             <div className="stats-grid">
-                <StatCard
-                    icon={ShieldCheck}
-                    label="Identity Status"
-                    value={user?.kycStatus === 'approved' || user?.kycStatus === 'verified' ? 'Verified' : user?.kycStatus === 'pending' ? 'Pending' : user?.kycStatus || '—'}
-                    color={user?.kycStatus === 'approved' || user?.kycStatus === 'verified' ? '#00E5FF' : user?.kycStatus === 'pending' ? '#F59E0B' : '#EF4444'}
-                    onClick={() => navigate('/profile')}
-                />
-                <StatCard
-                    icon={Building}
-                    label="Properties Owned"
-                    value={properties.length}
-                    color="#A855F7"
-                    onClick={() => navigate('/my-properties')}
-                />
-                <StatCard
-                    icon={ArrowUpRight}
-                    label="Active Sales"
-                    value={activeSales.length}
-                    color="#F59E0B"
-                    onClick={() => navigate('/transactions')}
-                />
-                <StatCard
-                    icon={ArrowDownLeft}
-                    label="Active Purchases"
-                    value={activePurchases.length}
-                    color="#EC4899"
-                    onClick={() => navigate('/transactions')}
-                />
+                <div className="gov-stat-card" onClick={() => navigate('/profile')}>
+                    <div className="gov-stat-top">
+                        <div className="gov-stat-icon" style={{ background: isVerified ? '#ECFDF5' : '#FEF3C7', color: isVerified ? '#059669' : '#D97706' }}>
+                            <ShieldCheck size={20} />
+                        </div>
+                        <span className="gov-stat-badge" style={{ background: isVerified ? '#ECFDF5' : '#FEF3C7', color: isVerified ? '#065F46' : '#92400E', borderColor: isVerified ? '#A7F3D0' : '#FDE68A' }}>
+                            {isVerified ? 'VERIFIED' : 'PENDING'}
+                        </span>
+                    </div>
+                    <div className="gov-stat-body">
+                        <div className="gov-stat-label">KYC Verification</div>
+                        <div className="gov-stat-number">{isVerified ? 'Verified' : 'Action Required'}</div>
+                    </div>
+                    <div className="gov-stat-footer">
+                        <span>View Verification</span>
+                        <ChevronRight size={14} />
+                    </div>
+                </div>
+
+                <div className="gov-stat-card" onClick={() => navigate('/my-properties')}>
+                    <div className="gov-stat-top">
+                        <div className="gov-stat-icon" style={{ background: '#EFF6FF', color: '#1E40AF' }}>
+                            <Building size={20} />
+                        </div>
+                        <span className="gov-stat-badge" style={{ background: '#EFF6FF', color: '#1E40AF', borderColor: '#BFDBFE' }}>
+                            {verifiedCount} ACTIVE
+                        </span>
+                    </div>
+                    <div className="gov-stat-body">
+                        <div className="gov-stat-label">My Properties</div>
+                        <div className="gov-stat-number">{properties.length}</div>
+                    </div>
+                    <div className="gov-stat-footer">
+                        <span>View Properties</span>
+                        <ChevronRight size={14} />
+                    </div>
+                </div>
+
+                <div className="gov-stat-card" onClick={() => navigate('/transactions')}>
+                    <div className="gov-stat-top">
+                        <div className="gov-stat-icon" style={{ background: '#FEF3C7', color: '#D97706' }}>
+                            <ArrowUpRight size={20} />
+                        </div>
+                        <span className="gov-stat-badge" style={{ background: '#FEF3C7', color: '#92400E', borderColor: '#FDE68A' }}>
+                            SELLING
+                        </span>
+                    </div>
+                    <div className="gov-stat-body">
+                        <div className="gov-stat-label">Selling</div>
+                        <div className="gov-stat-number">{activeSales.length}</div>
+                    </div>
+                    <div className="gov-stat-footer">
+                        <span>View Sales</span>
+                        <ChevronRight size={14} />
+                    </div>
+                </div>
+
+                <div className="gov-stat-card" onClick={() => navigate('/transactions')}>
+                    <div className="gov-stat-top">
+                        <div className="gov-stat-icon" style={{ background: '#F0FDF4', color: '#16A34A' }}>
+                            <ArrowDownLeft size={20} />
+                        </div>
+                        <span className="gov-stat-badge" style={{ background: '#F0FDF4', color: '#166534', borderColor: '#BBF7D0' }}>
+                            BUYING
+                        </span>
+                    </div>
+                    <div className="gov-stat-body">
+                        <div className="gov-stat-label">Buying</div>
+                        <div className="gov-stat-number">{activePurchases.length}</div>
+                    </div>
+                    <div className="gov-stat-footer">
+                        <span>View Purchases</span>
+                        <ChevronRight size={14} />
+                    </div>
+                </div>
             </div>
 
-            {/* Main Content: 2-column layout */}
-            <div className="dashboard-main-grid">
-                {/* Left Column (Properties & Notifications) */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* ─── Quick Service Action Grid ─── */}
+            <div className="services-section">
+                <div className="section-header-row">
+                    <h2 className="section-title">
+                        <Layers size={18} className="text-blue-600" />
+                        Quick Actions
+                    </h2>
+                    <span className="section-subtitle">Common property services</span>
+                </div>
 
-                {/* Recent Properties */}
-                <div className="cyber-hud-bar" style={{ display: 'block', padding: '1.75rem' }}>
-                    <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
-                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Building size={18} style={{ color: '#00E5FF' }} /> Recent Properties
-                        </h3>
-                        <button onClick={() => navigate('/my-properties')} style={{ background: 'transparent', border: 'none', color: '#00E5FF', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
-                            View All <ExternalLink size={14} />
+                <div className="quick-action-grid">
+                    <div className="quick-action-card" onClick={() => navigate('/register-property')}>
+                        <div className="action-card-icon" style={{ background: '#EFF6FF', color: '#1E40AF', borderColor: '#DBEAFE' }}>
+                            <Building size={22} />
+                        </div>
+                        <div className="action-card-content">
+                            <h3 className="action-card-title">Add Property</h3>
+                            <p className="action-card-desc">Register a new property to verify ownership on the blockchain</p>
+                        </div>
+                        <ChevronRight size={18} className="action-arrow" />
+                    </div>
+
+                    <div className="quick-action-card" onClick={() => navigate('/search-property')}>
+                        <div className="action-card-icon" style={{ background: '#F0FDF4', color: '#16A34A', borderColor: '#DCFCE7' }}>
+                            <Search size={22} />
+                        </div>
+                        <div className="action-card-content">
+                            <h3 className="action-card-title">Search Records</h3>
+                            <p className="action-card-desc">Search and verify properties, survey numbers, and ownership history</p>
+                        </div>
+                        <ChevronRight size={18} className="action-arrow" />
+                    </div>
+
+                    <div className="quick-action-card" onClick={() => navigate('/sale')}>
+                        <div className="action-card-icon" style={{ background: '#FEF3C7', color: '#D97706', borderColor: '#FDE68A' }}>
+                            <ArrowUpRight size={22} />
+                        </div>
+                        <div className="action-card-content">
+                            <h3 className="action-card-title">Sell Property</h3>
+                            <p className="action-card-desc">Create a sale agreement and transfer ownership securely</p>
+                        </div>
+                        <ChevronRight size={18} className="action-arrow" />
+                    </div>
+
+                    <div className="quick-action-card" onClick={() => navigate('/wallet-recovery')}>
+                        <div className="action-card-icon" style={{ background: '#EFF6FF', color: '#2563EB', borderColor: '#DBEAFE' }}>
+                            <KeyRound size={22} />
+                        </div>
+                        <div className="action-card-content">
+                            <h3 className="action-card-title">Locked Payments</h3>
+                            <p className="action-card-desc">Recover wallet access, claim locked funds, or resolve payment holds</p>
+                        </div>
+                        <ChevronRight size={18} className="action-arrow" />
+                    </div>
+                </div>
+            </div>
+
+            {/* ─── 2-Column Content: Recent Properties & Activity Feed ─── */}
+            <div className="dashboard-main-grid">
+
+                {/* Left Column: Recent Properties Table / Grid */}
+                <div className="dashboard-panel">
+                    <div className="panel-header">
+                        <div className="panel-title-box">
+                            <Building size={18} className="text-blue-700" />
+                            <h3 className="panel-title">Recent Properties</h3>
+                        </div>
+                        <button onClick={() => navigate('/my-properties')} className="panel-action-link">
+                            View All ({properties.length}) <ChevronRight size={14} />
                         </button>
                     </div>
 
                     {properties.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '2.5rem 1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                            <Building size={32} style={{ color: '#9ca3af', opacity: 0.5, margin: '0 auto 1rem' }} />
-                            <p style={{ color: '#9ca3af', fontSize: '0.9rem', marginBottom: '1rem' }}>No properties registered yet</p>
-                            <button className="cyber-btn-hollow" onClick={() => navigate('/register-property')} style={{ '--btn-color': '#00E5FF', padding: '0.5rem 1.5rem', fontSize: '0.85rem', textTransform: 'capitalize' }}>
-                                Register Property
+                        <div className="empty-panel-state">
+                            <Building size={36} className="empty-icon" />
+                            <h4>No Properties Registered</h4>
+                            <p>Add your first property to get started with verification and secure sales.</p>
+                            <button className="gov-primary-btn" onClick={() => navigate('/register-property')}>
+                                Add Property
                             </button>
                         </div>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {properties.slice(0, 4).map((prop) => (
-                                <div
-                                    key={prop.id}
-                                    style={{
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        padding: '1.25rem', background: 'rgba(0,0,0,0.3)', borderRadius: '12px',
-                                        border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'all 0.2sease'
-                                    }}
-                                    onClick={() => navigate(`/properties/${prop.id}`)}
-                                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#00E5FF'; e.currentTarget.style.background = 'rgba(0,229,255,0.05)'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; e.currentTarget.style.background = 'rgba(0,0,0,0.3)'; }}
-                                >
-                                    <div>
-                                        <p style={{ fontWeight: 700, fontSize: '0.95rem', color: 'white', marginBottom: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                            Survey: {prop.surveyNumber}
-                                            {(prop.status === 'active' || prop.status === 'verified') && <CheckCircle2 size={14} style={{ color: '#00E5FF' }} />}
-                                        </p>
-                                        <p style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                            <MapPin size={12} /> {prop.district}{prop.state ? `, ${prop.state}` : ''}
-                                        </p>
+                        <div className="property-rows-list">
+                            {properties.slice(0, 4).map((prop) => {
+                                const isPropVerified = prop.status === 'active' || prop.status === 'verified';
+                                return (
+                                    <div
+                                        key={prop.id}
+                                        className="gov-parcel-row"
+                                        onClick={() => navigate(`/properties/${prop.id}`)}
+                                    >
+                                        <div className="parcel-main-info">
+                                            <div className="parcel-survey-header">
+                                                <span className="survey-badge">SURVEY #{prop.surveyNumber}</span>
+                                                {prop.propertyCode && (
+                                                    <span className="code-badge">{prop.propertyCode}</span>
+                                                )}
+                                                {isPropVerified && (
+                                                    <span className="verified-stamp">
+                                                        <CheckCircle2 size={12} /> Verified
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="parcel-location">
+                                                <MapPin size={13} className="text-slate-400" />
+                                                <span>{prop.district}{prop.state ? `, ${prop.state}` : ''}</span>
+                                                <span className="dot-sep">&bull;</span>
+                                                <span>{prop.areaSqft ? `${Number(prop.areaSqft).toLocaleString()} sq.ft` : 'Area Unspecified'}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="parcel-right-actions">
+                                            <span className={`gov-status-tag ${prop.status}`}>
+                                                {prop.status?.replace('_', ' ').toUpperCase()}
+                                            </span>
+                                            <button
+                                                className="view-record-btn"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigate(`/properties/${prop.id}`);
+                                                }}
+                                            >
+                                                View Details <ChevronRight size={13} />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <span className="cyber-badge" style={{ 
-                                            '--badge-color': (prop.status === 'active' || prop.status === 'verified') ? '#00E5FF' : prop.status === 'frozen' ? '#3B82F6' : prop.status === 'under_dispute' ? '#EF4444' : (prop.status === 'rejected') ? '#EF4444' : '#F59E0B',
-                                            '--badge-bg': 'transparent',
-                                            padding: 0
-                                        }}>
-                                            {prop.status?.replace('_', ' ').toUpperCase()}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
 
-                {/* Notifications */}
-                <div className="cyber-hud-bar" style={{ display: 'block', padding: '1.75rem' }}>
-                    <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
-                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Bell size={18} style={{ color: '#A855F7' }} /> Activity Notifications
-                        </h3>
+                {/* Right Column: Real-time Activity Feed */}
+                <div className="dashboard-panel">
+                    <div className="panel-header">
+                        <div className="panel-title-box">
+                            <Activity size={18} className="text-blue-700" />
+                            <h3 className="panel-title">Recent Activity</h3>
+                        </div>
+                        <button onClick={() => navigate('/notifications')} className="panel-action-link">
+                            All Events <ChevronRight size={14} />
+                        </button>
                     </div>
 
                     {notifications.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '2.5rem 1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                            <Bell size={32} style={{ color: '#9ca3af', opacity: 0.5, margin: '0 auto 1rem' }} />
-                            <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>No recent activities</p>
+                        <div className="empty-panel-state">
+                            <Bell size={36} className="empty-icon" />
+                            <h4>No Recent Activities</h4>
+                            <p>Updates on your properties and transactions will appear here.</p>
                         </div>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '350px', overflowY: 'auto' }} className="hide-scrollbar">
-                            {notifications.slice(0, 6).map((notif) => {
+                        <div className="activity-feed-list">
+                            {notifications.slice(0, 5).map((notif) => {
                                 const NotifIcon = notif.icon;
-                                const colorMap = { success: '#00E5FF', warning: '#F59E0B', danger: '#EF4444' };
-                                const bgMap = { success: 'rgba(0,229,255,0.05)', warning: 'rgba(245,158,11,0.05)', danger: 'rgba(239,68,68,0.05)' };
-                                
                                 return (
-                                    <div key={notif.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', background: bgMap[notif.type], border: `1px solid ${colorMap[notif.type]}40`, borderRadius: '12px' }}>
-                                        <NotifIcon size={16} style={{ color: colorMap[notif.type], marginTop: '0.15rem', flexShrink: 0 }} />
-                                        <div>
-                                            <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'white', lineHeight: 1.4 }}>{notif.text}</p>
-                                            <p style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                                <Clock size={10} /> {notif.time ? new Date(notif.time).toLocaleDateString() : 'Just now'}
-                                            </p>
+                                    <div key={notif.id} className={`activity-feed-item ${notif.type}`}>
+                                        <div className="activity-icon-col">
+                                            <div className="activity-icon-bubble">
+                                                <NotifIcon size={14} />
+                                            </div>
+                                        </div>
+                                        <div className="activity-content-col">
+                                            <div className="activity-text">{notif.text}</div>
+                                            <div className="activity-timestamp">
+                                                <Clock size={11} />
+                                                <span>{notif.time ? new Date(notif.time).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'Synchronized'}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -329,62 +620,68 @@ const DashboardHome = () => {
                 </div>
             </div>
 
-            {/* Recent Transactions */}
-            <div className="cyber-hud-bar" style={{ display: 'block', padding: '1.75rem', marginBottom: '2rem' }}>
-                <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
-                    <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Activity size={18} style={{ color: '#EC4899' }} /> Recent Transactions
-                    </h3>
-                    <button onClick={() => navigate('/transactions')} style={{ background: 'transparent', border: 'none', color: '#EC4899', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
-                        View All <ExternalLink size={14} />
+            {/* ─── Recent Transactions Ledger Card ─── */}
+            <div className="dashboard-panel mt-6">
+                <div className="panel-header">
+                    <div className="panel-title-box">
+                        <FileText size={18} className="text-blue-700" />
+                        <h3 className="panel-title">Recent Transactions</h3>
+                    </div>
+                    <button onClick={() => navigate('/transactions')} className="panel-action-link">
+                        View All <ChevronRight size={14} />
                     </button>
                 </div>
 
                 {sales.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                        <Activity size={32} style={{ color: '#9ca3af', opacity: 0.5, margin: '0 auto 1rem' }} />
-                        <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>No transaction history found</p>
+                    <div className="empty-panel-state">
+                        <Activity size={36} className="empty-icon" />
+                        <h4>No Transactions Yet</h4>
+                        <p>Your buying and selling activity will show up here.</p>
                     </div>
                 ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
+                    <div className="tx-grid-responsive">
                         {sales.slice(0, 4).map((sale) => {
                             const isSeller = sale.sellerWallet?.toLowerCase() === user?.walletAddress?.toLowerCase();
                             return (
                                 <div
                                     key={sale.id}
-                                    style={{
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        padding: '1.25rem', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)',
-                                        cursor: 'pointer', transition: 'all 0.2s ease'
-                                    }}
+                                    className="tx-ledger-card"
                                     onClick={() => navigate(`/properties/${sale.propertyId}`)}
-                                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#EC4899'; e.currentTarget.style.background = 'rgba(236,72,153,0.05)'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; e.currentTarget.style.background = 'rgba(0,0,0,0.3)'; }}
                                 >
-                                    <div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                            {isSeller
-                                                ? <ArrowUpRight size={14} style={{ color: '#A855F7' }} />
-                                                : <ArrowDownLeft size={14} style={{ color: '#00E5FF' }} />
-                                            }
-                                            <span className="cyber-badge" style={{ '--badge-bg': 'rgba(255,255,255,0.1)', '--badge-color': '#d1d5db', '--badge-border': 'transparent', padding: '0.2rem 0.4rem', fontSize: '0.65rem' }}>
-                                                {isSeller ? 'SELLING' : 'BUYING'}
-                                            </span>
-                                            <span className="cyber-badge" style={{ '--badge-color': sale.status === 'completed' ? '#00E5FF' : sale.status === 'cancelled' ? '#EF4444' : '#F59E0B', '--badge-bg': 'transparent', padding: '0', fontSize: '0.65rem' }}>
-                                                {sale.status?.toUpperCase()}
-                                            </span>
+                                    <div className="tx-card-top">
+                                        <div className="tx-direction-tag">
+                                            {isSeller ? (
+                                                <span className="tx-type-badge sell">
+                                                    <ArrowUpRight size={13} /> SELLING
+                                                </span>
+                                            ) : (
+                                                <span className="tx-type-badge buy">
+                                                    <ArrowDownLeft size={13} /> BUYING
+                                                </span>
+                                            )}
                                         </div>
-                                        <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
-                                            Property: <span style={{ fontFamily: 'inherit', color: 'white' }}>{sale.propertyId?.slice(0, 8)}...</span>
-                                        </p>
+                                        <span className={`tx-status-badge ${sale.status}`}>
+                                            {sale.status?.replace('_', ' ').toUpperCase()}
+                                        </span>
                                     </div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <p style={{ fontWeight: 800, fontSize: '1.1rem', color: '#00E5FF', textShadow: '0 0 10px rgba(0,229,255,0.3)' }}>
+
+                                    <div className="tx-card-middle">
+                                        <div className="tx-amount">
                                             ₹{Number(sale.salePrice).toLocaleString('en-IN')}
-                                        </p>
-                                        <p style={{ fontSize: '0.7rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '0.3rem', justifyContent: 'flex-end', marginTop: '0.3rem' }}>
-                                            <Clock size={10} /> {new Date(sale.createdAt).toLocaleDateString()}
-                                        </p>
+                                        </div>
+                                        <div className="tx-prop-id font-mono">
+                                            Property #{sale.propertyId?.slice(0, 8)}...
+                                        </div>
+                                    </div>
+
+                                    <div className="tx-card-bottom">
+                                        <div className="tx-date">
+                                            <Clock size={11} />
+                                            <span>{new Date(sale.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                        </div>
+                                        <span className="tx-link-text">
+                                            View Details <ExternalLink size={12} />
+                                        </span>
                                     </div>
                                 </div>
                             );
@@ -392,19 +689,9 @@ const DashboardHome = () => {
                     </div>
                 )}
             </div>
-            </div>
 
-            <div style={{
-                padding: '1.25rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)',
-                borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '1rem'
-            }}>
-                <ShieldCheck style={{ color: '#00E5FF', flexShrink: 0 }} size={24} />
-                <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: 1.5 }}>
-                    All property data is anchored on the Avalanche Network. Transaction integrity is maintained via automated smart contracts.
-                </p>
-            </div>
-        </div >
+        </div>
     );
 };
 
-export default DashboardHome;
+export default Dashboard;

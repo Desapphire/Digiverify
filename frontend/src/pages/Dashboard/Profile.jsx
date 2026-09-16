@@ -1,18 +1,23 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useWeb3 } from '../../context/Web3Context';
 import { userService } from '../../services/user.service';
 import {
     User, Wallet, ShieldCheck, FileText, Mail, Phone,
     KeyRound, AlertTriangle, CheckCircle2, Copy, ExternalLink,
-    RefreshCw, Edit3, Save, X, Fingerprint, Activity
+    RefreshCw, Edit3, Save, X, Fingerprint, Activity, RotateCcw,
+    Sparkles, IdCard, MapPin, ScanFace, ArrowRight, Loader2,
+    Calendar, Check, AlertCircle, Shield
 } from 'lucide-react';
+import BiometricCapture from '../Auth/BiometricCapture';
 import './Profile.css';
 import './PropertyPages.css';
 
-const UserDashboard = () => {
+const Profile = () => {
     const { user } = useAuth();
     const { account, connectWallet, isConnecting } = useWeb3();
+    const navigate = useNavigate();
 
     // Profile editing state
     const [editMode, setEditMode] = useState(false);
@@ -27,6 +32,23 @@ const UserDashboard = () => {
     const [profileSaving, setProfileSaving] = useState(false);
     const [profileMsg, setProfileMsg] = useState({ type: '', text: '' });
 
+    // Re-KYC Modal & Form State
+    const [showReKycModal, setShowReKycModal] = useState(false);
+    const [reKycStep, setReKycStep] = useState(1); // 1 = Details, 2 = Biometrics
+    const [reKycName, setReKycName] = useState('');
+    const [reKycPhone, setReKycPhone] = useState('');
+    const [reKycGovtIdType, setReKycGovtIdType] = useState('Aadhar');
+    const [reKycGovtId, setReKycGovtId] = useState('');
+    const [reKycHouseNumber, setReKycHouseNumber] = useState('');
+    const [reKycLocality, setReKycLocality] = useState('');
+    const [reKycCity, setReKycCity] = useState('');
+    const [reKycPinCode, setReKycPinCode] = useState('');
+    const [reKycState, setReKycState] = useState('');
+    const [reKycCountry, setReKycCountry] = useState('India');
+    const [reKycFaceHash, setReKycFaceHash] = useState('');
+    const [reKycSaving, setReKycSaving] = useState(false);
+    const [reKycError, setReKycError] = useState('');
+
     // Wallet recovery state
     const [showRecovery, setShowRecovery] = useState(false);
     const [recoveryWallet, setRecoveryWallet] = useState('');
@@ -36,11 +58,116 @@ const UserDashboard = () => {
 
     // Wallet state
     const [walletError, setWalletError] = useState('');
-    const [copied, setCopied] = useState(false);
+    const [copiedField, setCopiedField] = useState('');
+
+    const handleCopy = (text, fieldName) => {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+        setCopiedField(fieldName);
+        setTimeout(() => setCopiedField(''), 2000);
+    };
 
     // Loading
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState(null);
+
+    const parseAdminDirectives = (comments) => {
+        if (!comments) return { badges: [], directiveText: '', isTargeted: false };
+        const match = comments.match(/\[REQUIRED:\s*([^\]]+)\]/i);
+        if (match) {
+            const rawFields = match[1].split(',').map(s => s.trim()).filter(Boolean);
+            const directiveText = comments.replace(match[0], '').trim();
+            const friendlyBadges = rawFields.map(f => {
+                const lower = f.toLowerCase();
+                if (lower.includes('face') || lower.includes('biometric') || lower.includes('photo')) return 'Photo / Face Scan';
+                if (lower.includes('id') || lower.includes('government') || lower.includes('aadhaar') || lower.includes('pan') || lower.includes('passport')) return 'ID Card';
+                if (lower.includes('address') || lower.includes('house') || lower.includes('locality') || lower.includes('pin') || lower.includes('city') || lower.includes('state')) return 'Address';
+                if (lower.includes('name') || lower.includes('contact') || lower.includes('phone') || lower.includes('email')) return 'Name & Contact';
+                if (lower.includes('birth') || lower.includes('age') || lower.includes('dob')) return 'Date of Birth';
+                if (lower.includes('land') || lower.includes('cadastral') || lower.includes('property')) return 'Property Info';
+                return f;
+            });
+            return {
+                badges: friendlyBadges,
+                directiveText: directiveText,
+                isTargeted: true,
+                requiresFace: rawFields.some(f => f.toLowerCase().includes('face') || f.toLowerCase().includes('biometric') || f.toLowerCase().includes('photo')),
+                requiresId: rawFields.some(f => f.toLowerCase().includes('id') || f.toLowerCase().includes('government')),
+                requiresAddress: rawFields.some(f => f.toLowerCase().includes('address') || f.toLowerCase().includes('house') || f.toLowerCase().includes('locality')),
+                requiresLand: rawFields.some(f => f.toLowerCase().includes('land') || f.toLowerCase().includes('cadastral')),
+                requiresNameContact: rawFields.some(f => f.toLowerCase().includes('name') || f.toLowerCase().includes('contact') || f.toLowerCase().includes('phone')),
+                requiresDob: rawFields.some(f => f.toLowerCase().includes('birth') || f.toLowerCase().includes('age') || f.toLowerCase().includes('dob'))
+            };
+        }
+        return {
+            badges: [],
+            directiveText: comments,
+            isTargeted: false,
+            requiresFace: true,
+            requiresId: true,
+            requiresAddress: true,
+            requiresLand: false,
+            requiresNameContact: true,
+            requiresDob: false
+        };
+    };
+
+    const openReKycModal = () => {
+        setReKycName(profile?.name || user?.name || '');
+        setReKycPhone(profile?.phone || '+91 ');
+        setReKycGovtIdType(profile?.governmentIdType || 'Aadhar');
+        setReKycGovtId('');
+        setReKycHouseNumber(profile?.houseNumber || '');
+        setReKycLocality(profile?.locality || '');
+        setReKycCity(profile?.city || '');
+        setReKycPinCode(profile?.pinCode || '');
+        setReKycState(profile?.state || '');
+        setReKycCountry(profile?.country || 'India');
+        setReKycFaceHash('');
+
+        const directives = parseAdminDirectives(profile?.adminComments || user?.adminComments);
+        if (directives.isTargeted && directives.requiresFace && !directives.requiresId && !directives.requiresAddress && !directives.requiresNameContact && !directives.requiresDob) {
+            setReKycStep(2);
+        } else {
+            setReKycStep(1);
+        }
+
+        setReKycError('');
+        setShowReKycModal(true);
+    };
+
+    const handleReKycSubmit = async (e) => {
+        if (e) e.preventDefault();
+        setReKycSaving(true);
+        setReKycError('');
+
+        try {
+            const payload = {
+                name: reKycName.trim() || undefined,
+                phone: reKycPhone.trim() || undefined,
+                governmentId: reKycGovtId.trim() || undefined,
+                governmentIdType: reKycGovtIdType || undefined,
+                houseNumber: reKycHouseNumber.trim() || undefined,
+                locality: reKycLocality.trim() || undefined,
+                city: reKycCity.trim() || undefined,
+                pinCode: reKycPinCode.trim() || undefined,
+                state: reKycState.trim() || undefined,
+                country: reKycCountry.trim() || 'India',
+                faceIdHash: reKycFaceHash || undefined
+            };
+
+            const res = await userService.reKyc(payload);
+            if (res.data?.data) {
+                setProfile(res.data.data);
+                setShowReKycModal(false);
+                setProfileMsg({ type: 'success', text: 'Verification details submitted! An officer will review your update.' });
+            }
+        } catch (err) {
+            setReKycError(err.response?.data?.message || err.message || 'Failed to submit verification details.');
+        } finally {
+            setReKycSaving(false);
+        }
+    };
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -85,17 +212,9 @@ const UserDashboard = () => {
         }
     };
 
-
-    const handleCopyAddress = () => {
-        const addr = profile?.walletAddress || '';
-        navigator.clipboard.writeText(addr);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
-
     const startEdit = () => {
         setEditEmail(profile?.email || '');
-        setEditPhone(profile?.phone || '');
+        setEditPhone(profile?.phone || '+91 ');
         setEditHouseNumber(profile?.houseNumber || '');
         setEditLocality(profile?.locality || '');
         setEditCity(profile?.city || '');
@@ -152,7 +271,7 @@ const UserDashboard = () => {
                 oldWallet: recoveryWallet,
                 reason: recoveryReason,
             });
-            setRecoveryMsg({ type: 'success', text: 'Recovery request submitted. An authority will review it.' });
+            setRecoveryMsg({ type: 'success', text: 'Recovery request submitted. Our team will review it.' });
             setRecoveryWallet('');
             setRecoveryReason('');
             setShowRecovery(false);
@@ -164,390 +283,732 @@ const UserDashboard = () => {
     };
 
     const data = profile || user;
+    const isVerified = data?.kycStatus === 'approved' || data?.kycStatus === 'verified';
+    const isPending = data?.kycStatus === 'pending';
+    const isFaceVerified = Boolean(data?.faceVerified);
 
     if (loading) {
         return (
-            <div style={{ display: 'flex', height: '100vh', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', height: '80vh', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }} className="animate-pulse">
-                    <Activity style={{ width: '3rem', height: '3rem', color: '#00E5FF' }} className="animate-spin" />
-                    <p style={{ fontWeight: 600, letterSpacing: '0.05em', fontSize: '0.875rem', color: '#00E5FF' }}>Loading Profile Payload...</p>
+                    <Activity style={{ width: '2.5rem', height: '2.5rem', color: '#1E40AF' }} className="animate-spin" />
+                    <p style={{ fontWeight: 600, letterSpacing: '0.02em', fontSize: '0.875rem', color: '#1E40AF' }}>Loading Profile...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
+        <div className="profile-container">
 
-            {/* Page Header */}
-            <div style={{ marginBottom: '2.5rem' }}>
-                <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.75rem', letterSpacing: '-0.02em', marginBottom: '0.5rem' }}>
-                    Identity <span style={{ color: '#00E5FF', textShadow: '0 0 15px rgba(0,229,255,0.4)' }}>Profile</span>
-                </h1>
-                <p style={{ color: '#9ca3af', fontSize: '0.9rem', maxWidth: '600px' }}>
-                    Manage your secure identity parameters, connected financial nodes, and recovery protocols.
-                </p>
+            {/* ─── Header ─── */}
+            <div className="profile-header-card">
+                <div className="profile-header-main">
+                    <div className="profile-avatar-box">
+                        <User size={32} />
+                    </div>
+                    <div>
+                        <div className="profile-badge-top">
+                            <ShieldCheck size={14} className="text-blue-600" />
+                            <span>PROFILE & VERIFICATION</span>
+                        </div>
+                        <h1 className="profile-title">{data?.name || 'User Profile'}</h1>
+                        <p className="profile-subtitle">
+                            Personal Details &bull; Connected Wallet &amp; Identity Status
+                        </p>
+                    </div>
+                </div>
+
+                <div className="profile-header-actions">
+                    <div className={`gov-identity-pill ${isVerified ? 'verified' : isPending ? 'pending' : 'action-required'}`}>
+                        {isVerified ? (
+                            <>
+                                <CheckCircle2 size={14} />
+                                <span>VERIFIED</span>
+                            </>
+                        ) : isPending ? (
+                            <>
+                                <Activity size={14} />
+                                <span>UNDER REVIEW</span>
+                            </>
+                        ) : (
+                            <>
+                                <AlertTriangle size={14} />
+                                <span>ACTION REQUIRED</span>
+                            </>
+                        )}
+                    </div>
+                    <button onClick={openReKycModal} className="gov-rekyc-btn">
+                        <RotateCcw size={14} /> Update Verification
+                    </button>
+                </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1.5rem', alignItems: 'start' }}>
-                {/* Left Column: Details & Verification */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* ─── Land Authority Targeted Re-KYC Notice ─── */}
+            {data?.adminComments && (() => {
+                const directives = parseAdminDirectives(data.adminComments);
+                return (
+                    <div className="targeted-rekyc-alert-box">
+                        <div className="alert-box-top">
+                            <div className="alert-badge-group">
+                                <div className="alert-icon-ring">
+                                    <AlertTriangle size={18} />
+                                </div>
+                                <div>
+                                    <h4 className="alert-box-title">Officer Feedback / Action Required</h4>
+                                    <p className="alert-box-sub">
+                                        Please update the requested details below to complete your verification.
+                                    </p>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <button onClick={() => navigate('/reapply-kyc')} className="alert-action-btn" style={{ backgroundColor: '#2563EB', color: '#FFFFFF', border: 'none' }}>
+                                    <ArrowRight size={14} /> Reapply KYC
+                                </button>
+                                <button onClick={openReKycModal} className="alert-action-btn">
+                                    <RotateCcw size={14} /> Quick Edit
+                                </button>
+                            </div>
+                        </div>
 
-                    {/* ─── Section 1: Personal Details ─── */}
-                    <div className="cyber-hud-bar" style={{ display: 'block' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
-                            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <User size={18} style={{ color: '#00E5FF' }} /> Master Node Data
-                            </h3>
+                        {directives.isTargeted && directives.badges.length > 0 && (
+                            <div className="flagged-elements-wrap">
+                                <span className="flagged-label">Items Needing Update:</span>
+                                <div className="flagged-pills-row">
+                                    {directives.badges.map((b, idx) => (
+                                        <span key={idx} className="flagged-pill">
+                                            ⚠️ {b}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {directives.directiveText && (
+                            <div className="directive-notes-panel">
+                                <span className="directive-label">Officer Notes / Feedback:</span>
+                                <p className="directive-text">{directives.directiveText}</p>
+                            </div>
+                        )}
+                    </div>
+                );
+            })()}
+
+            {profileMsg.text && (
+                <div className={`gov-feedback-alert ${profileMsg.type}`}>
+                    {profileMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                    <span>{profileMsg.text}</span>
+                </div>
+            )}
+
+            {/* ─── Main Grid: 2 Columns ─── */}
+            <div className="profile-columns-grid">
+
+                {/* Left Column: Personal Details & Facial Verification */}
+                <div className="profile-col-left">
+
+                    {/* Personal Details Record */}
+                    <div className="gov-white-panel">
+                        <div className="gov-panel-header">
+                            <div className="panel-title-with-icon">
+                                <IdCard size={18} className="text-blue-700" />
+                                <h3 className="panel-heading">Personal Details</h3>
+                            </div>
                             {!editMode && (
-                                <button className="cyber-btn-hollow" onClick={startEdit} style={{ '--btn-color': '#00E5FF', padding: '0.4rem 1rem', fontSize: '0.75rem' }}>
-                                    <Edit3 size={14} /> Update
+                                <button onClick={startEdit} className="edit-details-btn">
+                                    <Edit3 size={13} /> Edit Details
                                 </button>
                             )}
                         </div>
 
-                        <div className="cyber-data-grid">
-                            <div className="cyber-data-item">
-                                <span className="label">Citizen Name</span>
-                                <span className="value">{data?.name || '—'}</span>
-                            </div>
-                            <div className="cyber-data-item">
-                                <span className="label">Registered Node Email</span>
-                                <span className="value" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data?.email || '—'}</span>
-                            </div>
-                            <div className="cyber-data-item">
-                                <span className="label">Contact Number</span>
-                                <span className="value">{data?.phone || 'Not Provided'}</span>
-                            </div>
-                            <div className="cyber-data-item">
-                                <span className="label">Birthdate</span>
-                                <span className="value">{data?.birthdate ? new Date(data.birthdate).toLocaleDateString() : 'Not Provided'}</span>
-                            </div>
-                            <div className="cyber-data-item">
-                                <span className="label">Authorization Tier</span>
-                                <span className="value" style={{ color: '#00E5FF', textTransform: 'uppercase' }}>{data?.role || 'user'}</span>
-                            </div>
-                            <div className="cyber-data-item">
-                                <span className="label">Govt ID Type</span>
-                                <span className="value">{data?.governmentIdType || 'Not Provided'}</span>
-                            </div>
-                            <div className="cyber-data-item" style={{ gridColumn: 'span 2' }}>
-                                <span className="label">Registered Address</span>
-                                <span className="value">
-                                    {data?.houseNumber || data?.locality || data?.city || data?.pinCode || data?.state || data?.country ? (
-                                        `${data.houseNumber || ''}, ${data.locality || ''}, ${data.city || ''} - ${data.pinCode || ''}, ${data.state || ''}, ${data.country || ''}`.replace(/^, /, '').replace(/,\s*,/g, ',')
-                                    ) : 'Not Provided'}
-                                </span>
-                            </div>
-                            <div className="cyber-data-item">
-                                <span className="label">Initialization Date</span>
-                                <span className="value">{data?.createdAt ? new Date(data.createdAt).toLocaleDateString() : '—'}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ─── Section 3: Update Contact Info ─── */}
-                    {editMode && (
-                        <div className="cyber-hud-bar" style={{ display: 'block', borderColor: '#F59E0B' }}>
-                            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
-                                <Edit3 size={18} style={{ color: '#F59E0B' }} /> Network Node Rewrite
-                            </h3>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>Email Assignment</label>
-                                    <input
-                                        type="email"
-                                        value={editEmail}
-                                        onChange={(e) => setEditEmail(e.target.value)}
-                                        style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
-                                        placeholder="user@network.gov"
-                                    />
+                        {editMode ? (
+                            /* Edit Mode Form */
+                            <div className="profile-edit-form">
+                                <div className="form-group-grid">
+                                    <div className="form-field">
+                                        <label>Email Address</label>
+                                        <input
+                                            type="email"
+                                            value={editEmail}
+                                            onChange={(e) => setEditEmail(e.target.value)}
+                                            placeholder="citizen@gov.in"
+                                        />
+                                    </div>
+                                    <div className="form-field">
+                                        <label>Phone Number</label>
+                                        <input
+                                            type="tel"
+                                            value={editPhone}
+                                            onChange={(e) => {
+                                                let val = e.target.value;
+                                                if (!val.startsWith('+91')) {
+                                                    val = '+91 ' + val.replace(/^\+?91\s*/, '');
+                                                }
+                                                setEditPhone(val);
+                                            }}
+                                            placeholder="+91 98765 43210"
+                                        />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>Terminal Contact</label>
-                                    <input
-                                        type="tel"
-                                        value={editPhone}
-                                        onChange={(e) => setEditPhone(e.target.value)}
-                                        style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
-                                        placeholder="+000 000 000"
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>House No. & Street Name</label>
+
+                                <div className="form-field">
+                                    <label>House / Flat / Street Name</label>
                                     <input
                                         type="text"
                                         value={editHouseNumber}
                                         onChange={(e) => setEditHouseNumber(e.target.value)}
-                                        style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
-                                        placeholder="Flat 302, Cyber Tower"
+                                        placeholder="Flat 302, Cyber Heights"
                                     />
                                 </div>
-                                <div>
-                                    <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>Locality / Area</label>
-                                    <input
-                                        type="text"
-                                        value={editLocality}
-                                        onChange={(e) => setEditLocality(e.target.value)}
-                                        style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
-                                        placeholder="Madhapur"
-                                    />
-                                </div>
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>City</label>
+
+                                <div className="form-group-grid">
+                                    <div className="form-field">
+                                        <label>Area / Locality</label>
+                                        <input
+                                            type="text"
+                                            value={editLocality}
+                                            onChange={(e) => setEditLocality(e.target.value)}
+                                            placeholder="Madhapur"
+                                        />
+                                    </div>
+                                    <div className="form-field">
+                                        <label>City</label>
                                         <input
                                             type="text"
                                             value={editCity}
                                             onChange={(e) => setEditCity(e.target.value)}
-                                            style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
                                             placeholder="Hyderabad"
                                         />
                                     </div>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>PIN Code</label>
+                                </div>
+
+                                <div className="form-group-grid">
+                                    <div className="form-field">
+                                        <label>PIN Code</label>
                                         <input
                                             type="text"
                                             value={editPinCode}
                                             onChange={(e) => setEditPinCode(e.target.value)}
-                                            style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
                                             placeholder="500081"
                                         />
                                     </div>
-                                </div>
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>State</label>
+                                    <div className="form-field">
+                                        <label>State</label>
                                         <input
                                             type="text"
                                             value={editState}
                                             onChange={(e) => setEditState(e.target.value)}
-                                            style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
                                             placeholder="Telangana"
                                         />
                                     </div>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>Country</label>
-                                        <input
-                                            type="text"
-                                            value={editCountry}
-                                            onChange={(e) => setEditCountry(e.target.value)}
-                                            style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px' }}
-                                            placeholder="India"
-                                        />
-                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                    <button className="cyber-btn-hollow" onClick={handleSaveProfile} disabled={profileSaving} style={{ '--btn-color': '#00E5FF' }}>
-                                        {profileSaving ? 'Synthesizing...' : 'Commit Protocol'}
+
+                                <div className="form-actions-row">
+                                    <button onClick={handleSaveProfile} disabled={profileSaving} className="gov-save-btn">
+                                        {profileSaving ? 'Saving...' : 'Save Updates'}
                                     </button>
-                                    <button className="cyber-btn-hollow" onClick={cancelEdit} style={{ '--btn-color': '#EF4444' }}>
-                                        Abort
+                                    <button onClick={cancelEdit} className="gov-cancel-btn">
+                                        Cancel
                                     </button>
                                 </div>
                             </div>
+                        ) : (
+                            /* Personal Details Grid */
+                            <div className="identity-data-grid">
+                                <div className="id-data-card">
+                                    <span className="id-field-label">Full Name</span>
+                                    <span className="id-field-value font-bold">{data?.name || '—'}</span>
+                                </div>
+
+                                <div className="id-data-card">
+                                    <span className="id-field-label">Account Role</span>
+                                    <span className="id-field-value role-badge">{data?.role?.toUpperCase() || 'CITIZEN'}</span>
+                                </div>
+
+                                <div className="id-data-card full-width">
+                                    <div className="card-top-row">
+                                        <span className="id-field-label">Account ID</span>
+                                        <button onClick={() => handleCopy(data?.id, 'userId')} className="copy-link">
+                                            {copiedField === 'userId' ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+                                        </button>
+                                    </div>
+                                    <span className="id-field-value font-mono text-xs">{data?.id || '—'}</span>
+                                </div>
+
+                                <div className="id-data-card">
+                                    <span className="id-field-label">Email Address</span>
+                                    <span className="id-field-value">{data?.email || '—'}</span>
+                                </div>
+
+                                <div className="id-data-card">
+                                    <span className="id-field-label">Phone Number</span>
+                                    <span className="id-field-value">{data?.phone || 'Not Provided'}</span>
+                                </div>
+
+                                <div className="id-data-card">
+                                    <span className="id-field-label">Date of Birth</span>
+                                    <span className="id-field-value">{data?.birthdate ? new Date(data.birthdate).toLocaleDateString() : 'Not Provided'}</span>
+                                </div>
+
+                                <div className="id-data-card">
+                                    <div className="card-top-row">
+                                        <span className="id-field-label">Government ID</span>
+                                        <span className="gov-id-type-tag">{data?.governmentIdType || 'National ID'}</span>
+                                    </div>
+                                    <span className="id-field-value font-mono">
+                                        {data?.governmentId ? `•••• •••• ${data.governmentId.slice(-4)}` : 'On File (Encrypted)'}
+                                    </span>
+                                </div>
+
+                                <div className="id-data-card full-width">
+                                    <span className="id-field-label">Residential Address</span>
+                                    <span className="id-field-value">
+                                        {data?.houseNumber || data?.locality || data?.city || data?.pinCode || data?.state || data?.country ? (
+                                            `${data.houseNumber || ''}, ${data.locality || ''}, ${data.city || ''} - ${data.pinCode || ''}, ${data.state || ''}, ${data.country || ''}`.replace(/^, /, '').replace(/,\s*,/g, ',')
+                                        ) : 'No address provided'}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Facial Verification Card */}
+                    <div className="gov-white-panel">
+                        <div className="gov-panel-header">
+                            <div className="panel-title-with-icon">
+                                <Fingerprint size={18} className="text-blue-700" />
+                                <h3 className="panel-heading">Facial Verification</h3>
+                            </div>
+                            <span className={`biometric-status-pill ${isFaceVerified ? 'active' : 'inactive'}`}>
+                                {isFaceVerified ? 'VERIFIED' : 'PENDING SCAN'}
+                            </span>
                         </div>
-                    )}
 
+                        <p className="panel-instruction-text">
+                            Your photo and facial scan are verified securely to confirm your identity for property transactions.
+                        </p>
 
-                    {/* ─── Section 2: Verification Status ─── */}
-                    <div className="cyber-hud-bar" style={{ display: 'block' }}>
-                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
-                            <ShieldCheck size={18} style={{ color: '#10B981' }} /> Certification Matrix
-                        </h3>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-                            {/* Document Status */}
-                            <div style={{
-                                padding: '1.25rem', borderRadius: '12px', background: 'rgba(0,0,0,0.3)',
-                                border: `1px solid ${data?.kycStatus === 'approved' || data?.kycStatus === 'verified' ? '#10B981' : data?.kycStatus === 'pending' ? '#F59E0B' : '#EF4444'}60`,
-                                display: 'flex', gap: '1rem', alignItems: 'flex-start'
-                            }}>
-                                <div style={{
-                                    padding: '0.6rem', borderRadius: '8px',
-                                    background: `${data?.kycStatus === 'approved' || data?.kycStatus === 'verified' ? '#10B981' : data?.kycStatus === 'pending' ? '#F59E0B' : '#EF4444'}20`
-                                }}>
-                                    <FileText size={24} style={{ color: data?.kycStatus === 'approved' || data?.kycStatus === 'verified' ? '#10B981' : data?.kycStatus === 'pending' ? '#F59E0B' : '#EF4444' }} />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'white', marginBottom: '0.5rem' }}>Documentation Ledger</p>
-                                    <div className="cyber-badge" style={{
-                                        '--badge-color': data?.kycStatus === 'approved' || data?.kycStatus === 'verified' ? '#10B981' : data?.kycStatus === 'pending' ? '#F59E0B' : '#EF4444',
-                                        '--badge-bg': 'rgba(0,0,0,0.5)', padding: '0.3rem 0.6rem', fontSize: '0.65rem'
-                                    }}>
-                                        {data?.kycStatus?.toUpperCase() || 'UNKNOWN'}
+                        {data?.faceIdHash ? (
+                            <div className="biometric-hash-card">
+                                <div className="hash-card-header">
+                                    <div className="hash-title-box">
+                                        <ShieldCheck size={14} className="text-emerald-600" />
+                                        <span>Facial Verification Code</span>
                                     </div>
-                                    {data?.kycStatus !== 'approved' && data?.kycStatus !== 'verified' && (
-                                        <>
-                                            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', marginTop: '0.75rem', overflow: 'hidden' }}>
-                                                <div className="animate-pulse" style={{ height: '100%', width: data?.kycStatus === 'pending' ? '50%' : '10%', background: data?.kycStatus === 'pending' ? '#F59E0B' : '#EF4444' }}></div>
-                                            </div>
-                                            {data?.kycStatus === 'rejected' && data?.adminComments && (
-                                                <div style={{ marginTop: '0.75rem', padding: '0.5rem', background: 'rgba(239,68,68,0.1)', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.2)' }}>
-                                                    <span style={{ fontSize: '0.55rem', fontWeight: 700, textTransform: 'uppercase', color: '#EF4444', display: 'block', marginBottom: '0.2rem' }}>Authority Note</span>
-                                                    <span style={{ fontSize: '0.7rem', color: '#fca5a5', lineHeight: 1.3, display: 'block' }}>{data.adminComments}</span>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
+                                    <button onClick={() => handleCopy(data?.faceIdHash, 'faceIdHash')} className="copy-hash-btn">
+                                        {copiedField === 'faceIdHash' ? <><Check size={12} className="text-emerald-600" /> Copied Code</> : <><Copy size={12} /> Copy Code</>}
+                                    </button>
                                 </div>
+                                <code className="hash-code-block">{data.faceIdHash}</code>
                             </div>
-
-                            {/* Biometric Status */}
-                            <div style={{
-                                padding: '1.25rem', borderRadius: '12px', background: 'rgba(0,0,0,0.3)',
-                                border: `1px solid ${data?.faceVerified ? '#10B981' : 'rgba(255,255,255,0.1)'}`,
-                                display: 'flex', gap: '1rem', alignItems: 'flex-start'
-                            }}>
-                                <div style={{
-                                    padding: '0.6rem', borderRadius: '8px',
-                                    background: `${data?.faceVerified ? '#10B981' : '#ffffff'}20`
-                                }}>
-                                    <Fingerprint size={24} style={{ color: data?.faceVerified ? '#10B981' : '#9ca3af' }} />
-                                </div>
+                        ) : (
+                            <div className="biometric-empty-box">
+                                <ScanFace size={28} className="text-slate-400" />
                                 <div>
-                                    <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'white', marginBottom: '0.5rem' }}>Biometric Sync</p>
-                                    <div className="cyber-badge" style={{
-                                        '--badge-color': data?.faceVerified ? '#10B981' : '#9ca3af',
-                                        '--badge-bg': 'rgba(0,0,0,0.5)', padding: '0.3rem 0.6rem', fontSize: '0.65rem', '--badge-border': 'transparent'
-                                    }}>
-                                        {data?.faceVerified ? 'VERIFIED' : 'PENDING SECURE'}
-                                    </div>
+                                    <h5>No Face Scan on File</h5>
+                                    <p>Complete a quick face scan to verify your identity.</p>
                                 </div>
+                                <button onClick={openReKycModal} className="gov-secondary-btn">
+                                    Start Face Scan
+                                </button>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                 </div>
 
-                {/* Right Column: Wallet & Recovery */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* Right Column: Web3 Wallet & Emergency Recovery */}
+                <div className="profile-col-right">
 
-                    {/* ─── Section 5: Linked Wallet ─── */}
-                    <div className="cyber-hud-bar" style={{ display: 'block' }}>
-                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
-                            <Wallet size={18} style={{ color: '#A855F7' }} /> Decentralized Address
-                        </h3>
+                    {/* Linked Web3 Wallet Panel */}
+                    <div className="gov-white-panel">
+                        <div className="gov-panel-header">
+                            <div className="panel-title-with-icon">
+                                <Wallet size={18} className="text-blue-700" />
+                                <h3 className="panel-heading">Connected Wallet</h3>
+                            </div>
+                            <span className="network-pill">Avalanche Network</span>
+                        </div>
 
-                        <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '1.5rem' }}>
-                            <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#9ca3af', fontWeight: 700, marginBottom: '0.6rem' }}>Primary Ledger ID</p>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                                <code style={{
-                                    fontFamily: 'monospace', color: '#A855F7', background: 'rgba(168,85,247,0.1)',
-                                    padding: '0.5rem 0.75rem', borderRadius: '6px', fontSize: '0.85rem', flex: 1, wordBreak: 'break-all'
-                                }}>
-                                    {data?.walletAddress || 'Uninitialized'}
-                                </code>
+                        <div className="wallet-dossier-box">
+                            <div className="dossier-label-row">
+                                <span className="dossier-label">Registered Wallet Address</span>
                                 {data?.walletAddress && (
-                                    <button onClick={handleCopyAddress} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
-                                        {copied ? <><CheckCircle2 size={12} style={{ color: '#10B981' }} /> Copied</> : <><Copy size={12} /> Copy</>}
+                                    <button onClick={() => handleCopy(data.walletAddress, 'wallet')} className="copy-link">
+                                        {copiedField === 'wallet' ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy Address</>}
                                     </button>
                                 )}
                             </div>
+                            <div className="wallet-addr-display">
+                                <code className="font-mono">{data?.walletAddress || 'No wallet linked to this account'}</code>
+                            </div>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                            {account ? (
-                                <>
-                                    <div className="cyber-badge" style={{
-                                        '--badge-color': (data?.walletAddress && account.toLowerCase() === data?.walletAddress?.toLowerCase()) ? '#10B981' : data?.walletAddress ? '#EF4444' : '#F59E0B',
-                                        '--badge-bg': 'rgba(0,0,0,0.4)', padding: '0.6rem 1rem', wordBreak: 'break-all'
-                                    }}>
-                                        {account}
-                                        {data?.walletAddress && account.toLowerCase() !== data?.walletAddress?.toLowerCase() && ' (MISMATCH)'}
-                                        {!data?.walletAddress && ' (CONNECTED)'}
-                                    </div>
-                                    {!data?.walletAddress && (
-                                        <button className="cyber-btn-hollow" onClick={handleLinkWallet} disabled={profileSaving} style={{ '--btn-color': '#10B981', padding: '0.5rem 1rem' }}>
-                                            Link to Identity
-                                        </button>
-                                    )}
-                                </>
-                            ) : (
-                                <button className="cyber-btn-hollow" onClick={handleConnectWallet} disabled={isConnecting} style={{ '--btn-color': '#A855F7', padding: '0.6rem 1.25rem', width: '100%', justifyContent: 'center' }}>
-                                    <Wallet size={16} /> {isConnecting ? 'Establishing Link...' : 'Connect Hardware Wallet'}
+                        <div className="wallet-connection-section">
+                            <div className="connection-status-row">
+                                <span className="status-label">Browser Wallet:</span>
+                                {account ? (
+                                    <span className="status-badge-connected">
+                                        <CheckCircle2 size={12} /> Connected: {account.slice(0, 6)}...{account.slice(-4)}
+                                    </span>
+                                ) : (
+                                    <span className="status-badge-disconnected">Not Connected</span>
+                                )}
+                            </div>
+
+                            {!account ? (
+                                <button onClick={handleConnectWallet} disabled={isConnecting} className="gov-primary-btn w-full">
+                                    <Wallet size={16} /> {isConnecting ? 'Connecting...' : 'Connect Wallet'}
                                 </button>
+                            ) : !data?.walletAddress ? (
+                                <button onClick={handleLinkWallet} disabled={profileSaving} className="gov-success-btn w-full">
+                                    <ShieldCheck size={16} /> {profileSaving ? 'Linking...' : 'Link Wallet to Account'}
+                                </button>
+                            ) : account.toLowerCase() !== data.walletAddress.toLowerCase() ? (
+                                <div className="wallet-mismatch-warning">
+                                    <AlertTriangle size={15} />
+                                    <span>Wallet mismatch: Current browser wallet does not match your registered account wallet.</span>
+                                </div>
+                            ) : (
+                                <div className="wallet-verified-success">
+                                    <CheckCircle2 size={15} />
+                                    <span>Wallet is connected and ready for property transactions.</span>
+                                </div>
+                            )}
+
+                            {walletError && (
+                                <div className="wallet-error-banner">
+                                    <AlertCircle size={14} />
+                                    <span>{walletError}</span>
+                                </div>
                             )}
                         </div>
-
-                        {walletError && (
-                            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#EF4444', marginTop: '1rem' }}><AlertTriangle size={12} style={{ display: 'inline' }} /> {walletError}</p>
-                        )}
-                        {profileMsg.text && (
-                            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: profileMsg.type === 'success' ? '#10B981' : '#EF4444', marginTop: '1rem', textTransform: 'uppercase' }}>
-                                {profileMsg.text}
-                            </p>
-                        )}
                     </div>
 
-                    {/* ─── Section 4: Wallet Recovery ─── */}
-                    <div className="cyber-hud-bar" style={{ display: 'block', borderColor: 'rgba(239,68,68,0.2)' }}>
-                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
-                            <KeyRound size={18} style={{ color: '#EF4444' }} /> Emergency Recovery
-                        </h3>
+                    {/* Emergency Wallet Recovery Panel */}
+                    <div className="gov-white-panel border-amber">
+                        <div className="gov-panel-header">
+                            <div className="panel-title-with-icon">
+                                <KeyRound size={18} className="text-amber-600" />
+                                <h3 className="panel-heading">Wallet Recovery</h3>
+                            </div>
+                            <span className="recovery-tier-tag">Protected</span>
+                        </div>
 
-                        <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-                            Initiate a protocol override if hardware wallet access is permanently corrupted. Required multi-sig validation from government authorities.
+                        <p className="panel-instruction-text">
+                            If you lost access to your wallet or suspect unauthorized activity, submit a recovery request to update your registered wallet.
                         </p>
 
                         {!showRecovery ? (
-                            <button className="cyber-btn-hollow" onClick={() => { setShowRecovery(true); setRecoveryMsg({ type: '', text: '' }); }} style={{ '--btn-color': '#EF4444', width: '100%', justifyContent: 'center' }}>
-                                <KeyRound size={16} /> Initialize Recovery Protocol
+                            <button onClick={() => { setShowRecovery(true); setRecoveryMsg({ type: '', text: '' }); }} className="gov-danger-hollow-btn w-full">
+                                <KeyRound size={15} /> Request Wallet Recovery
                             </button>
                         ) : (
-                            <div style={{ background: 'rgba(239,68,68,0.05)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)' }}>
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#EF4444', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>Corrupted Wallet Payload</label>
+                            <div className="recovery-form-wrapper">
+                                <div className="form-field">
+                                    <label>Previous / Lost Wallet Address</label>
                                     <input
                                         type="text"
                                         value={recoveryWallet}
                                         onChange={(e) => setRecoveryWallet(e.target.value)}
-                                        style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(239,68,68,0.3)', color: 'white', borderRadius: '8px' }}
                                         placeholder="0x..."
                                     />
                                 </div>
-                                <div>
-                                    <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#EF4444', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>System Diagnostics Reason</label>
+
+                                <div className="form-field">
+                                    <label>Reason for Recovery</label>
                                     <textarea
                                         rows={3}
                                         value={recoveryReason}
                                         onChange={(e) => setRecoveryReason(e.target.value)}
-                                        style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(239,68,68,0.3)', color: 'white', borderRadius: '8px', minHeight: '80px', resize: 'vertical' }}
-                                        placeholder="..."
+                                        placeholder="Describe why you need to recover or update your wallet..."
                                     />
                                 </div>
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem' }}>
+
+                                <div className="recovery-buttons-row">
                                     <button
-                                        className="cyber-btn-hollow"
                                         onClick={handleRequestRecovery}
                                         disabled={recoverySaving || !recoveryWallet || recoveryReason.length < 10}
-                                        style={{ '--btn-color': '#EF4444', flex: 1, justifyContent: 'center' }}
+                                        className="gov-danger-btn flex-1"
                                     >
-                                        Execute Command
+                                        {recoverySaving ? 'Submitting...' : 'Submit Recovery Request'}
                                     </button>
-                                    <button className="cyber-btn-hollow" onClick={() => setShowRecovery(false)} style={{ '--btn-color': '#9ca3af' }}>Abort</button>
+                                    <button onClick={() => setShowRecovery(false)} className="gov-cancel-btn">
+                                        Cancel
+                                    </button>
                                 </div>
                             </div>
                         )}
 
                         {recoveryMsg.text && (
-                            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: recoveryMsg.type === 'success' ? '#10B981' : '#EF4444', marginTop: '1rem' }}>
-                                <AlertTriangle size={12} style={{ display: 'inline' }} /> {recoveryMsg.text}
-                            </p>
+                            <div className={`gov-feedback-alert ${recoveryMsg.type} mt-3`}>
+                                {recoveryMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                                <span>{recoveryMsg.text}</span>
+                            </div>
                         )}
                     </div>
+
+                    {/* Security Immutability Seal */}
+                    <div className="gov-immutability-card">
+                        <Shield size={24} className="text-blue-700 flex-shrink-0" />
+                        <div>
+                            <h6>Account Security</h6>
+                            <p>
+                                Your personal details and property transactions are encrypted and secured on the blockchain with full audit protection.
+                            </p>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
-            <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1rem', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <ShieldCheck style={{ width: '1.5rem', height: '1.5rem', color: '#00E5FF' }} />
-                <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: 1.5, margin: 0 }}>
-                    Strict immutability enforced. Core identity parameters are secured via state-backed cryptography. Wallet alterations are permanently tracked in the network ledger.
-                </p>
-            </div>
+            {/* ─── Targeted Re-KYC Modal Dialog ─── */}
+            {showReKycModal && (
+                <div className="gov-modal-backdrop">
+                    <div className="gov-modal-dialog">
+                        {/* Modal Header */}
+                        <div className="gov-modal-header">
+                            <div>
+                                <h3 className="modal-title">
+                                    <RotateCcw size={18} className="text-blue-600" />
+                                    Identity Verification Update
+                                </h3>
+                                <div className="modal-steps-indicator">
+                                    <span className={`step-item ${reKycStep === 1 ? 'active' : 'completed'}`}>
+                                        Step 1: Personal Details
+                                    </span>
+                                    <span className="step-sep">&gt;</span>
+                                    <span className={`step-item ${reKycStep === 2 ? 'active' : ''}`}>
+                                        Step 2: Face Scan Verification
+                                    </span>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowReKycModal(false)} className="modal-close-btn">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Targeted Re-KYC Scope Banner inside Modal */}
+                        {(() => {
+                            const modalDirectives = parseAdminDirectives(profile?.adminComments || user?.adminComments);
+                            if (!modalDirectives.isTargeted || modalDirectives.badges.length === 0) return null;
+                            return (
+                                <div className="modal-targeted-banner">
+                                    <span className="targeted-label">🎯 Required Updates from Officer:</span>
+                                    <div className="targeted-pills-list">
+                                        {modalDirectives.badges.map((b, i) => (
+                                            <span key={i} className="targeted-scope-pill">⚠️ {b}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
+                        {reKycError && (
+                            <div className="gov-feedback-alert danger mb-4">
+                                <AlertTriangle size={16} />
+                                <span>{reKycError}</span>
+                            </div>
+                        )}
+
+                        {reKycStep === 1 ? (() => {
+                            const modalDirectives = parseAdminDirectives(profile?.adminComments || user?.adminComments);
+                            return (
+                                <form onSubmit={(e) => { e.preventDefault(); setReKycStep(2); }}>
+                                    <div className="modal-form-content">
+                                        <div className="form-field">
+                                            <div className="field-label-row">
+                                                <label>Full Name</label>
+                                                {modalDirectives.requiresNameContact && (
+                                                    <span className="field-flag-tag">⚠️ Needs Update</span>
+                                                )}
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={reKycName}
+                                                onChange={(e) => setReKycName(e.target.value)}
+                                                required
+                                                className={modalDirectives.requiresNameContact ? 'highlight-field' : ''}
+                                                placeholder="Legal name as on government ID"
+                                            />
+                                        </div>
+
+                                        <div className="form-group-grid">
+                                            <div className="form-field">
+                                                <div className="field-label-row">
+                                                    <label>Phone Number</label>
+                                                    {modalDirectives.requiresNameContact && (
+                                                        <span className="field-flag-tag">⚠️ Needs Update</span>
+                                                    )}
+                                                </div>
+                                                <input
+                                                    type="tel"
+                                                    value={reKycPhone}
+                                                    onChange={(e) => {
+                                                        let val = e.target.value;
+                                                        if (!val.startsWith('+91')) {
+                                                            val = '+91 ' + val.replace(/^\+?91\s*/, '');
+                                                        }
+                                                        setReKycPhone(val);
+                                                    }}
+                                                    required
+                                                    className={modalDirectives.requiresNameContact ? 'highlight-field' : ''}
+                                                    placeholder="+91 98765 43210"
+                                                />
+                                            </div>
+
+                                            <div className="form-field">
+                                                <label>Government ID Type</label>
+                                                <select
+                                                    value={reKycGovtIdType}
+                                                    onChange={(e) => setReKycGovtIdType(e.target.value)}
+                                                >
+                                                    <option value="Aadhar">Aadhaar Card (UIDAI)</option>
+                                                    <option value="PAN">PAN Card</option>
+                                                    <option value="Passport">Passport</option>
+                                                    <option value="VoterId">Voter ID Card</option>
+                                                    <option value="DrivingLicense">Driving License</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="form-field">
+                                            <div className="field-label-row">
+                                                <label>Government ID Number</label>
+                                                {modalDirectives.requiresId && (
+                                                    <span className="field-flag-tag">⚠️ Needs ID Update</span>
+                                                )}
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={reKycGovtId}
+                                                onChange={(e) => setReKycGovtId(e.target.value)}
+                                                className={modalDirectives.requiresId ? 'highlight-field' : ''}
+                                                placeholder="Enter ID number"
+                                            />
+                                        </div>
+
+                                        <div className="form-field">
+                                            <div className="field-label-row">
+                                                <label>Street Address / House Number</label>
+                                                {modalDirectives.requiresAddress && (
+                                                    <span className="field-flag-tag">⚠️ Needs Address Update</span>
+                                                )}
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={reKycHouseNumber}
+                                                onChange={(e) => setReKycHouseNumber(e.target.value)}
+                                                className={modalDirectives.requiresAddress ? 'highlight-field' : ''}
+                                                placeholder="Flat 401, Cyber Park"
+                                            />
+                                        </div>
+
+                                        <div className="form-group-grid">
+                                            <div className="form-field">
+                                                <label>Area / Locality</label>
+                                                <input
+                                                    type="text"
+                                                    value={reKycLocality}
+                                                    onChange={(e) => setReKycLocality(e.target.value)}
+                                                    placeholder="HiTech City"
+                                                />
+                                            </div>
+                                            <div className="form-field">
+                                                <label>City</label>
+                                                <input
+                                                    type="text"
+                                                    value={reKycCity}
+                                                    onChange={(e) => setReKycCity(e.target.value)}
+                                                    placeholder="Hyderabad"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="form-group-grid">
+                                            <div className="form-field">
+                                                <label>PIN Code</label>
+                                                <input
+                                                    type="text"
+                                                    value={reKycPinCode}
+                                                    onChange={(e) => setReKycPinCode(e.target.value)}
+                                                    placeholder="500081"
+                                                />
+                                            </div>
+                                            <div className="form-field">
+                                                <label>State</label>
+                                                <input
+                                                    type="text"
+                                                    value={reKycState}
+                                                    onChange={(e) => setReKycState(e.target.value)}
+                                                    placeholder="Telangana"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="modal-actions-footer">
+                                        <button type="button" onClick={() => setShowReKycModal(false)} className="gov-cancel-btn">
+                                            Cancel
+                                        </button>
+                                        <button type="submit" className="gov-primary-btn">
+                                            Proceed to Face Scan <ArrowRight size={16} />
+                                        </button>
+                                    </div>
+                                </form>
+                            );
+                        })() : (
+                            <div className="biometric-step-wrapper">
+                                <div className="biometric-step-notice">
+                                    <ScanFace size={18} className="text-blue-600 flex-shrink-0" />
+                                    <span>Please look directly into the camera to capture a clear photo.</span>
+                                </div>
+
+                                <div className="biometric-camera-container">
+                                    <BiometricCapture
+                                        onCaptureComplete={(faceHash) => {
+                                            setReKycFaceHash(faceHash);
+                                        }}
+                                        standalone={false}
+                                    />
+                                </div>
+
+                                {reKycFaceHash && (
+                                    <div className="gov-feedback-alert success">
+                                        <CheckCircle2 size={16} />
+                                        <span>Face scan captured successfully.</span>
+                                    </div>
+                                )}
+
+                                <div className="modal-actions-footer">
+                                    <button type="button" onClick={() => setReKycStep(1)} className="gov-cancel-btn">
+                                        Back to Details
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleReKycSubmit}
+                                        disabled={reKycSaving}
+                                        className="gov-success-btn"
+                                    >
+                                        {reKycSaving ? (
+                                            <>
+                                                <Loader2 size={16} className="animate-spin" /> Submitting...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CheckCircle2 size={16} /> Submit for Verification
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };
 
-export default UserDashboard;
+export default Profile;

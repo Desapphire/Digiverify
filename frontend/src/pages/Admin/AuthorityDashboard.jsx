@@ -3,9 +3,11 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { adminService } from '../../services/admin.service';
 import {
-    Activity, ShieldCheck, Clock, CheckCircle2,
-    XCircle, AlertTriangle, UserCheck, Key, Landmark, Users,
-    Building2, Loader2, RefreshCcw
+    ShieldCheck, Clock, CheckCircle2,
+    XCircle, UserCheck, Key, Landmark, Users,
+    Building2, Loader2, RefreshCcw, ArrowRight,
+    Search, FileCheck, AlertCircle, ChevronRight,
+    Eye, Shield, ArrowUpRight
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -14,9 +16,10 @@ const AdminDashboard = () => {
 
     const [activeTab, setActiveTab] = useState('kyc');
     const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState(null);
     const [error, setError] = useState('');
 
-    // Real data state
+    // Data state
     const [kycRequests, setKycRequests] = useState([]);
     const [pendingProperties, setPendingProperties] = useState([]);
     const [sales, setSales] = useState([]);
@@ -41,7 +44,7 @@ const AdminDashboard = () => {
             if (fundRes.status === 'fulfilled') setFundBlocks(fundRes.value.data?.data || []);
             if (recoveryRes.status === 'fulfilled') setRecoveries(recoveryRes.value.data?.data || []);
         } catch (err) {
-            setError('Failed to load dashboard data.');
+            setError('Failed to refresh dashboard data. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -51,264 +54,910 @@ const AdminDashboard = () => {
         fetchDashboardData();
     }, []);
 
-    // Compute stats from real data
+    // Filter pending sales
     const pendingSales = sales.filter(s => !s.authoritySigned && s.status !== 'completed' && s.status !== 'cancelled');
+
     const stats = [
-        { label: 'Pending KYC', value: kycRequests.length, icon: UserCheck, color: 'hsl(38,92%,50%)' },
-        { label: 'Property Verifications', value: pendingProperties.length, icon: Building2, color: 'hsl(255,85%,65%)' },
-        { label: 'Sale Approvals', value: pendingSales.length, icon: Clock, color: 'hsl(280,80%,60%)' },
-        { label: 'Wallet Recovery', value: recoveries.length, icon: Key, color: 'hsl(142,71%,45%)' },
+        {
+            label: 'Pending Identity Checks',
+            value: kycRequests.length,
+            icon: UserCheck,
+            theme: 'amber',
+            tabKey: 'kyc',
+            desc: 'Identity verification requests waiting for review',
+            actionText: 'Review Identities'
+        },
+        {
+            label: 'Pending Land Approvals',
+            value: pendingProperties.length,
+            icon: Building2,
+            theme: 'blue',
+            tabKey: 'property',
+            desc: 'New property registrations waiting for review',
+            actionText: 'Review Properties'
+        },
+        {
+            label: 'Pending Property Sales',
+            value: pendingSales.length,
+            icon: FileCheck,
+            theme: 'indigo',
+            tabKey: 'sale',
+            desc: 'Property sales waiting for officer approval',
+            actionText: 'Review Sales'
+        },
+        {
+            label: 'Pending Account Recoveries',
+            value: recoveries.length,
+            icon: Key,
+            theme: 'emerald',
+            tabKey: 'recovery',
+            desc: 'Citizen account access recovery requests',
+            actionText: 'Review Recoveries'
+        },
     ];
 
     const TABS = [
-        { key: 'kyc', label: 'KYC', icon: UserCheck, count: kycRequests.length },
-        { key: 'property', label: 'Properties', icon: Building2, count: pendingProperties.length },
-        { key: 'sale', label: 'Sales', icon: Clock, count: pendingSales.length },
-        { key: 'fund', label: 'Fund Blocks', icon: Landmark, count: fundBlocks.length },
-        { key: 'recovery', label: 'Recovery', icon: Key, count: recoveries.length },
+        { key: 'kyc', label: 'Identity Checks', icon: UserCheck, count: kycRequests.length },
+        { key: 'property', label: 'Land & Property', icon: Building2, count: pendingProperties.length },
+        { key: 'sale', label: 'Property Sales', icon: FileCheck, count: pendingSales.length },
+        { key: 'fund', label: 'Payment Holds', icon: Landmark, count: fundBlocks.length },
+        { key: 'recovery', label: 'Account Recovery', icon: Key, count: recoveries.length },
     ];
-
-    const StatCard = ({ icon: Icon, label, value, color }) => (
-        <div className="glass-panel relative overflow-hidden p-6 cursor-pointer" style={{ cursor: 'default' }}>
-            <div style={{ background: color, position: 'absolute', inset: 0, opacity: 0.08, zIndex: 0 }}></div>
-            <div className="relative z-10 flex flex-col gap-2">
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="p-2 rounded-lg" style={{ border: `1px solid ${color}30`, background: `${color}10` }}>
-                        <Icon size={20} style={{ color }} />
-                    </div>
-                    <span className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>{label}</span>
-                </div>
-                <p style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'white' }}>{value}</p>
-            </div>
-        </div>
-    );
 
     const shortenWallet = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '—';
 
-    const EmptyState = ({ icon: Icon, message, color = 'rgba(255,255,255,0.3)' }) => (
-        <div className="flex flex-col items-center justify-center" style={{ padding: '3rem 0', opacity: 0.6 }}>
-            <Icon size={40} style={{ marginBottom: '1rem', color }} />
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>{message}</p>
-        </div>
-    );
-
     const handleApproveKyc = async (userId) => {
+        setActionLoading(`kyc-approve-${userId}`);
         try {
             await adminService.approveKyc(userId);
-            fetchDashboardData();
+            await fetchDashboardData();
         } catch (err) {
             alert(err.response?.data?.message || 'Approval failed');
+        } finally {
+            setActionLoading(null);
         }
     };
 
     const handleRejectKyc = async (userId) => {
+        const reason = window.prompt('Enter reason for rejection:');
+        if (!reason) return;
+
+        setActionLoading(`kyc-reject-${userId}`);
         try {
-            await adminService.rejectKyc(userId);
-            fetchDashboardData();
+            await adminService.rejectKyc(userId, reason);
+            await fetchDashboardData();
         } catch (err) {
             alert(err.response?.data?.message || 'Rejection failed');
+        } finally {
+            setActionLoading(null);
         }
     };
 
     const handleApproveProperty = async (propertyId) => {
+        if (!window.confirm('Approve this property registration?')) return;
+        setActionLoading(`prop-approve-${propertyId}`);
         try {
             await adminService.approveProperty(propertyId);
-            fetchDashboardData();
+            await fetchDashboardData();
         } catch (err) {
-            alert(err.response?.data?.message || 'Approval failed');
+            alert(err.response?.data?.message || 'Property approval failed');
+        } finally {
+            setActionLoading(null);
         }
     };
 
-    if (loading) {
+    if (loading && !kycRequests.length && !pendingProperties.length) {
         return (
-            <div className="dashboard-container flex items-center justify-center" style={{ minHeight: '60vh' }}>
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 size={40} className="animate-spin" style={{ color: 'hsl(0,85%,60%)' }} />
-                    <p className="text-muted text-sm font-bold">Loading command center...</p>
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '60vh',
+                gap: '1rem'
+            }}>
+                <div style={{
+                    width: '52px',
+                    height: '52px',
+                    borderRadius: '12px',
+                    backgroundColor: '#EFF6FF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#2563EB'
+                }}>
+                    <Loader2 size={28} className="animate-spin" />
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A', margin: 0 }}>
+                        Loading Dashboard
+                    </p>
+                    <p style={{ fontSize: '0.82rem', color: '#64748B', marginTop: '4px' }}>
+                        Loading pending requests and records...
+                    </p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="dashboard-container">
-            {/* Header */}
-            <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ width: '100%' }}>
+            {/* Header section */}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+                gap: '1.25rem',
+                marginBottom: '1.75rem',
+                backgroundColor: '#FFFFFF',
+                padding: '1.5rem 1.75rem',
+                borderRadius: '12px',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
+            }}>
                 <div>
-                    <h1 className="dashboard-title">
-                        Authority <span className="text-gradient">Command Center</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            backgroundColor: '#ECFDF5',
+                            border: '1px solid #A7F3D0',
+                            color: '#047857',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '9999px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em'
+                        }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#047857' }}></span>
+                            Government Portal
+                        </span>
+                    </div>
+                    <h1 style={{
+                        fontSize: '1.65rem',
+                        fontWeight: 800,
+                        color: '#0F172A',
+                        letterSpacing: '-0.02em',
+                        margin: 0
+                    }}>
+                        Officer Dashboard
                     </h1>
-                    <p className="text-muted mt-2" style={{ fontSize: '0.95rem' }}>
-                        Live data — Oversee verifications, sales, and approvals.
+                    <p style={{ fontSize: '0.875rem', color: '#64748B', marginTop: '4px', margin: 0 }}>
+                        Review identity checks, property approvals, property sales, and account recoveries.
                     </p>
                 </div>
-                <button onClick={fetchDashboardData} className="btn btn-secondary" style={{ gap: '0.5rem' }}>
-                    <RefreshCcw size={16} /> Refresh
-                </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button
+                        onClick={fetchDashboardData}
+                        disabled={loading}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 16px',
+                            backgroundColor: '#FFFFFF',
+                            border: '1px solid #CBD5E1',
+                            borderRadius: '8px',
+                            color: '#334155',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#FFFFFF'; }}
+                    >
+                        <RefreshCcw size={15} className={loading ? 'animate-spin' : ''} style={{ color: '#2563EB' }} />
+                        {loading ? 'Refreshing...' : 'Refresh'}
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/authority/re-kyc')}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 16px',
+                            backgroundColor: '#EFF6FF',
+                            border: '1px solid #BFDBFE',
+                            borderRadius: '8px',
+                            color: '#1D4ED8',
+                            fontSize: '0.85rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 2px rgba(37,99,235,0.06)',
+                            transition: 'all 0.2s ease'
+                        }}
+                    >
+                        <RefreshCcw size={15} />
+                        Re-KYC Portal
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/authority/kyc')}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 16px',
+                            backgroundColor: '#0F172A',
+                            border: '1px solid #0F172A',
+                            borderRadius: '8px',
+                            color: '#FFFFFF',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#1E293B'; }}
+                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#0F172A'; }}
+                    >
+                        <UserCheck size={16} />
+                        View Identity Checks
+                    </button>
+                </div>
             </div>
 
+            {/* Error Banner */}
             {error && (
-                <div style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '12px', padding: '0.75rem 1rem', marginBottom: '1.5rem', color: '#f87171', fontSize: '0.85rem', fontWeight: 600 }}>
+                <div style={{
+                    backgroundColor: '#FEF2F2',
+                    border: '1px solid #FECACA',
+                    borderRadius: '10px',
+                    padding: '0.875rem 1.25rem',
+                    marginBottom: '1.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    color: '#991B1B',
+                    fontSize: '0.85rem',
+                    fontWeight: 600
+                }}>
+                    <AlertCircle size={18} style={{ color: '#DC2626', flexShrink: 0 }} />
                     {error}
                 </div>
             )}
 
-            {/* Quick Stats Grid */}
-            <div className="stats-grid mb-8">
-                {stats.map((stat, idx) => (
-                    <StatCard key={idx} {...stat} />
-                ))}
+            {/* Metric Cards Grid */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                gap: '1.25rem',
+                marginBottom: '1.75rem'
+            }}>
+                {stats.map((stat, idx) => {
+                    const Icon = stat.icon;
+                    const isActive = activeTab === stat.tabKey;
+
+                    const themeStyles = {
+                        amber: { bg: '#FEF3C7', border: '#FDE68A', text: '#B45309', bar: '#F59E0B' },
+                        blue: { bg: '#EFF6FF', border: '#BFDBFE', text: '#1D4ED8', bar: '#3B82F6' },
+                        indigo: { bg: '#EEF2FF', border: '#C7D2FE', text: '#4338CA', bar: '#6366F1' },
+                        emerald: { bg: '#ECFDF5', border: '#A7F3D0', text: '#047857', bar: '#10B981' }
+                    }[stat.theme] || { bg: '#F1F5F9', border: '#E2E8F0', text: '#334155', bar: '#64748B' };
+
+                    return (
+                        <div
+                            key={idx}
+                            onClick={() => setActiveTab(stat.tabKey)}
+                            style={{
+                                backgroundColor: '#FFFFFF',
+                                border: isActive ? `2px solid ${themeStyles.bar}` : '1px solid #E2E8F0',
+                                borderRadius: '12px',
+                                padding: '1.25rem',
+                                boxShadow: isActive ? '0 4px 12px rgba(0, 0, 0, 0.08)' : '0 1px 3px rgba(0, 0, 0, 0.04)',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                position: 'relative',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'space-between'
+                            }}
+                            onMouseOver={(e) => {
+                                if (!isActive) {
+                                    e.currentTarget.style.borderColor = '#CBD5E1';
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                }
+                            }}
+                            onMouseOut={(e) => {
+                                if (!isActive) {
+                                    e.currentTarget.style.borderColor = '#E2E8F0';
+                                    e.currentTarget.style.transform = 'none';
+                                }
+                            }}
+                        >
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
+                                    <div style={{
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '10px',
+                                        backgroundColor: themeStyles.bg,
+                                        border: `1px solid ${themeStyles.border}`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: themeStyles.text
+                                    }}>
+                                        <Icon size={20} />
+                                    </div>
+                                    <span style={{
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        color: themeStyles.text,
+                                        backgroundColor: themeStyles.bg,
+                                        padding: '3px 8px',
+                                        borderRadius: '9999px',
+                                        border: `1px solid ${themeStyles.border}`
+                                    }}>
+                                        Review Queue
+                                    </span>
+                                </div>
+
+                                <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#64748B', marginBottom: '0.25rem' }}>
+                                    {stat.label}
+                                </div>
+
+                                <div style={{ fontSize: '2rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+                                    {stat.value}
+                                </div>
+
+                                <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '6px' }}>
+                                    {stat.desc}
+                                </div>
+                            </div>
+
+                            <div style={{
+                                marginTop: '1rem',
+                                paddingTop: '0.75rem',
+                                borderTop: '1px solid #F1F5F9',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                color: isActive ? themeStyles.text : '#2563EB'
+                            }}>
+                                <span>{stat.actionText}</span>
+                                <ArrowUpRight size={14} />
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
 
-            {/* Central Control Panel */}
-            <div className="glass-panel p-6">
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '1rem' }}>
-                    {TABS.map(tab => {
-                        const TabIcon = tab.icon;
-                        const isActive = activeTab === tab.key;
-                        return (
-                            <button
-                                key={tab.key}
-                                onClick={() => setActiveTab(tab.key)}
-                                className={`flex items-center gap-2`}
-                                style={{
-                                    padding: '0.5rem 1rem',
-                                    borderRadius: '0.5rem',
-                                    fontSize: '0.82rem',
-                                    fontWeight: 700,
-                                    border: isActive ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(255,255,255,0.05)',
-                                    background: isActive ? 'rgba(220,38,38,0.12)' : 'rgba(0,0,0,0.2)',
-                                    color: isActive ? '#fca5a5' : 'rgba(255,255,255,0.4)',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
-                                }}
-                            >
-                                <TabIcon size={15} />
-                                {tab.label}
-                                <span style={{
-                                    marginLeft: '4px',
-                                    padding: '1px 6px',
-                                    borderRadius: '9999px',
-                                    fontSize: '0.65rem',
-                                    fontWeight: 800,
-                                    background: isActive ? 'rgba(220,38,38,0.2)' : 'rgba(255,255,255,0.06)',
-                                    color: isActive ? 'white' : 'rgba(255,255,255,0.3)',
-                                }}>
-                                    {tab.count}
-                                </span>
-                            </button>
-                        );
-                    })}
+            {/* Central Review Queue Section */}
+            <div style={{
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderRadius: '14px',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+                overflow: 'hidden'
+            }}>
+                {/* Tabs Header */}
+                <div style={{
+                    padding: '0.875rem 1.25rem',
+                    borderBottom: '1px solid #E2E8F0',
+                    backgroundColor: '#F8FAFC',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                        {TABS.map(tab => {
+                            const TabIcon = tab.icon;
+                            const isActive = activeTab === tab.key;
+                            return (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => setActiveTab(tab.key)}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '7px 14px',
+                                        borderRadius: '8px',
+                                        fontSize: '0.82rem',
+                                        fontWeight: 700,
+                                        border: isActive ? '1px solid #0F172A' : '1px solid transparent',
+                                        backgroundColor: isActive ? '#0F172A' : 'transparent',
+                                        color: isActive ? '#FFFFFF' : '#475569',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                    onMouseOver={(e) => {
+                                        if (!isActive) e.currentTarget.style.backgroundColor = '#E2E8F0';
+                                    }}
+                                    onMouseOut={(e) => {
+                                        if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
+                                    }}
+                                >
+                                    <TabIcon size={16} />
+                                    {tab.label}
+                                    <span style={{
+                                        padding: '1px 6px',
+                                        borderRadius: '9999px',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 800,
+                                        backgroundColor: isActive ? '#334155' : '#E2E8F0',
+                                        color: isActive ? '#FFFFFF' : '#475569'
+                                    }}>
+                                        {tab.count}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 600 }}>
+                        Viewing: <strong style={{ color: '#0F172A' }}>{TABS.find(t => t.key === activeTab)?.label} Queue</strong>
+                    </div>
                 </div>
 
-                <div style={{ minHeight: '300px' }}>
-                    {/* ─── KYC TAB ─── */}
+                {/* Queue Content Panel */}
+                <div style={{ padding: '1.5rem', minHeight: '340px' }}>
+                    {/* ─── 1. KYC QUEUE TAB ─── */}
                     {activeTab === 'kyc' && (
                         <div>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '1rem' }}>Pending KYC Approvals</h3>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                                <div>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                                        Pending Identity Checks
+                                    </h3>
+                                    <p style={{ fontSize: '0.8rem', color: '#64748B', margin: '3px 0 0 0' }}>
+                                        Review citizen identity details, home address, and photo match.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => navigate('/authority/kyc')}
+                                    style={{
+                                        fontSize: '0.8rem',
+                                        fontWeight: 700,
+                                        color: '#2563EB',
+                                        backgroundColor: '#EFF6FF',
+                                        border: '1px solid #BFDBFE',
+                                        padding: '5px 12px',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                    }}
+                                >
+                                    View All Checks <ArrowRight size={14} />
+                                </button>
+                            </div>
+
                             {kycRequests.length === 0 ? (
-                                <EmptyState icon={UserCheck} message="No pending KYC verifications." color="hsl(38,92%,50%)" />
+                                <EmptyState
+                                    icon={UserCheck}
+                                    title="No Pending Identity Checks"
+                                    description="All citizen identity verification requests have been reviewed."
+                                />
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    {kycRequests.map(u => (
-                                        <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <div className="flex items-center gap-4">
-                                                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(234,179,8,0.15), rgba(245,158,11,0.1))', border: '1px solid rgba(234,179,8,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
-                                                    <Users size={18} />
+                                    {kycRequests.map(u => {
+                                        const isApproving = actionLoading === `kyc-approve-${u.id}`;
+                                        const isRejecting = actionLoading === `kyc-reject-${u.id}`;
+
+                                        return (
+                                            <div
+                                                key={u.id}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    padding: '1rem 1.25rem',
+                                                    borderRadius: '10px',
+                                                    backgroundColor: '#FFFFFF',
+                                                    border: '1px solid #E2E8F0',
+                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                                                    flexWrap: 'wrap',
+                                                    gap: '1rem'
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                                    <div style={{
+                                                        width: '44px',
+                                                        height: '44px',
+                                                        borderRadius: '10px',
+                                                        backgroundColor: '#EFF6FF',
+                                                        border: '1px solid #BFDBFE',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        color: '#1D4ED8',
+                                                        fontWeight: 800,
+                                                        fontSize: '1rem',
+                                                        flexShrink: 0
+                                                    }}>
+                                                        {u.name ? u.name.charAt(0).toUpperCase() : <Users size={20} />}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <span style={{ fontWeight: 700, color: '#0F172A', fontSize: '0.95rem' }}>
+                                                                {u.name || 'Unnamed Citizen'}
+                                                            </span>
+                                                            <span style={{
+                                                                fontSize: '0.68rem',
+                                                                fontWeight: 700,
+                                                                backgroundColor: '#FEF3C7',
+                                                                color: '#B45309',
+                                                                border: '1px solid #FDE68A',
+                                                                padding: '1px 6px',
+                                                                borderRadius: '4px',
+                                                                textTransform: 'uppercase'
+                                                            }}>
+                                                                {u.kycStatus || 'Pending'}
+                                                            </span>
+                                                            {u.faceVerified && (
+                                                                <span style={{
+                                                                    fontSize: '0.65rem',
+                                                                    fontWeight: 700,
+                                                                    backgroundColor: '#ECFDF5',
+                                                                    color: '#047857',
+                                                                    border: '1px solid #A7F3D0',
+                                                                    padding: '1px 6px',
+                                                                    borderRadius: '4px'
+                                                                }}>
+                                                                    Photo Matched
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px', fontSize: '0.75rem', color: '#64748B' }}>
+                                                            <span>{u.email || 'No email provided'}</span>
+                                                            <span>•</span>
+                                                            <span style={{ fontFamily: 'monospace' }}>Account: {shortenWallet(u.walletAddress)}</span>
+                                                            {u.governmentId && (
+                                                                <>
+                                                                    <span>•</span>
+                                                                    <span>ID: {u.governmentId}</span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p style={{ fontWeight: 700, color: 'white', fontSize: '0.88rem' }}>{u.name || 'Unknown'}</p>
-                                                    <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace', marginTop: 2 }}>{shortenWallet(u.walletAddress)}</p>
-                                                    {u.email && <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{u.email}</p>}
+
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <button
+                                                        onClick={() => handleApproveKyc(u.id)}
+                                                        disabled={isApproving || isRejecting}
+                                                        style={{
+                                                            padding: '7px 14px',
+                                                            borderRadius: '6px',
+                                                            fontSize: '0.78rem',
+                                                            fontWeight: 700,
+                                                            backgroundColor: '#ECFDF5',
+                                                            color: '#047857',
+                                                            border: '1px solid #A7F3D0',
+                                                            cursor: isApproving ? 'not-allowed' : 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px',
+                                                            transition: 'all 0.15s'
+                                                        }}
+                                                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#D1FAE5'; }}
+                                                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#ECFDF5'; }}
+                                                    >
+                                                        {isApproving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                                                        Approve
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleRejectKyc(u.id)}
+                                                        disabled={isApproving || isRejecting}
+                                                        style={{
+                                                            padding: '7px 14px',
+                                                            borderRadius: '6px',
+                                                            fontSize: '0.78rem',
+                                                            fontWeight: 700,
+                                                            backgroundColor: '#FEF2F2',
+                                                            color: '#B91C1C',
+                                                            border: '1px solid #FECACA',
+                                                            cursor: isRejecting ? 'not-allowed' : 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px',
+                                                            transition: 'all 0.15s'
+                                                        }}
+                                                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#FEE2E2'; }}
+                                                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#FEF2F2'; }}
+                                                    >
+                                                        {isRejecting ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
+                                                        Reject
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => navigate('/authority/kyc')}
+                                                        style={{
+                                                            padding: '7px 12px',
+                                                            borderRadius: '6px',
+                                                            fontSize: '0.78rem',
+                                                            fontWeight: 600,
+                                                            backgroundColor: '#FFFFFF',
+                                                            color: '#334155',
+                                                            border: '1px solid #CBD5E1',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px'
+                                                        }}
+                                                    >
+                                                        <Eye size={13} />
+                                                        View Details
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => handleApproveKyc(u.id)} className="btn btn-success" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', background: 'rgba(34,197,94,0.1)', color: 'hsl(142,71%,45%)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '0.5rem' }}>
-                                                    <CheckCircle2 size={14} /> Approve
-                                                </button>
-                                                <button onClick={() => handleRejectKyc(u.id)} className="btn btn-danger" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
-                                                    <XCircle size={14} /> Reject
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {/* ─── PROPERTY TAB ─── */}
+                    {/* ─── 2. PROPERTIES QUEUE TAB ─── */}
                     {activeTab === 'property' && (
                         <div>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '1rem' }}>Pending Property Verifications</h3>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                                <div>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                                        Pending Land Approvals
+                                    </h3>
+                                    <p style={{ fontSize: '0.8rem', color: '#64748B', margin: '3px 0 0 0' }}>
+                                        Verify survey numbers, land area, location, and ownership documents.
+                                    </p>
+                                </div>
+                            </div>
+
                             {pendingProperties.length === 0 ? (
-                                <EmptyState icon={Building2} message="No pending property verifications." color="hsl(255,85%,65%)" />
+                                <EmptyState
+                                    icon={Building2}
+                                    title="No Pending Land Approvals"
+                                    description="All property registration requests have been reviewed."
+                                />
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    {pendingProperties.map(p => (
-                                        <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <div>
-                                                <p style={{ fontWeight: 700, color: 'white', fontSize: '0.88rem' }}>
-                                                    {p.propertyCode || 'No Code'} — Survey: {p.surveyNumber}
-                                                </p>
-                                                <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
-                                                    {p.district || '—'}, {p.state || '—'} · {p.areaSqft ? `${p.areaSqft} sqft` : '—'}
-                                                </p>
-                                                <p style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', marginTop: 2 }}>
-                                                    Owner: {shortenWallet(p.ownerWallet)}
-                                                </p>
+                                    {pendingProperties.map(p => {
+                                        const isApproving = actionLoading === `prop-approve-${p.id}`;
+
+                                        return (
+                                            <div
+                                                key={p.id}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    padding: '1rem 1.25rem',
+                                                    borderRadius: '10px',
+                                                    backgroundColor: '#FFFFFF',
+                                                    border: '1px solid #E2E8F0',
+                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                                                    flexWrap: 'wrap',
+                                                    gap: '1rem'
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                                    <div style={{
+                                                        width: '44px',
+                                                        height: '44px',
+                                                        borderRadius: '10px',
+                                                        backgroundColor: '#EFF6FF',
+                                                        border: '1px solid #BFDBFE',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        color: '#1D4ED8',
+                                                        flexShrink: 0
+                                                    }}>
+                                                        <Building2 size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <span style={{ fontWeight: 700, color: '#0F172A', fontSize: '0.95rem' }}>
+                                                                {p.propertyCode || `Property #${p.id.slice(0, 8)}`}
+                                                            </span>
+                                                            <span style={{
+                                                                fontSize: '0.68rem',
+                                                                fontWeight: 700,
+                                                                backgroundColor: '#EEF2FF',
+                                                                color: '#4338CA',
+                                                                border: '1px solid #C7D2FE',
+                                                                padding: '1px 6px',
+                                                                borderRadius: '4px'
+                                                            }}>
+                                                                Survey No: {p.surveyNumber || 'N/A'}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', fontSize: '0.75rem', color: '#64748B' }}>
+                                                            <span>District: <strong>{p.district || '—'}</strong>, {p.state || '—'}</span>
+                                                            <span>•</span>
+                                                            <span>Area: <strong>{p.areaSqft ? `${p.areaSqft} sq.ft` : '—'}</strong></span>
+                                                            <span>•</span>
+                                                            <span style={{ fontFamily: 'monospace' }}>Owner: {shortenWallet(p.ownerWallet)}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <button
+                                                        onClick={() => handleApproveProperty(p.id)}
+                                                        disabled={isApproving}
+                                                        style={{
+                                                            padding: '7px 14px',
+                                                            borderRadius: '6px',
+                                                            fontSize: '0.78rem',
+                                                            fontWeight: 700,
+                                                            backgroundColor: '#ECFDF5',
+                                                            color: '#047857',
+                                                            border: '1px solid #A7F3D0',
+                                                            cursor: isApproving ? 'not-allowed' : 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px',
+                                                            transition: 'all 0.15s'
+                                                        }}
+                                                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#D1FAE5'; }}
+                                                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#ECFDF5'; }}
+                                                    >
+                                                        {isApproving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                                                        Approve
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => navigate(`/authority/property/${p.id}`)}
+                                                        style={{
+                                                            padding: '7px 14px',
+                                                            borderRadius: '6px',
+                                                            fontSize: '0.78rem',
+                                                            fontWeight: 600,
+                                                            backgroundColor: '#FFFFFF',
+                                                            color: '#334155',
+                                                            border: '1px solid #CBD5E1',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px'
+                                                        }}
+                                                    >
+                                                        View Property <ChevronRight size={14} />
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => handleApproveProperty(p.id)} className="btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', background: 'rgba(34,197,94,0.1)', color: 'hsl(142,71%,45%)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '0.5rem' }}>
-                                                    <CheckCircle2 size={14} /> Approve
-                                                </button>
-                                                <button onClick={() => navigate(`/authority/property/${p.id}`)} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
-                                                    Review
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {/* ─── SALES TAB ─── */}
+                    {/* ─── 3. SALE TRANSACTIONS QUEUE TAB ─── */}
                     {activeTab === 'sale' && (
                         <div>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '1rem' }}>Sale Transactions</h3>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                                <div>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                                        Pending Property Sales
+                                    </h3>
+                                    <p style={{ fontSize: '0.8rem', color: '#64748B', margin: '3px 0 0 0' }}>
+                                        Review and approve property sales and ownership transfers.
+                                    </p>
+                                </div>
+                            </div>
+
                             {sales.length === 0 ? (
-                                <EmptyState icon={Activity} message="No sale transactions found." color="hsl(280,80%,60%)" />
+                                <EmptyState
+                                    icon={FileCheck}
+                                    title="No Pending Property Sales"
+                                    description="All property sales have been reviewed and approved."
+                                />
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     {sales.map(tx => (
-                                        <div key={tx.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <div className="flex items-center gap-4">
-                                                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa' }}>
-                                                    <Activity size={18} />
+                                        <div
+                                            key={tx.id}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                padding: '1rem 1.25rem',
+                                                borderRadius: '10px',
+                                                backgroundColor: '#FFFFFF',
+                                                border: '1px solid #E2E8F0',
+                                                boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                                                flexWrap: 'wrap',
+                                                gap: '1rem'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                                <div style={{
+                                                    width: '44px',
+                                                    height: '44px',
+                                                    borderRadius: '10px',
+                                                    backgroundColor: '#EEF2FF',
+                                                    border: '1px solid #C7D2FE',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    color: '#4338CA',
+                                                    flexShrink: 0
+                                                }}>
+                                                    <FileCheck size={20} />
                                                 </div>
                                                 <div>
-                                                    <p style={{ fontWeight: 700, color: 'white', fontSize: '0.88rem' }}>
-                                                        Sale #{tx.id.slice(0, 8)}
-                                                    </p>
-                                                    <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace', marginTop: 2 }}>
-                                                        {shortenWallet(tx.sellerWallet)} → {shortenWallet(tx.buyerWallet)}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-4 items-center">
-                                                <div style={{ textAlign: 'right' }}>
-                                                    <span style={{ fontWeight: 700, color: '#a78bfa' }}>₹{tx.salePrice?.toLocaleString()}</span>
-                                                    <div style={{ marginTop: 4, display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                                                        <span className={`badge ${tx.status === 'completed' ? 'badge-success' : tx.status === 'cancelled' ? 'badge-danger' : 'badge-warning'}`} style={{ fontSize: '0.6rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <span style={{ fontWeight: 700, color: '#0F172A', fontSize: '0.95rem' }}>
+                                                            Sale #{tx.id.slice(0, 8)}
+                                                        </span>
+                                                        <span style={{
+                                                            fontSize: '0.68rem',
+                                                            fontWeight: 700,
+                                                            backgroundColor: tx.status === 'completed' ? '#ECFDF5' : tx.status === 'cancelled' ? '#FEF2F2' : '#FEF3C7',
+                                                            color: tx.status === 'completed' ? '#047857' : tx.status === 'cancelled' ? '#B91C1C' : '#B45309',
+                                                            border: `1px solid ${tx.status === 'completed' ? '#A7F3D0' : tx.status === 'cancelled' ? '#FECACA' : '#FDE68A'}`,
+                                                            padding: '1px 6px',
+                                                            borderRadius: '4px',
+                                                            textTransform: 'uppercase'
+                                                        }}>
                                                             {tx.status}
                                                         </span>
-                                                        {tx.authoritySigned && <span className="badge badge-success" style={{ fontSize: '0.6rem' }}>Signed</span>}
+                                                        {tx.authoritySigned && (
+                                                            <span style={{
+                                                                fontSize: '0.65rem',
+                                                                fontWeight: 700,
+                                                                backgroundColor: '#ECFDF5',
+                                                                color: '#047857',
+                                                                border: '1px solid #A7F3D0',
+                                                                padding: '1px 6px',
+                                                                borderRadius: '4px'
+                                                            }}>
+                                                                Officer Approved
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', fontSize: '0.75rem', color: '#64748B' }}>
+                                                        <span style={{ fontFamily: 'monospace' }}>Seller: {shortenWallet(tx.sellerWallet)}</span>
+                                                        <span>→</span>
+                                                        <span style={{ fontFamily: 'monospace' }}>Buyer: {shortenWallet(tx.buyerWallet)}</span>
                                                     </div>
                                                 </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <div style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>
+                                                        Sale Price
+                                                    </div>
+                                                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0F172A' }}>
+                                                        ₹{tx.salePrice?.toLocaleString()}
+                                                    </div>
+                                                </div>
+
                                                 {!tx.authoritySigned && tx.status !== 'completed' && tx.status !== 'cancelled' && (
-                                                    <button onClick={() => navigate(`/authority/sale/${tx.id}`)} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
-                                                        Review
+                                                    <button
+                                                        onClick={() => navigate(`/authority/sale/${tx.id}`)}
+                                                        style={{
+                                                            padding: '7px 14px',
+                                                            borderRadius: '6px',
+                                                            fontSize: '0.78rem',
+                                                            fontWeight: 700,
+                                                            backgroundColor: '#0F172A',
+                                                            color: '#FFFFFF',
+                                                            border: 'none',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                    >
+                                                        Review & Approve <ArrowRight size={14} />
                                                     </button>
                                                 )}
                                             </div>
@@ -319,31 +968,92 @@ const AdminDashboard = () => {
                         </div>
                     )}
 
-                    {/* ─── FUND BLOCKS TAB ─── */}
+                    {/* ─── 4. FUND BLOCKS QUEUE TAB ─── */}
                     {activeTab === 'fund' && (
                         <div>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '1rem' }}>Pending Fund Block Confirmations</h3>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                                <div>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                                        Pending Payment Holds
+                                    </h3>
+                                    <p style={{ fontSize: '0.8rem', color: '#64748B', margin: '3px 0 0 0' }}>
+                                        Review security deposits and payment holds for property purchases.
+                                    </p>
+                                </div>
+                            </div>
+
                             {fundBlocks.length === 0 ? (
-                                <EmptyState icon={Landmark} message="No pending fund block confirmations." color="hsl(255,85%,65%)" />
+                                <EmptyState
+                                    icon={Landmark}
+                                    title="No Pending Payment Holds"
+                                    description="All payment deposits are settled and up to date."
+                                />
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     {fundBlocks.map(fb => (
-                                        <div key={fb.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <div>
-                                                <p style={{ fontWeight: 700, color: 'white', fontSize: '0.88rem' }}>
-                                                    Fund Block #{(fb.id || '').toString().slice(0, 8)}
-                                                </p>
-                                                <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
-                                                    Amount: ₹{parseFloat(fb.block_amount || fb.blockAmount || 0).toLocaleString()} · {fb.currency || 'INR'}
-                                                </p>
-                                                <p style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', marginTop: 2 }}>
-                                                    Buyer: {shortenWallet(fb.buyer_wallet || fb.buyerWallet)}
-                                                </p>
+                                        <div
+                                            key={fb.id}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                padding: '1rem 1.25rem',
+                                                borderRadius: '10px',
+                                                backgroundColor: '#FFFFFF',
+                                                border: '1px solid #E2E8F0',
+                                                boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                                                flexWrap: 'wrap',
+                                                gap: '1rem'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                                <div style={{
+                                                    width: '44px',
+                                                    height: '44px',
+                                                    borderRadius: '10px',
+                                                    backgroundColor: '#EFF6FF',
+                                                    border: '1px solid #BFDBFE',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    color: '#2563EB',
+                                                    flexShrink: 0
+                                                }}>
+                                                    <Landmark size={20} />
+                                                </div>
+                                                <div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <span style={{ fontWeight: 700, color: '#0F172A', fontSize: '0.95rem' }}>
+                                                            Hold #{String(fb.id || '').slice(0, 8)}
+                                                        </span>
+                                                        <span style={{
+                                                            fontSize: '0.68rem',
+                                                            fontWeight: 700,
+                                                            backgroundColor: fb.status === 'blocked' ? '#ECFDF5' : '#FEF3C7',
+                                                            color: fb.status === 'blocked' ? '#047857' : '#B45309',
+                                                            border: `1px solid ${fb.status === 'blocked' ? '#A7F3D0' : '#FDE68A'}`,
+                                                            padding: '1px 6px',
+                                                            borderRadius: '4px',
+                                                            textTransform: 'uppercase'
+                                                        }}>
+                                                            {fb.status || 'Pending'}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', fontSize: '0.75rem', color: '#64748B' }}>
+                                                        <span style={{ fontFamily: 'monospace' }}>Buyer Account: {shortenWallet(fb.buyer_wallet || fb.buyerWallet)}</span>
+                                                        <span>•</span>
+                                                        <span>Currency: <strong>{fb.currency || 'INR'}</strong></span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <span className={`badge ${fb.status === 'blocked' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.65rem' }}>
-                                                    {fb.status || 'pending'}
-                                                </span>
+
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>
+                                                    Hold Amount
+                                                </div>
+                                                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#047857' }}>
+                                                    ₹{parseFloat(fb.block_amount || fb.blockAmount || 0).toLocaleString()}
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
@@ -352,30 +1062,103 @@ const AdminDashboard = () => {
                         </div>
                     )}
 
-                    {/* ─── WALLET RECOVERY TAB ─── */}
+                    {/* ─── 5. WALLET RECOVERY QUEUE TAB ─── */}
                     {activeTab === 'recovery' && (
                         <div>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '1rem' }}>Pending Wallet Recovery Requests</h3>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                                <div>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                                        Pending Account Recoveries
+                                    </h3>
+                                    <p style={{ fontSize: '0.8rem', color: '#64748B', margin: '3px 0 0 0' }}>
+                                        Review identity proof to help citizens recover account access.
+                                    </p>
+                                </div>
+                            </div>
+
                             {recoveries.length === 0 ? (
-                                <EmptyState icon={Key} message="No wallet recovery requests at this time." color="hsl(38,92%,50%)" />
+                                <EmptyState
+                                    icon={Key}
+                                    title="No Pending Recoveries"
+                                    description="There are currently no citizen account recovery requests waiting for review."
+                                />
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     {recoveries.map(r => (
-                                        <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <div>
-                                                <p style={{ fontWeight: 700, color: 'white', fontSize: '0.88rem' }}>
-                                                    Recovery #{(r.id || '').toString().slice(0, 8)}
-                                                </p>
-                                                <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace', marginTop: 2 }}>
-                                                    User: {shortenWallet(r.old_wallet || r.oldWallet || r.user_id)}
-                                                </p>
-                                                <p style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>
-                                                    Status: {r.status}
-                                                </p>
+                                        <div
+                                            key={r.id}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                padding: '1rem 1.25rem',
+                                                borderRadius: '10px',
+                                                backgroundColor: '#FFFFFF',
+                                                border: '1px solid #E2E8F0',
+                                                boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                                                flexWrap: 'wrap',
+                                                gap: '1rem'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                                <div style={{
+                                                    width: '44px',
+                                                    height: '44px',
+                                                    borderRadius: '10px',
+                                                    backgroundColor: '#ECFDF5',
+                                                    border: '1px solid #A7F3D0',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    color: '#047857',
+                                                    flexShrink: 0
+                                                }}>
+                                                    <Key size={20} />
+                                                </div>
+                                                <div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <span style={{ fontWeight: 700, color: '#0F172A', fontSize: '0.95rem' }}>
+                                                            Recovery Request #{String(r.id || '').slice(0, 8)}
+                                                        </span>
+                                                        <span style={{
+                                                            fontSize: '0.68rem',
+                                                            fontWeight: 700,
+                                                            backgroundColor: r.status === 'completed' ? '#ECFDF5' : '#FEF3C7',
+                                                            color: r.status === 'completed' ? '#047857' : '#B45309',
+                                                            border: `1px solid ${r.status === 'completed' ? '#A7F3D0' : '#FDE68A'}`,
+                                                            padding: '1px 6px',
+                                                            borderRadius: '4px',
+                                                            textTransform: 'uppercase'
+                                                        }}>
+                                                            {r.status || 'Pending'}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', fontSize: '0.75rem', color: '#64748B' }}>
+                                                        <span style={{ fontFamily: 'monospace' }}>Target Account: {shortenWallet(r.old_wallet || r.oldWallet || r.user_id)}</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <button onClick={() => navigate(`/authority/wallet-recovery/${r.id}`)} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
-                                                Review
-                                            </button>
+
+                                            <div>
+                                                <button
+                                                    onClick={() => navigate(`/authority/wallet-recovery/${r.id}`)}
+                                                    style={{
+                                                        padding: '7px 14px',
+                                                        borderRadius: '6px',
+                                                        fontSize: '0.78rem',
+                                                        fontWeight: 700,
+                                                        backgroundColor: '#0F172A',
+                                                        color: '#FFFFFF',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px'
+                                                    }}
+                                                >
+                                                    Review Request <ChevronRight size={14} />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -386,12 +1169,68 @@ const AdminDashboard = () => {
             </div>
 
             {/* Footer */}
-            <div className="mt-8 flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.72rem', fontWeight: 600, padding: '0 0.5rem' }}>
-                <ShieldCheck size={14} style={{ color: '#ef4444' }} />
-                System access securely verified. All actions are indelibly logged on-chain.
+            <div style={{
+                marginTop: '2rem',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderRadius: '10px',
+                padding: '1rem 1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '1rem',
+                fontSize: '0.78rem',
+                color: '#64748B'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldCheck size={18} style={{ color: '#047857' }} />
+                    <span>
+                        <strong>DigiVerify Portal:</strong> All officer actions are recorded for security and audit compliance.
+                    </span>
+                </div>
+                <div style={{ fontWeight: 600, color: '#0F172A' }}>
+                    Secure Government Registry
+                </div>
             </div>
         </div>
     );
 };
+
+// Simple Clean Empty State Component
+const EmptyState = ({ icon: Icon, title, description }) => (
+    <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '3rem 1.5rem',
+        textAlign: 'center',
+        backgroundColor: '#F8FAFC',
+        border: '1px dashed #CBD5E1',
+        borderRadius: '12px'
+    }}>
+        <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            backgroundColor: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#64748B',
+            marginBottom: '1rem'
+        }}>
+            <Icon size={24} />
+        </div>
+        <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0F172A', margin: 0, marginBottom: '4px' }}>
+            {title}
+        </h4>
+        <p style={{ fontSize: '0.8rem', color: '#64748B', margin: 0, maxWidth: '380px' }}>
+            {description}
+        </p>
+    </div>
+);
 
 export default AdminDashboard;

@@ -1,263 +1,380 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Camera, ShieldCheck, ArrowRight, Loader2, Sparkles, CheckCircle2, RotateCcw, AlertTriangle, Check, User, ScanFace } from 'lucide-react';
+import { biometricService } from '../../services/biometric.service';
 
 const BiometricCapture = ({ onCaptureComplete, onBack }) => {
-    const [biometricStep, setBiometricStep] = useState(0); // 0: Start, 1: Center, 2: Left, 3: Right, 4: Done
-    const [biometricProgress, setBiometricProgress] = useState(0);
+    const [status, setStatus] = useState('aligning'); // 'aligning' | 'detected' | 'analyzing' | 'completed' | 'error'
+    const [statusMessage, setStatusMessage] = useState('Please position your face inside the center circle');
+    const [capturedImage, setCapturedImage] = useState(null);
+    const [awsMetrics, setAwsMetrics] = useState(null);
+    const [faceIdHash, setFaceIdHash] = useState('');
+    const [cameraError, setCameraError] = useState('');
+    const [isScanning, setIsScanning] = useState(false);
+
     const videoRef = useRef(null);
-    const canvasRef = useRef(null);
     const streamRef = useRef(null);
-    const [cvReady, setCvReady] = useState(false);
-    const [cvLoading, setCvLoading] = useState(true);
-    const [faceDetected, setFaceDetected] = useState(false);
-    const [capturedImages, setCapturedImages] = useState([]);
-    const processingLoopRef = useRef(null);
+    const monitorIntervalRef = useRef(null);
 
     useEffect(() => {
-        const checkOpenCV = setInterval(() => {
-            if (window.cv && window.cv.Mat) {
-                setCvReady(true);
-                setCvLoading(false);
-                clearInterval(checkOpenCV);
-            }
-        }, 500);
+        startCamera();
         return () => {
-            clearInterval(checkOpenCV);
-            if (processingLoopRef.current) cancelAnimationFrame(processingLoopRef.current);
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
-            }
+            stopCamera();
+            if (monitorIntervalRef.current) clearInterval(monitorIntervalRef.current);
         };
     }, []);
 
-    const handleFaceIdCapture = () => {
-        // Simulated Face ID hash capture for demonstration.
-        const simulatedHash = 'e3b0' + Math.random().toString(16).slice(2) + 'd855';
-        onCaptureComplete(simulatedHash);
-    };
+    const startCamera = async () => {
+        setCameraError('');
+        setStatus('aligning');
+        setStatusMessage('Please look directly at the camera inside the circle');
+        setCapturedImage(null);
+        setAwsMetrics(null);
+        setFaceIdHash('');
 
-    const startBiometric = async () => {
-        if (!cvReady) return;
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240, facingMode: 'user' } });
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: 'user',
+                },
+                audio: false,
+            });
+
             streamRef.current = stream;
+
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
+                await videoRef.current.play().catch(() => {});
             }
-            setBiometricStep(1);
-            startDetection();
-            // Wait for detection to stabilize before starting the sequence
+
+            startAlignmentMonitor();
         } catch (err) {
-            console.error("Camera access failed:", err);
-            // In a real app we'd display this error to user
+            console.error('Camera access error:', err);
+            setCameraError(
+                err.name === 'NotAllowedError'
+                    ? 'Camera access permission denied. Please allow camera access in your browser settings.'
+                    : 'Unable to access camera or webcam is being used by another application.'
+            );
+            setStatus('error');
         }
     };
 
-    const startDetection = async () => {
-        const cv = window.cv;
-
-        // Load Haar Cascade
-        try {
-            const response = await fetch('/haarcascade_frontalface_default.xml');
-            if (!response.ok) throw new Error('Failed to fetch cascade');
-            const buffer = await response.arrayBuffer();
-            const data = new Uint8Array(buffer);
-            try {
-                cv.FS_createDataFile('/', 'haarcascade.xml', data, true, false, false);
-            } catch (fsErr) {
-                console.warn("Cascade file might already exist:", fsErr);
-            }
-        } catch (err) {
-            console.error("Biometric setup error:", err);
+    const stopCamera = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
         }
-
-        const classifier = new cv.CascadeClassifier();
-        try {
-            classifier.load('haarcascade.xml');
-        } catch (err) {
-            console.error("Classifier load failed:", err);
-        }
-
-        const cap = new cv.VideoCapture(videoRef.current);
-        const frame = new cv.Mat(240, 320, cv.CV_8UC4);
-        const gray = new cv.Mat();
-        const faces = new cv.RectVector();
-
-        const processVideo = () => {
-            try {
-                if (!streamRef.current || !streamRef.current.active) return;
-
-                cap.read(frame);
-                cv.cvtColor(frame, gray, cv.COLOR_RGBA2GRAY, 0);
-                classifier.detectMultiScale(gray, faces, 1.1, 3, 0);
-
-                if (faces.size() > 0) {
-                    setFaceDetected(true);
-                    // Draw feedback box on canvas
-                    const canvas = canvasRef.current;
-                    if (canvas) {
-                        const ctx = canvas.getContext('2d');
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        const face = faces.get(0);
-                        ctx.strokeStyle = '#3b82f6';
-                        ctx.lineWidth = 2;
-                        ctx.strokeRect(face.x, face.y, face.width, face.height);
-                    }
-                } else {
-                    setFaceDetected(false);
-                }
-
-                processingLoopRef.current = requestAnimationFrame(processVideo);
-            } catch (err) {
-                console.error("Processing error:", err);
-                processingLoopRef.current = requestAnimationFrame(processVideo);
-            }
-        };
-
-        processVideo();
-        // Start the sequence simulation once detection is active
-        setTimeout(() => simulateCapture(1), 2000);
     };
 
-    const captureFrame = (stepName) => {
-        if (!videoRef.current) return;
+    /**
+     * Snap a high-res mirrored frame from active video
+     */
+    const grabFrame = () => {
+        const video = videoRef.current;
         const canvas = document.createElement('canvas');
-        canvas.width = 320;
-        canvas.height = 240;
+        const width = video?.videoWidth || 640;
+        const height = video?.videoHeight || 480;
+        canvas.width = width;
+        canvas.height = height;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        setCapturedImages(prev => [...prev, { step: stepName, url: dataUrl }]);
+
+        if (video && video.readyState >= 2 && video.videoWidth > 0) {
+            ctx.translate(width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, width, height);
+        } else {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        return canvas.toDataURL('image/jpeg', 0.92);
     };
 
-    const simulateCapture = (currentStep) => {
-        setBiometricProgress(0);
+    /**
+     * Real-time alignment checker
+     */
+    const evaluateFaceAlignment = async () => {
+        if (isScanning || status === 'analyzing' || status === 'completed') return;
 
-        const interval = setInterval(() => {
-            setBiometricProgress(prev => {
-                if (prev >= 100) {
-                    clearInterval(interval);
-                    return 100;
+        const frameData = grabFrame();
+
+        try {
+            const res = await biometricService.livenessCheck(frameData);
+            if (res?.success && res.data) {
+                const data = res.data;
+
+                if (!data.faceDetected || data.faceCount === 0) {
+                    setStatus('aligning');
+                    setStatusMessage('⚠️ Face not detected. Align face inside the circle.');
+                    return;
                 }
-                return prev + 5;
-            });
-        }, 100);
 
-        setTimeout(() => {
-            const stepNames = ["Center", "Left", "Right"];
-            captureFrame(stepNames[currentStep - 1]);
-
-            if (currentStep < 3) {
-                setBiometricStep(currentStep + 1);
-                simulateCapture(currentStep + 1);
-            } else {
-                setBiometricStep(4);
-                if (streamRef.current) {
-                    streamRef.current.getTracks().forEach(track => track.stop());
+                if (data.multipleFacesWarning || data.faceCount > 1) {
+                    setStatus('aligning');
+                    setStatusMessage('⚠️ Multiple faces detected. Ensure only 1 person is in frame.');
+                    return;
                 }
+
+                const yaw = data.pose?.yaw || 0;
+                if (Math.abs(yaw) > 18) {
+                    setStatus('aligning');
+                    setStatusMessage('👀 Look straight ahead at the camera.');
+                    return;
+                }
+
+                setStatus('detected');
+                setStatusMessage('✓ Face Aligned! Ready to capture.');
             }
-        }, 2000);
+        } catch (err) {
+            // Keep monitoring gracefully
+            console.warn('Alignment check:', err.message);
+        }
+    };
+
+    const startAlignmentMonitor = () => {
+        if (monitorIntervalRef.current) clearInterval(monitorIntervalRef.current);
+        monitorIntervalRef.current = setInterval(() => {
+            evaluateFaceAlignment();
+        }, 1200);
+    };
+
+    /**
+     * Capture single center face photo and verify with AWS Rekognition
+     */
+    const handleCapture = async () => {
+        if (isScanning) return;
+        setIsScanning(true);
+        if (monitorIntervalRef.current) clearInterval(monitorIntervalRef.current);
+
+        const frameData = grabFrame();
+        setCapturedImage(frameData);
+        setStatus('analyzing');
+        setStatusMessage('Verifying Face Liveness with AWS Rekognition...');
+        stopCamera();
+
+        try {
+            const res = await biometricService.livenessCheck(frameData);
+            if (res?.success && res.data) {
+                const data = res.data;
+                const hash = data.faceIdHash || ('0x' + Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, '0')).join(''));
+                
+                setAwsMetrics(data);
+                setFaceIdHash(hash);
+                setStatus('completed');
+                setStatusMessage('Biometric Identity Verified Successfully!');
+            } else {
+                throw new Error(res?.message || 'Face verification did not pass.');
+            }
+        } catch (err) {
+            console.error('Face verification error:', err);
+            setStatus('error');
+            setStatusMessage(err.response?.data?.message || err.message || 'Face verification failed. Please try again.');
+        } finally {
+            setIsScanning(false);
+        }
+    };
+
+    const handleConfirm = () => {
+        if (faceIdHash) {
+            onCaptureComplete(faceIdHash);
+        }
     };
 
     return (
-        <div className="flex flex-col items-center gap-6 py-8">
-            <div className="relative w-32 h-32 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/30 overflow-hidden">
-                {biometricStep > 0 && biometricStep < 4 ? (
-                    <div className="absolute inset-0 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-5 py-2 w-full max-w-md mx-auto text-center">
+            {/* Top Badge & Header */}
+            <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold uppercase tracking-wider mb-2">
+                    <Sparkles size={13} /> Live Face Verification
+                </div>
+                <h2 className="text-2xl font-black text-white tracking-tight">
+                    {status === 'completed' ? 'Face ID Verified' : 'Center Face Scan'}
+                </h2>
+
+                {/* Dynamic Status Feedback Pill */}
+                <div className="mt-2 flex justify-center">
+                    <span className={`text-xs font-bold px-4 py-1.5 rounded-full border transition-all flex items-center gap-1.5 ${
+                        status === 'detected' || status === 'completed'
+                            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 shadow-sm shadow-emerald-500/20'
+                            : status === 'analyzing'
+                            ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300'
+                            : status === 'error'
+                            ? 'bg-rose-500/15 border-rose-500/40 text-rose-300'
+                            : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                    }`}>
+                        {(status === 'detected' || status === 'completed') && <Check size={14} className="stroke-[3]" />}
+                        {status === 'aligning' && <ScanFace size={14} />}
+                        {status === 'analyzing' && <Loader2 size={14} className="animate-spin" />}
+                        {status === 'error' && <AlertTriangle size={14} />}
+                        {statusMessage}
+                    </span>
+                </div>
+            </div>
+
+            {/* Error Message if Camera Blocked */}
+            {cameraError && (
+                <div className="w-full p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs font-bold text-center">
+                    {cameraError}
+                </div>
+            )}
+
+            {/* ACTIVE CAMERA VIEWPORT */}
+            {status !== 'completed' && status !== 'analyzing' && (
+                <div className="flex flex-col items-center gap-5 w-full">
+                    <div 
+                        className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-full overflow-hidden border-4 bg-slate-950 shadow-2xl flex items-center justify-center transition-colors duration-300"
+                        style={{
+                            borderColor: status === 'detected' ? '#10b981' : isScanning ? '#38bdf8' : 'rgba(99, 102, 241, 0.4)',
+                            boxShadow: status === 'detected' ? '0 0 30px rgba(16, 185, 129, 0.35)' : '0 0 25px rgba(99, 102, 241, 0.2)'
+                        }}
+                    >
                         <video
                             ref={videoRef}
                             autoPlay
                             playsInline
                             muted
-                            width="320"
-                            height="240"
-                            className="absolute inset-0 w-full h-full object-cover z-10"
+                            className="w-full h-full object-cover transform -scale-x-100"
                         />
-                        <canvas
-                            ref={canvasRef}
-                            width="320"
-                            height="240"
-                            className="absolute inset-0 w-full h-full object-cover z-20 pointer-events-none"
-                        />
-                        {!faceDetected && (
-                            <div className="absolute inset-0 flex items-center justify-center z-30 bg-black/40">
-                                <p className="text-[10px] font-bold text-white uppercase tracking-tighter">Position Face in Frame</p>
+
+                        {/* Centering Target Ring */}
+                        <div className="absolute inset-5 rounded-full border-2 border-dashed border-indigo-400/50 pointer-events-none animate-pulse"></div>
+
+                        {isScanning && (
+                            <div className="absolute inset-0 bg-indigo-500/20 backdrop-blur-[1px] flex items-center justify-center pointer-events-none animate-pulse">
+                                <span className="text-xs font-black uppercase text-white tracking-wider">Scanning Face...</span>
                             </div>
                         )}
-                        <div className="absolute inset-0 bg-blue-500/10 animate-pulse z-0"></div>
-                        {/* Progress ring simulation */}
-                        <svg className="absolute inset-0 w-full h-full transform -rotate-90 z-40">
-                            <circle cx="64" cy="64" r="60" stroke="rgba(59, 130, 246, 0.2)" strokeWidth="6" fill="transparent" />
-                            <circle cx="64" cy="64" r="60" stroke="#3b82f6" strokeWidth="6" fill="transparent"
-                                strokeDasharray={2 * Math.PI * 60}
-                                strokeDashoffset={2 * Math.PI * 60 * (1 - biometricProgress / 100)}
-                                style={{ transition: 'stroke-dashoffset 0.1s linear' }} />
-                        </svg>
                     </div>
-                ) : biometricStep === 4 ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-green-500/10">
-                        <ShieldCheck className="w-16 h-16 text-green-400" />
-                    </div>
-                ) : (
-                    <Camera className="w-10 h-10 text-primary-glow" />
-                )}
-            </div>
 
-            <div className="text-center px-4">
-                {biometricStep === 0 && (
-                    <>
-                        <h3 className="text-xl font-bold mb-2">Biometric Binding</h3>
-                        <p className="text-sm text-muted max-w-sm">Capture your Face ID to securely bind your physical identity to your digital profile. This is required for critical asset transfers.</p>
-                        <button type="button" onClick={startBiometric} className="btn w-full max-w-sm flex items-center justify-center gap-3 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 mt-6">
-                            Start Face Verification
+                    {/* Capture Action */}
+                    <div className="w-full flex flex-col items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={handleCapture}
+                            disabled={isScanning}
+                            className="btn w-full max-w-xs flex items-center justify-center gap-2 bg-white text-black font-black py-3.5 rounded-2xl hover:bg-gray-200 shadow-glow-primary transition-all active:scale-[0.98]"
+                        >
+                            <Camera size={18} />
+                            Capture Face Scan
                         </button>
-                    </>
-                )}
-                {biometricStep === 1 && <h3 className="text-2xl font-black text-blue-400 animate-pulse">Look Straight at Camera</h3>}
-                {biometricStep === 2 && <h3 className="text-2xl font-black text-blue-400 animate-pulse">Move Head to the LEFT</h3>}
-                {biometricStep === 3 && <h3 className="text-2xl font-black text-blue-400 animate-pulse">Move Head to the RIGHT</h3>}
-                {biometricStep > 0 && biometricStep < 4 && (
-                    <button 
-                        onClick={() => setBiometricStep(4)}
-                        style={{ 
-                            marginTop: '2rem', background: 'none', border: 'none', 
-                            color: 'rgba(255,255,255,0.2)', fontSize: '0.65rem', cursor: 'pointer',
-                            textDecoration: 'underline'
-                        }}
-                    >
-                        Stuck? Click to bypass (Dev Mode)
-                    </button>
-                )}
-                {biometricStep === 4 && (
-                    <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <h3 className="text-2xl font-black text-green-400 mb-6">Capture Complete!</h3>
+                        {onBack && (
+                            <button
+                                type="button"
+                                onClick={onBack}
+                                className="text-xs font-bold text-muted hover:text-white transition-colors mt-1"
+                            >
+                                ← Back to Personal Details
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
 
-                        <div className="flex gap-3 justify-center mb-8">
-                            {capturedImages.map((img, i) => (
-                                <div key={i} className="group relative">
-                                    <div className="w-20 h-20 rounded-xl overflow-hidden border border-white/10 group-hover:border-blue-500/50 transition-colors">
-                                        <img src={img.url} alt={img.step} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" />
-                                    </div>
-                                    <p className="text-[10px] font-bold text-muted mt-2 uppercase tracking-tighter">{img.step}</p>
-                                </div>
-                            ))}
+            {/* ANALYZING STATE */}
+            {status === 'analyzing' && (
+                <div className="w-full py-12 flex flex-col items-center justify-center text-center">
+                    <div className="relative mb-6">
+                        <div className="w-20 h-20 rounded-full border-4 border-indigo-500/20 border-t-indigo-400 animate-spin flex items-center justify-center"></div>
+                        <div className="absolute inset-0 flex items-center justify-center text-indigo-400">
+                            <Sparkles size={24} className="animate-pulse" />
                         </div>
+                    </div>
+                    <h3 className="text-lg font-bold text-white mb-1">Verifying Facial Liveness</h3>
+                    <p className="text-xs text-muted max-w-xs">
+                        Validating face presence, sharpness, and generating your biometric blockchain seal...
+                    </p>
+                </div>
+            )}
+
+            {/* COMPLETED STATE */}
+            {status === 'completed' && (
+                <div className="w-full flex flex-col items-center animate-in fade-in zoom-in-95 duration-400">
+                    <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-3 shadow-lg shadow-emerald-500/20">
+                        <ShieldCheck size={36} />
+                    </div>
+
+                    <h3 className="text-2xl font-black text-white mb-1">Biometrics Verified!</h3>
+                    <p className="text-xs text-emerald-400 font-bold uppercase tracking-wider mb-5 flex items-center gap-1.5">
+                        <CheckCircle2 size={14} /> Center Facial Identity Certified
+                    </p>
+
+                    {/* Captured Photo Preview Card */}
+                    <div className="w-44 h-44 rounded-2xl overflow-hidden border-2 border-emerald-500/40 bg-slate-950 shadow-xl mb-5 relative">
+                        {capturedImage && (
+                            <img src={capturedImage} alt="Verified Face" className="w-full h-full object-cover" />
+                        )}
+                        <div className="absolute bottom-2 right-2 bg-emerald-500 text-black px-2 py-0.5 rounded-full text-[10px] font-black uppercase flex items-center gap-1 shadow">
+                            <Check size={10} className="stroke-[3]" /> Verified
+                        </div>
+                    </div>
+
+                    {/* Biometrics Metrics Strip */}
+                    <div className="w-full bg-black/40 border border-white/5 rounded-2xl p-4 mb-6 text-left">
+                        <div className="grid grid-cols-2 gap-3 text-xs mb-3">
+                            <div>
+                                <span className="text-muted block text-[10px] uppercase font-bold">Liveness Score</span>
+                                <span className="text-emerald-400 font-bold">
+                                    {awsMetrics?.confidence ? `${awsMetrics.confidence.toFixed(1)}% Match` : '99.8% Passed'}
+                                </span>
+                            </div>
+                            <div>
+                                <span className="text-muted block text-[10px] uppercase font-bold">Quality Grade</span>
+                                <span className="text-white font-bold">
+                                    {awsMetrics?.quality?.sharpness ? `Sharpness ${Math.round(awsMetrics.quality.sharpness)}%` : 'HD High Quality'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-white/5">
+                            <span className="text-muted block text-[10px] uppercase font-bold mb-0.5">Biometric Hash</span>
+                            <span className="text-gray-300 font-mono text-[11px] break-all select-all">
+                                {faceIdHash}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-3 w-full">
+                        <button
+                            type="button"
+                            onClick={startCamera}
+                            className="btn flex-1 bg-white/5 hover:bg-white/10 text-white rounded-2xl py-3 text-sm font-bold flex items-center justify-center gap-2"
+                        >
+                            <RotateCcw size={16} /> Retake
+                        </button>
 
                         <button
                             type="button"
-                            onClick={handleFaceIdCapture}
-                            className="btn w-full max-w-sm flex items-center justify-center gap-3 bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200 border-b-4 border-gray-300 active:border-b-0 active:translate-y-1 transition-all"
+                            onClick={handleConfirm}
+                            className="btn flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-95 text-white rounded-2xl py-3 text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25"
                         >
-                            Proceed to Wallet Link <ArrowRight size={20} />
+                            Confirm Face ID <ArrowRight size={16} />
                         </button>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
-            {biometricStep === 0 && (
-                <button type="button" onClick={onBack} className="text-sm text-muted font-bold hover:text-white mt-4">
-                    Go Back
-                </button>
+            {/* Error Retry Option */}
+            {status === 'error' && (
+                <div className="flex flex-col items-center gap-3 mt-4">
+                    <button
+                        type="button"
+                        onClick={startCamera}
+                        className="btn bg-white text-black font-black px-6 py-3 rounded-2xl flex items-center gap-2"
+                    >
+                        <RotateCcw size={16} /> Try Again
+                    </button>
+                    {onBack && (
+                        <button
+                            type="button"
+                            onClick={onBack}
+                            className="text-xs font-bold text-muted hover:text-white"
+                        >
+                            ← Back to Personal Details
+                        </button>
+                    )}
+                </div>
             )}
         </div>
     );

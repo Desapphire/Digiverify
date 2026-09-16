@@ -185,25 +185,124 @@ const bindFaceId = catchAsync(async (req, res) => {
 });
 
 /**
- * GET /api/admin/users
- * List users, optionally filtered by KYC status.
+ * POST /api/users/rekyc
+ * Citizen submits updated KYC information.
  */
-const listUsers = catchAsync(async (req, res) => {
-    const { kycStatus, limit = 50, offset = 0 } = req.query;
-    let users;
-    if (kycStatus) {
-        users = await User.findByKycStatus(kycStatus);
-    } else {
-        users = await User.findAll(parseInt(limit), parseInt(offset));
-    }
+const reKyc = catchAsync(async (req, res) => {
+    const user = await userService.reKyc(req.user.id, req.body);
 
-    // Strip sensitive fields
-    const safeUsers = users.map(({ governmentIdHash, authNonce, ...u }) => u);
+    await auditService.log({
+        actionType: AUDIT_ACTIONS.KYC_SUBMITTED,
+        req,
+        entityId: req.user.id,
+        entityType: 'user',
+        metadata: { rekyc: true },
+    });
 
     return res.status(200).json({
         success: true,
-        data: safeUsers,
+        message: 'Re-KYC details submitted successfully for review.',
+        data: user,
     });
 });
 
-module.exports = { register, submitKyc, approveKyc, rejectKyc, getProfile, updateProfile, bindFaceId, listUsers, getMyNotifications };
+/**
+ * PUT /api/admin/users/:id/kyc/request-rekyc
+ * Authority triggers Re-KYC on a citizen with optional specific requirements.
+ */
+const requestReKyc = catchAsync(async (req, res) => {
+    const { reason, requestedFields } = req.body;
+    let formattedReason = reason?.trim() || '';
+
+    if (Array.isArray(requestedFields) && requestedFields.length > 0) {
+        const labels = requestedFields.map(f => {
+            switch (f) {
+                case 'face': return 'Biometric Face Scan';
+                case 'id_doc': return 'Government ID & Number';
+                case 'birthdate': return 'Date of Birth & Age';
+                case 'address': return 'Residential Address';
+                case 'land_doc': return 'Cadastral & Land Records';
+                case 'name_contact': return 'Legal Name / Contact Phone';
+                default: return f;
+            }
+        });
+        const prefix = `[REQUIRED: ${labels.join(', ')}]`;
+        formattedReason = formattedReason ? `${prefix} ${formattedReason}` : `${prefix} Please re-submit the specified KYC items.`;
+    } else if (!formattedReason) {
+        formattedReason = 'Re-KYC requested by Land Authority. Please update your details and biometrics.';
+    }
+
+    const user = await userService.requestReKyc(req.params.id, formattedReason);
+
+    await auditService.log({
+        actionType: AUDIT_ACTIONS.KYC_REJECTED,
+        req,
+        entityId: req.params.id,
+        entityType: 'user',
+        metadata: { action: 'request_rekyc', reason: formattedReason, requestedFields },
+    });
+
+    return res.status(200).json({
+        success: true,
+        message: 'Re-KYC requested successfully.',
+        data: user,
+    });
+});
+
+
+const { decrypt } = require('../utils/crypto');
+
+/**
+ * GET /api/admin/users
+ * List users (optionally filtered by kycStatus or role).
+ */
+const listUsers = catchAsync(async (req, res) => {
+    const { kycStatus, role, limit = 50, offset = 0 } = req.query;
+    let users;
+    if (kycStatus) {
+        users = await User.findByKycStatus(kycStatus);
+    } else if (role) {
+        users = await User.findByRole(role);
+    } else {
+        users = await User.findAll(parseInt(limit, 10) || 50, parseInt(offset, 10) || 0);
+    }
+
+    const decryptedUsers = users.map(u => {
+        let decryptedGovtId = null;
+        if (u.governmentIdHash && typeof u.governmentIdHash === 'string' && u.governmentIdHash.includes(':')) {
+            try {
+                decryptedGovtId = decrypt(u.governmentIdHash);
+            } catch (err) {
+                decryptedGovtId = u.governmentIdHash;
+            }
+        } else {
+            decryptedGovtId = u.governmentIdHash || null;
+        }
+
+        return {
+            ...u,
+            governmentId: decryptedGovtId,
+        };
+    });
+
+    return res.status(200).json({
+        success: true,
+        data: decryptedUsers,
+    });
+});
+
+
+module.exports = { 
+    register, 
+    submitKyc, 
+    approveKyc, 
+    rejectKyc, 
+    getProfile, 
+    updateProfile, 
+    bindFaceId, 
+    reKyc,
+    requestReKyc,
+    listUsers, 
+    getMyNotifications 
+};
+

@@ -4,7 +4,9 @@ import { adminService } from '../../services/admin.service';
 import {
     UserCheck, CheckCircle2, XCircle, Loader2,
     RefreshCcw, Search, Mail, Wallet, Shield, Clock,
-    ChevronDown, ChevronUp, User
+    ChevronDown, ChevronUp, User, Copy, MapPin, ExternalLink,
+    Camera, FileText, Calendar, CheckSquare, Square,
+    AlertCircle, Sparkles, Building2, Phone
 } from 'lucide-react';
 
 const KYCApproval = () => {
@@ -15,10 +17,34 @@ const KYCApproval = () => {
     const [filter, setFilter] = useState('pending');
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedUser, setExpandedUser] = useState(null);
+    const [copiedId, setCopiedId] = useState('');
+
+    const handleCopyText = (text, id) => {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(''), 2000);
+    };
 
     // Modal state for Action Reasoning
     const [actionModal, setActionModal] = useState({ isOpen: false, type: '', userId: null, error: '' });
     const [actionReason, setActionReason] = useState('');
+    const [selectedKycParts, setSelectedKycParts] = useState([]);
+
+    const KYC_PART_OPTIONS = [
+        { key: 'face', label: 'Photo & Face Match', desc: 'Live camera photo and face check', icon: Camera },
+        { key: 'id_doc', label: 'ID Document & Number', desc: 'Government ID card or number', icon: FileText },
+        { key: 'birthdate', label: 'Date of Birth & Age', desc: 'Birthdate and age check', icon: Calendar },
+        { key: 'address', label: 'Home Address', desc: 'House no., street, PIN code, and state', icon: MapPin },
+        { key: 'land_doc', label: 'Land & Property Documents', desc: 'Property ownership papers and deeds', icon: Building2 },
+        { key: 'name_contact', label: 'Full Legal Name & Phone', desc: 'Official name and mobile number check', icon: Phone }
+    ];
+
+    const toggleKycPart = (key) => {
+        setSelectedKycParts(prev =>
+            prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+        );
+    };
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -39,14 +65,20 @@ const KYCApproval = () => {
     const openActionModal = (userId, type) => {
         setActionModal({ isOpen: true, type, userId, error: '' });
         setActionReason('');
+        setSelectedKycParts(type === 'rekyc' ? ['face'] : []);
     };
 
     const confirmAction = async () => {
         const { userId, type } = actionModal;
         const trimmedReason = actionReason.trim();
 
-        if (!trimmedReason && type === 'reject') {
-            setActionModal(prev => ({ ...prev, error: 'A reason is required to reject KYC.' }));
+        if (type === 'rekyc' && selectedKycParts.length === 0 && !trimmedReason) {
+            setActionModal(prev => ({ ...prev, error: 'Please select at least one item or enter instructions for the citizen.' }));
+            return;
+        }
+
+        if (type === 'reject' && !trimmedReason) {
+            setActionModal(prev => ({ ...prev, error: 'Please provide a reason for rejecting this request.' }));
             return;
         }
 
@@ -56,12 +88,14 @@ const KYCApproval = () => {
         try {
             if (type === 'approve') {
                 await adminService.approveKyc(userId, trimmedReason);
+            } else if (type === 'rekyc') {
+                await adminService.requestReKyc(userId, trimmedReason, selectedKycParts);
             } else {
                 await adminService.rejectKyc(userId, trimmedReason);
             }
-            setUsers(prev => prev.filter(u => u.id !== userId));
+            await fetchUsers();
         } catch (err) {
-            alert(err.response?.data?.message || 'Action failed');
+            alert(err.response?.data?.message || 'Action failed. Please try again.');
         } finally {
             setActionLoading(null);
         }
@@ -75,256 +109,732 @@ const KYCApproval = () => {
         return (
             (u.name || '').toLowerCase().includes(q) ||
             (u.email || '').toLowerCase().includes(q) ||
-            (u.walletAddress || '').toLowerCase().includes(q)
+            (u.walletAddress || '').toLowerCase().includes(q) ||
+            (u.governmentId || '').toLowerCase().includes(q)
         );
     });
 
-    const statusColor = (status) => {
+    const getStatusBadge = (status) => {
         switch (status) {
-            case 'verified': return { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: '#22c55e' };
-            case 'rejected': return { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#ef4444' };
-            default: return { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.2)', text: '#eab308' };
+            case 'verified':
+                return { bg: '#ECFDF5', border: '#A7F3D0', text: '#047857', label: 'Approved' };
+            case 'rejected':
+                return { bg: '#FEF2F2', border: '#FECACA', text: '#B91C1C', label: 'Rejected' };
+            default:
+                return { bg: '#FEF3C7', border: '#FDE68A', text: '#B45309', label: 'Pending Review' };
         }
     };
 
     const FILTERS = [
-        { key: 'pending', label: 'Pending' },
-        { key: 'verified', label: 'Verified' },
+        { key: 'pending', label: 'Pending Checks' },
+        { key: 'verified', label: 'Approved Citizens' },
         { key: 'rejected', label: 'Rejected' },
-        { key: '', label: 'All' },
+        { key: '', label: 'All Citizens' },
     ];
 
     return (
-        <div className="dashboard-container">
+        <div style={{ width: '100%' }}>
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+                gap: '1.25rem',
+                marginBottom: '1.5rem',
+                backgroundColor: '#FFFFFF',
+                padding: '1.5rem 1.75rem',
+                borderRadius: '12px',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
+            }}>
                 <div>
-                    <h1 className="dashboard-title">
-                        <span className="text-gradient">KYC Approvals</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            backgroundColor: '#EFF6FF',
+                            border: '1px solid #BFDBFE',
+                            color: '#1D4ED8',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '9999px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em'
+                        }}>
+                            <Shield size={12} />
+                            Identity Verification
+                        </span>
+                    </div>
+                    <h1 style={{
+                        fontSize: '1.65rem',
+                        fontWeight: 800,
+                        color: '#0F172A',
+                        letterSpacing: '-0.02em',
+                        margin: 0
+                    }}>
+                        Identity Checks (KYC)
                     </h1>
-                    <p className="text-muted mt-2" style={{ fontSize: '0.9rem' }}>
-                        Review and manage user identity verification requests.
+                    <p style={{ fontSize: '0.875rem', color: '#64748B', marginTop: '4px', margin: 0 }}>
+                        Review citizen identity details, ID documents, home address, and photo match.
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button onClick={() => navigate('/authority')} className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>
-                        ← Back
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                        onClick={() => navigate('/authority')}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '8px 14px',
+                            backgroundColor: '#FFFFFF',
+                            border: '1px solid #CBD5E1',
+                            borderRadius: '8px',
+                            color: '#334155',
+                            fontSize: '0.82rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                        }}
+                    >
+                        ← Dashboard
                     </button>
-                    <button onClick={fetchUsers} className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>
-                        <RefreshCcw size={14} /> Refresh
+                    <button
+                        onClick={fetchUsers}
+                        disabled={loading}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '8px 14px',
+                            backgroundColor: '#FFFFFF',
+                            border: '1px solid #CBD5E1',
+                            borderRadius: '8px',
+                            color: '#334155',
+                            fontSize: '0.82rem',
+                            fontWeight: 600,
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                        }}
+                    >
+                        <RefreshCcw size={14} className={loading ? 'animate-spin' : ''} style={{ color: '#2563EB' }} />
+                        Refresh
                     </button>
                 </div>
             </div>
 
-            {/* Filters + Search */}
-            <div className="glass-panel p-4 mb-6" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: '0.4rem' }}>
-                    {FILTERS.map(f => (
-                        <button
-                            key={f.key}
-                            onClick={() => setFilter(f.key)}
-                            style={{
-                                padding: '0.4rem 1rem',
-                                borderRadius: '0.5rem',
-                                fontSize: '0.78rem',
-                                fontWeight: 700,
-                                border: filter === f.key ? '1px solid rgba(220,38,38,0.3)' : '1px solid rgba(255,255,255,0.05)',
-                                background: filter === f.key ? 'rgba(220,38,38,0.12)' : 'rgba(0,0,0,0.2)',
-                                color: filter === f.key ? '#fca5a5' : 'rgba(255,255,255,0.4)',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                            }}
-                        >
-                            {f.label}
-                        </button>
-                    ))}
+            {/* Filter Pills & Search Bar */}
+            <div style={{
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderRadius: '12px',
+                padding: '1rem 1.25rem',
+                marginBottom: '1.25rem',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '1rem',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)'
+            }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    {FILTERS.map(f => {
+                        const isActive = filter === f.key;
+                        return (
+                            <button
+                                key={f.key}
+                                onClick={() => setFilter(f.key)}
+                                style={{
+                                    padding: '6px 14px',
+                                    borderRadius: '6px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    border: isActive ? '1px solid #0F172A' : '1px solid #E2E8F0',
+                                    backgroundColor: isActive ? '#0F172A' : '#F8FAFC',
+                                    color: isActive ? '#FFFFFF' : '#475569',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                {f.label}
+                            </button>
+                        );
+                    })}
                 </div>
-                <div style={{ position: 'relative', minWidth: 220 }}>
-                    <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    minWidth: '260px',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    boxSizing: 'border-box'
+                }}>
+                    <Search size={16} style={{ color: '#94A3B8', flexShrink: 0 }} />
                     <input
                         type="text"
-                        placeholder="Search name, email, wallet..."
+                        placeholder="Search by name, email, account, or ID number..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="input-premium"
-                        style={{ paddingLeft: 34, fontSize: '0.82rem', padding: '0.5rem 0.75rem 0.5rem 34px' }}
+                        style={{
+                            width: '100%',
+                            border: 'none',
+                            background: 'transparent',
+                            outline: 'none',
+                            padding: 0,
+                            margin: 0,
+                            fontSize: '0.85rem',
+                            color: '#0F172A',
+                            boxShadow: 'none'
+                        }}
                     />
                 </div>
             </div>
 
-            {/* Count */}
-            <div style={{ marginBottom: '1rem', fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)' }}>
-                {loading ? 'Loading...' : `${filteredUsers.length} user${filteredUsers.length !== 1 ? 's' : ''} found`}
+            {/* Total Results Summary */}
+            <div style={{
+                marginBottom: '1rem',
+                padding: '0 4px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                color: '#64748B'
+            }}>
+                <span>
+                    Showing {filteredUsers.length} {filteredUsers.length === 1 ? 'citizen record' : 'citizen records'}
+                </span>
+                <span>
+                    Filter: <strong style={{ color: '#0F172A' }}>{FILTERS.find(f => f.key === filter)?.label}</strong>
+                </span>
             </div>
 
-            {/* User List */}
+            {/* User List Accordion Cards */}
             {loading ? (
-                <div className="glass-panel p-8 flex items-center justify-center">
-                    <Loader2 size={32} className="animate-spin" style={{ color: '#ef4444' }} />
+                <div style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    padding: '3rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '12px'
+                }}>
+                    <Loader2 size={32} className="animate-spin" style={{ color: '#2563EB' }} />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748B' }}>
+                        Loading identity records...
+                    </span>
                 </div>
             ) : filteredUsers.length === 0 ? (
-                <div className="glass-panel p-8 flex flex-col items-center justify-center" style={{ opacity: 0.5 }}>
-                    <UserCheck size={48} style={{ marginBottom: '1rem', color: 'rgba(255,255,255,0.3)' }} />
-                    <p style={{ color: 'rgba(255,255,255,0.4)' }}>No users match the current filter.</p>
+                <div style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px dashed #CBD5E1',
+                    borderRadius: '12px',
+                    padding: '3.5rem 1.5rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center'
+                }}>
+                    <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '12px',
+                        backgroundColor: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#94A3B8',
+                        marginBottom: '1rem'
+                    }}>
+                        <UserCheck size={24} />
+                    </div>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A', margin: '0 0 4px 0' }}>
+                        No Citizen Records Found
+                    </h3>
+                    <p style={{ fontSize: '0.82rem', color: '#64748B', margin: 0, maxWidth: '340px' }}>
+                        No identity records match your search or filter.
+                    </p>
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     {filteredUsers.map(u => {
-                        const sc = statusColor(u.kycStatus);
+                        const statusBadge = getStatusBadge(u.kycStatus);
                         const isExpanded = expandedUser === u.id;
                         const isActing = actionLoading === u.id;
 
                         return (
-                            <div key={u.id} className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
-                                {/* Main Row */}
+                            <div
+                                key={u.id}
+                                style={{
+                                    backgroundColor: '#FFFFFF',
+                                    border: isExpanded ? '1px solid #94A3B8' : '1px solid #E2E8F0',
+                                    borderRadius: '12px',
+                                    boxShadow: isExpanded ? '0 4px 12px rgba(0,0,0,0.06)' : '0 1px 2px rgba(0,0,0,0.03)',
+                                    overflow: 'hidden',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                {/* Collapsed Row Summary */}
                                 <div
                                     onClick={() => setExpandedUser(isExpanded ? null : u.id)}
                                     style={{
-                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                        padding: '1rem 1.25rem', cursor: 'pointer', transition: 'background 0.2s',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '1.1rem 1.25rem',
+                                        cursor: 'pointer',
+                                        backgroundColor: isExpanded ? '#F8FAFC' : '#FFFFFF',
+                                        borderBottom: isExpanded ? '1px solid #E2E8F0' : 'none',
+                                        flexWrap: 'wrap',
+                                        gap: '1rem'
                                     }}
                                 >
-                                    <div className="flex items-center gap-4">
-                                        {/* Avatar */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                        {/* Avatar Icon */}
                                         <div style={{
-                                            width: 44, height: 44, borderRadius: '50%',
-                                            background: 'linear-gradient(135deg, rgba(234,179,8,0.15), rgba(245,158,11,0.08))',
-                                            border: '1px solid rgba(234,179,8,0.15)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            color: '#f59e0b', fontWeight: 800, fontSize: '1rem',
-                                            flexShrink: 0,
+                                            width: '44px',
+                                            height: '44px',
+                                            borderRadius: '10px',
+                                            backgroundColor: '#EFF6FF',
+                                            border: '1px solid #BFDBFE',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#1D4ED8',
+                                            fontWeight: 800,
+                                            fontSize: '1.05rem',
+                                            flexShrink: 0
                                         }}>
                                             {u.name ? u.name.charAt(0).toUpperCase() : <User size={20} />}
                                         </div>
 
                                         <div>
-                                            <p style={{ fontWeight: 700, color: 'white', fontSize: '0.92rem' }}>
-                                                {u.name || 'Unnamed User'}
-                                            </p>
-                                            <div className="flex items-center gap-4" style={{ marginTop: 4 }}>
-                                                {u.email && (
-                                                    <span className="flex items-center gap-1" style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)' }}>
-                                                        <Mail size={11} /> {u.email}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontWeight: 700, color: '#0F172A', fontSize: '0.98rem' }}>
+                                                    {u.name || 'Unnamed Citizen'}
+                                                </span>
+                                                <span style={{
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 700,
+                                                    padding: '2px 8px',
+                                                    borderRadius: '9999px',
+                                                    backgroundColor: statusBadge.bg,
+                                                    border: `1px solid ${statusBadge.border}`,
+                                                    color: statusBadge.text,
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.04em'
+                                                }}>
+                                                    {statusBadge.label}
+                                                </span>
+                                                {(u.faceVerified || u.faceIdHash) && (
+                                                    <span style={{
+                                                        fontSize: '0.68rem',
+                                                        fontWeight: 700,
+                                                        backgroundColor: '#ECFDF5',
+                                                        border: '1px solid #A7F3D0',
+                                                        color: '#047857',
+                                                        padding: '2px 8px',
+                                                        borderRadius: '9999px',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px'
+                                                    }}>
+                                                        <Camera size={11} />
+                                                        Photo Matched
                                                     </span>
                                                 )}
-                                                <span className="flex items-center gap-1" style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>
-                                                    <Wallet size={11} /> {shortenWallet(u.walletAddress)}
+                                            </div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px', fontSize: '0.78rem', color: '#64748B' }}>
+                                                {u.email && (
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <Mail size={12} style={{ color: '#94A3B8' }} />
+                                                        {u.email}
+                                                    </span>
+                                                )}
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'monospace' }}>
+                                                    <Wallet size={12} style={{ color: '#94A3B8' }} />
+                                                    {shortenWallet(u.walletAddress)}
                                                 </span>
+                                                {u.governmentId && (
+                                                    <span>• ID: <strong>{u.governmentId}</strong></span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-4">
-                                        {/* Status Badge */}
-                                        <span style={{
-                                            fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase',
-                                            letterSpacing: '0.05em', padding: '3px 10px', borderRadius: '9999px',
-                                            background: sc.bg, border: `1px solid ${sc.border}`, color: sc.text,
-                                        }}>
-                                            {u.kycStatus || 'pending'}
-                                        </span>
-
-                                        {/* Actions */}
+                                    {/* Action Buttons in row */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
                                         {u.kycStatus === 'pending' && (
-                                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                                <button
-                                                    onClick={() => openActionModal(u.id, 'approve')}
-                                                    disabled={isActing}
-                                                    style={{
-                                                        padding: '0.35rem 0.75rem', borderRadius: '0.5rem',
-                                                        fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
-                                                        background: 'rgba(34,197,94,0.1)', color: '#22c55e',
-                                                        border: '1px solid rgba(34,197,94,0.2)',
-                                                        display: 'flex', alignItems: 'center', gap: 4,
-                                                        opacity: isActing ? 0.5 : 1, transition: 'all 0.2s',
-                                                    }}
-                                                >
-                                                    {isActing && actionModal.type === 'approve' ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-                                                    Approve
-                                                </button>
-                                                <button
-                                                    onClick={() => openActionModal(u.id, 'reject')}
-                                                    disabled={isActing}
-                                                    className="btn btn-danger"
-                                                    style={{
-                                                        padding: '0.35rem 0.75rem', fontSize: '0.72rem',
-                                                        opacity: isActing ? 0.5 : 1,
-                                                    }}
-                                                >
-                                                    {isActing && actionModal.type === 'reject' ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />} Reject
-                                                </button>
-                                            </div>
+                                            <button
+                                                onClick={() => openActionModal(u.id, 'approve')}
+                                                disabled={isActing}
+                                                style={{
+                                                    padding: '6px 14px',
+                                                    borderRadius: '6px',
+                                                    fontSize: '0.78rem',
+                                                    fontWeight: 700,
+                                                    backgroundColor: '#ECFDF5',
+                                                    color: '#047857',
+                                                    border: '1px solid #A7F3D0',
+                                                    cursor: isActing ? 'not-allowed' : 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '5px',
+                                                    transition: 'all 0.15s'
+                                                }}
+                                                onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#D1FAE5'; }}
+                                                onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#ECFDF5'; }}
+                                            >
+                                                {isActing && actionModal.type === 'approve' ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                                                Approve
+                                            </button>
                                         )}
 
-                                        {/* Expand */}
-                                        {isExpanded ? <ChevronUp size={16} style={{ color: 'rgba(255,255,255,0.3)' }} /> : <ChevronDown size={16} style={{ color: 'rgba(255,255,255,0.3)' }} />}
+                                        <button
+                                            onClick={() => openActionModal(u.id, 'rekyc')}
+                                            disabled={isActing}
+                                            style={{
+                                                padding: '6px 14px',
+                                                borderRadius: '6px',
+                                                fontSize: '0.78rem',
+                                                fontWeight: 700,
+                                                backgroundColor: '#EFF6FF',
+                                                color: '#1D4ED8',
+                                                border: '1px solid #BFDBFE',
+                                                cursor: isActing ? 'not-allowed' : 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
+                                                transition: 'all 0.15s'
+                                            }}
+                                            onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#DBEAFE'; }}
+                                            onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#EFF6FF'; }}
+                                        >
+                                            {isActing && actionModal.type === 'rekyc' ? <Loader2 size={13} className="animate-spin" /> : <RefreshCcw size={13} />}
+                                            Request Re-Upload
+                                        </button>
+
+                                        {u.kycStatus === 'pending' && (
+                                            <button
+                                                onClick={() => openActionModal(u.id, 'reject')}
+                                                disabled={isActing}
+                                                style={{
+                                                    padding: '6px 14px',
+                                                    borderRadius: '6px',
+                                                    fontSize: '0.78rem',
+                                                    fontWeight: 700,
+                                                    backgroundColor: '#FEF2F2',
+                                                    color: '#B91C1C',
+                                                    border: '1px solid #FECACA',
+                                                    cursor: isActing ? 'not-allowed' : 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '5px',
+                                                    transition: 'all 0.15s'
+                                                }}
+                                                onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#FEE2E2'; }}
+                                                onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#FEF2F2'; }}
+                                            >
+                                                {isActing && actionModal.type === 'reject' ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
+                                                Reject
+                                            </button>
+                                        )}
+
+                                        <button
+                                            onClick={() => setExpandedUser(isExpanded ? null : u.id)}
+                                            style={{
+                                                padding: '6px 10px',
+                                                borderRadius: '6px',
+                                                backgroundColor: '#FFFFFF',
+                                                border: '1px solid #CBD5E1',
+                                                color: '#475569',
+                                                fontSize: '0.78rem',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                        >
+                                            {isExpanded ? (
+                                                <>Hide Details <ChevronUp size={14} /></>
+                                            ) : (
+                                                <>View Details <ChevronDown size={14} /></>
+                                            )}
+                                        </button>
                                     </div>
                                 </div>
 
-                                {/* Expanded Details */}
+                                {/* Detailed Inspection Expanded Pane */}
                                 {isExpanded && (
-                                    <div style={{
-                                        padding: '0 1.25rem 1.25rem', borderTop: '1px solid rgba(255,255,255,0.04)',
-                                        paddingTop: '1rem',
-                                    }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                                            <DetailField label="User ID" value={u.id} mono />
-                                            <DetailField label="Full Name" value={u.name || '—'} />
-                                            <DetailField label="Email" value={u.email || '—'} />
-                                            <DetailField label="Role" value={u.role?.toUpperCase() || '—'} />
-                                            <DetailField label="Wallet Address" value={u.walletAddress || '—'} mono />
-                                            <DetailField label="KYC Status" value={u.kycStatus || 'pending'} />
-                                            <DetailField label="KYC Document Hash" value={u.kycDocumentHash || 'Not submitted'} mono />
-                                            <DetailField label="Face ID Bound" value={u.faceIdHash ? 'Yes' : 'No'} />
-                                            <DetailField label="Registered" value={u.createdAt ? new Date(u.createdAt).toLocaleString() : '—'} />
-                                        </div>
-
-                                        {/* Biometric Evidence Section */}
-                                        {u.faceIdHash && (
-                                            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '1rem', border: '1px solid rgba(59, 130, 246, 0.1)' }}>
-                                                <div className="flex items-center gap-2 mb-4">
-                                                    <Shield size={16} className="text-blue-400" />
-                                                    <h4 style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.6)' }}>
-                                                        Biometric Verification Evidence
-                                                    </h4>
-                                                </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                    <div className="flex flex-col items-center gap-2">
-                                                        <div className="w-full aspect-video bg-black/40 rounded-lg flex items-center justify-center border border-white/5 relative overflow-hidden group">
-                                                            <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                                <span className="text-[10px] font-bold text-blue-400">PLAY SESSION</span>
-                                                            </div>
-                                                            <User size={32} className="text-white/10" />
-                                                            <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-blue-600 rounded-sm text-[8px] font-black text-white">LIVENESS: CENTER</div>
-                                                        </div>
-                                                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)' }}>Frame 01 (Static)</span>
-                                                    </div>
-                                                    <div className="flex flex-col items-center gap-2">
-                                                        <div className="w-full aspect-video bg-black/40 rounded-lg flex items-center justify-center border border-white/5 relative overflow-hidden">
-                                                            <User size={32} className="text-white/10" style={{ transform: 'rotate(-15deg) translateX(-5px)' }} />
-                                                            <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-blue-600 rounded-sm text-[8px] font-black text-white">LIVENESS: LEFT</div>
-                                                        </div>
-                                                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)' }}>Frame 02 (Movement)</span>
-                                                    </div>
-                                                    <div className="flex flex-col items-center gap-2">
-                                                        <div className="w-full aspect-video bg-black/40 rounded-lg flex items-center justify-center border border-white/5 relative overflow-hidden">
-                                                            <User size={32} className="text-white/10" style={{ transform: 'rotate(15deg) translateX(5px)' }} />
-                                                            <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-blue-600 rounded-sm text-[8px] font-black text-white">LIVENESS: RIGHT</div>
-                                                        </div>
-                                                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)' }}>Frame 03 (Movement)</span>
-                                                    </div>
-                                                </div>
-                                                <div className="mt-4 p-3 bg-black/20 rounded-lg border border-white/5 flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                                                        <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>
-                                                            Session Hash Analysis: <span className="font-mono text-blue-400">{u.faceIdHash.slice(0, 16)}...</span>
-                                                        </p>
-                                                    </div>
-                                                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#22c55e', textTransform: 'uppercase' }}>98.4% Confidence Match</span>
+                                    <div style={{ padding: '1.5rem', backgroundColor: '#FFFFFF' }}>
+                                        {/* Officer Remarks if present */}
+                                        {u.adminComments && (
+                                            <div style={{
+                                                marginBottom: '1.25rem',
+                                                padding: '0.875rem 1rem',
+                                                backgroundColor: '#EFF6FF',
+                                                border: '1px solid #BFDBFE',
+                                                borderRadius: '8px',
+                                                display: 'flex',
+                                                alignItems: 'flex-start',
+                                                gap: '10px'
+                                            }}>
+                                                <AlertCircle size={18} style={{ color: '#1D4ED8', marginTop: '2px', flexShrink: 0 }} />
+                                                <div>
+                                                    <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#1D4ED8', display: 'block' }}>
+                                                        Officer Notes:
+                                                    </span>
+                                                    <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: '#1E293B', fontWeight: 500 }}>
+                                                        {u.adminComments}
+                                                    </p>
                                                 </div>
                                             </div>
                                         )}
+
+                                        {/* Section 1: Core Citizen Personal Details */}
+                                        <div style={{
+                                            backgroundColor: '#F8FAFC',
+                                            border: '1px solid #E2E8F0',
+                                            borderRadius: '10px',
+                                            padding: '1.15rem',
+                                            marginBottom: '1.25rem'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.85rem', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.5rem' }}>
+                                                <User size={16} style={{ color: '#1E3A8A' }} />
+                                                <h4 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0F172A', margin: 0 }}>
+                                                    1. Personal Details
+                                                </h4>
+                                            </div>
+
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                                <DetailField label="Full Name" value={u.name || '—'} />
+                                                <DetailField label="Email Address" value={u.email || '—'} />
+                                                <DetailField label="Phone Number" value={u.phone || '—'} />
+                                                <div>
+                                                    <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', margin: '0 0 4px 0' }}>
+                                                        Date of Birth
+                                                    </p>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0F172A' }}>
+                                                            {u.birthdate ? new Date(u.birthdate).toLocaleDateString() : '—'}
+                                                        </span>
+                                                        {u.birthdate && (
+                                                            <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', backgroundColor: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }}>
+                                                                Age Verified ({Math.floor((new Date() - new Date(u.birthdate)) / (365.25 * 24 * 60 * 60 * 1000))} yrs)
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <DetailField label="Role" value={u.role?.toUpperCase() || 'USER'} />
+                                                <DetailField label="Status" value={u.kycStatus?.toUpperCase() || 'PENDING'} />
+                                                <DetailField label="Account" value={u.isActive !== false ? 'Active' : 'Suspended'} />
+                                                <DetailField label="Registered Date" value={u.createdAt ? new Date(u.createdAt).toLocaleString() : '—'} />
+                                            </div>
+                                        </div>
+
+                                        {/* Section 2: ID Document & Verification Details */}
+                                        <div style={{
+                                            backgroundColor: '#F8FAFC',
+                                            border: '1px solid #E2E8F0',
+                                            borderRadius: '10px',
+                                            padding: '1.15rem',
+                                            marginBottom: '1.25rem'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.85rem', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.5rem' }}>
+                                                <Shield size={16} style={{ color: '#D97706' }} />
+                                                <h4 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0F172A', margin: 0 }}>
+                                                    2. ID Documents
+                                                </h4>
+                                            </div>
+
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                                                <DetailField label="Document Type" value={u.governmentIdType || 'Aadhaar Card'} />
+                                                <DetailField
+                                                    label="ID Number"
+                                                    value={u.governmentId || 'Not Provided'}
+                                                    mono
+                                                    copyable={!!u.governmentId}
+                                                    onCopy={() => handleCopyText(u.governmentId, `idnum-${u.id}`)}
+                                                    isCopied={copiedId === `idnum-${u.id}`}
+                                                />
+                                                {u.governmentIdHash && (
+                                                    <DetailField
+                                                        label="Digital ID Record"
+                                                        value={u.governmentIdHash}
+                                                        mono
+                                                        copyable
+                                                        onCopy={() => handleCopyText(u.governmentIdHash, `gid-${u.id}`)}
+                                                        isCopied={copiedId === `gid-${u.id}`}
+                                                    />
+                                                )}
+                                                {u.kycDocumentHash && (
+                                                    <div>
+                                                        <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', margin: '0 0 4px 0' }}>
+                                                            Identity Document
+                                                        </p>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                                            <code style={{ fontSize: '0.78rem', backgroundColor: '#FFFFFF', padding: '2px 6px', borderRadius: '4px', border: '1px solid #CBD5E1', color: '#0F172A' }}>
+                                                                {u.kycDocumentHash}
+                                                            </code>
+                                                            <button
+                                                                onClick={() => handleCopyText(u.kycDocumentHash, `ipfs-${u.id}`)}
+                                                                style={{ background: '#FFFFFF', border: '1px solid #CBD5E1', color: copiedId === `ipfs-${u.id}` ? '#047857' : '#2563EB', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                                                            >
+                                                                {copiedId === `ipfs-${u.id}` ? <CheckCircle2 size={11} /> : <Copy size={11} />}
+                                                            </button>
+                                                            <a
+                                                                href={`https://gateway.pinata.cloud/ipfs/${u.kycDocumentHash}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                style={{ color: '#2563EB', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '3px', textDecoration: 'none', fontWeight: 600 }}
+                                                            >
+                                                                View Document <ExternalLink size={11} />
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Section 3: Home Address */}
+                                        <div style={{
+                                            backgroundColor: '#F8FAFC',
+                                            border: '1px solid #E2E8F0',
+                                            borderRadius: '10px',
+                                            padding: '1.15rem',
+                                            marginBottom: '1.25rem'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.85rem', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.5rem' }}>
+                                                <MapPin size={16} style={{ color: '#047857' }} />
+                                                <h4 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0F172A', margin: 0 }}>
+                                                    3. Home Address
+                                                </h4>
+                                            </div>
+
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                                                <DetailField label="Address Line" value={u.houseNumber || '—'} />
+                                                <DetailField label="Area / Locality" value={u.locality || '—'} />
+                                                <DetailField label="City" value={u.city || '—'} />
+                                                <DetailField label="PIN Code" value={u.pinCode || '—'} mono />
+                                                <DetailField label="State" value={u.state || '—'} />
+                                                <DetailField label="Country" value={u.country || 'India'} />
+                                                <div style={{ gridColumn: '1 / -1' }}>
+                                                    <DetailField
+                                                        label="Full Address"
+                                                        value={[u.houseNumber, u.locality, u.city, u.pinCode ? `PIN: ${u.pinCode}` : '', u.state, u.country].filter(Boolean).join(', ') || 'Not Provided'}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Section 4: Photo & Face Verification */}
+                                        <div style={{
+                                            backgroundColor: '#F0FDF4',
+                                            border: '1px solid #BBF7D0',
+                                            borderRadius: '10px',
+                                            padding: '1.15rem',
+                                            marginBottom: '1.25rem'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '8px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <Camera size={18} style={{ color: '#047857' }} />
+                                                    <h4 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0F172A', margin: 0 }}>
+                                                        4. Photo & Face Match
+                                                    </h4>
+                                                </div>
+                                                <span style={{
+                                                    fontSize: '0.72rem',
+                                                    fontWeight: 700,
+                                                    padding: '3px 10px',
+                                                    borderRadius: '9999px',
+                                                    backgroundColor: u.faceVerified || u.faceIdHash ? '#DCFCE7' : '#FEF3C7',
+                                                    color: u.faceVerified || u.faceIdHash ? '#15803D' : '#B45309',
+                                                    border: `1px solid ${u.faceVerified || u.faceIdHash ? '#86EFAC' : '#FDE68A'}`
+                                                }}>
+                                                    {u.faceVerified || u.faceIdHash ? 'Photo Matched' : 'Photo Pending'}
+                                                </span>
+                                            </div>
+
+                                            <div style={{ backgroundColor: '#FFFFFF', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                                                    <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#64748B', fontWeight: 700 }}>
+                                                        Photo Match ID
+                                                    </span>
+                                                    {u.faceIdHash && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleCopyText(u.faceIdHash, `face-${u.id}`);
+                                                            }}
+                                                            style={{ background: 'transparent', border: '1px solid #CBD5E1', color: copiedId === `face-${u.id}` ? '#047857' : '#2563EB', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                                        >
+                                                            {copiedId === `face-${u.id}` ? <><CheckCircle2 size={11} /> Copied</> : <><Copy size={11} /> Copy ID</>}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                <code style={{ fontSize: '0.8rem', color: u.faceIdHash ? '#0F172A' : '#94A3B8', wordBreak: 'break-all', display: 'block', fontFamily: 'monospace' }}>
+                                                    {u.faceIdHash || 'No photo match record for this citizen.'}
+                                                </code>
+                                            </div>
+                                        </div>
+
+                                        {/* Section 5: Account & Wallet Details */}
+                                        <div style={{
+                                            backgroundColor: '#F8FAFC',
+                                            border: '1px solid #E2E8F0',
+                                            borderRadius: '10px',
+                                            padding: '1.15rem'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.85rem', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.5rem' }}>
+                                                <Wallet size={16} style={{ color: '#7C3AED' }} />
+                                                <h4 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0F172A', margin: 0 }}>
+                                                    5. Account Details
+                                                </h4>
+                                            </div>
+
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+                                                <DetailField
+                                                    label="Citizen ID"
+                                                    value={u.id}
+                                                    mono
+                                                    copyable
+                                                    onCopy={() => handleCopyText(u.id, `id-${u.id}`)}
+                                                    isCopied={copiedId === `id-${u.id}`}
+                                                />
+                                                <DetailField
+                                                    label="Account Address"
+                                                    value={u.walletAddress || 'Not Connected'}
+                                                    mono
+                                                    copyable={!!u.walletAddress}
+                                                    onCopy={() => handleCopyText(u.walletAddress, `wallet-${u.id}`)}
+                                                    isCopied={copiedId === `wallet-${u.id}`}
+                                                />
+                                                {u.authNonce && (
+                                                    <DetailField
+                                                        label="Security Token"
+                                                        value={u.authNonce}
+                                                        mono
+                                                        copyable
+                                                        onCopy={() => handleCopyText(u.authNonce, `nonce-${u.id}`)}
+                                                        isCopied={copiedId === `nonce-${u.id}`}
+                                                    />
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -333,44 +843,178 @@ const KYCApproval = () => {
                 </div>
             )}
 
-            {/* Action Reasoning Modal */}
+            {/* Action Dialog Modal */}
             {actionModal.isOpen && (
                 <div style={{
-                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem'
+                    position: 'fixed',
+                    inset: 0,
+                    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                    backdropFilter: 'blur(4px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 9999,
+                    padding: '1rem'
                 }}>
-                    <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '1.5rem' }}>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '1rem', color: 'white' }}>
-                            {actionModal.type === 'approve' ? 'Approve KYC' : 'Reject KYC'}
-                        </h3>
-                        <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: '1.25rem' }}>
-                            Please provide a reason for this decision. {actionModal.type === 'reject' && 'This is required for rejections to inform the user.'}
+                    <div style={{
+                        width: '100%',
+                        maxWidth: actionModal.type === 'rekyc' ? '560px' : '460px',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #CBD5E1',
+                        borderRadius: '16px',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                        maxHeight: '90vh',
+                        overflowY: 'auto',
+                        padding: '1.75rem'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.5rem' }}>
+                            {actionModal.type === 'approve' ? (
+                                <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#ECFDF5', color: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <CheckCircle2 size={22} />
+                                </div>
+                            ) : actionModal.type === 'rekyc' ? (
+                                <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#EFF6FF', color: '#1D4ED8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <RefreshCcw size={22} />
+                                </div>
+                            ) : (
+                                <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#FEF2F2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <XCircle size={22} />
+                                </div>
+                            )}
+                            <div>
+                                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                                    {actionModal.type === 'approve'
+                                        ? 'Approve Citizen'
+                                        : actionModal.type === 'rekyc'
+                                        ? 'Request Re-Upload'
+                                        : 'Reject Identity Check'}
+                                </h3>
+                                <p style={{ fontSize: '0.8rem', color: '#64748B', margin: 0 }}>
+                                    Record officer decision
+                                </p>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '0.85rem', color: '#475569', marginBottom: '1.25rem', lineHeight: 1.4 }}>
+                            {actionModal.type === 'rekyc'
+                                ? 'Select the items that need to be re-uploaded by the citizen:'
+                                : actionModal.type === 'reject'
+                                ? 'Specify the reason for rejecting this request.'
+                                : 'Confirm approval for this citizen. They will be able to buy and register properties.'}
                         </p>
-                        <textarea
-                            value={actionReason}
-                            onChange={(e) => setActionReason(e.target.value)}
-                            placeholder="Enter reasoning..."
-                            className="input-premium"
-                            style={{ width: '100%', minHeight: 100, marginBottom: '1rem', resize: 'vertical' }}
-                        />
+
+                        {/* Selective Requirements Selector (Re-KYC only) */}
+                        {actionModal.type === 'rekyc' && (
+                            <div style={{ marginBottom: '1.25rem' }}>
+                                <label style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#0F172A', fontWeight: 800, letterSpacing: '0.04em', display: 'block', marginBottom: '0.5rem' }}>
+                                    Select Items to Re-Upload:
+                                </label>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '0.5rem' }}>
+                                    {KYC_PART_OPTIONS.map(opt => {
+                                        const isSelected = selectedKycParts.includes(opt.key);
+
+                                        return (
+                                            <div
+                                                key={opt.key}
+                                                onClick={() => toggleKycPart(opt.key)}
+                                                style={{
+                                                    padding: '0.75rem 0.85rem',
+                                                    borderRadius: '8px',
+                                                    border: isSelected ? '1.5px solid #2563EB' : '1px solid #E2E8F0',
+                                                    backgroundColor: isSelected ? '#EFF6FF' : '#F8FAFC',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.15s',
+                                                    display: 'flex',
+                                                    alignItems: 'flex-start',
+                                                    gap: '10px'
+                                                }}
+                                            >
+                                                <div style={{ marginTop: '2px', color: isSelected ? '#2563EB' : '#94A3B8' }}>
+                                                    {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
+                                                </div>
+                                                <div>
+                                                    <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: 700, color: isSelected ? '#1E3A8A' : '#0F172A' }}>
+                                                        {opt.label}
+                                                    </p>
+                                                    <p style={{ margin: '2px 0 0 0', fontSize: '0.7rem', color: '#64748B', lineHeight: 1.3 }}>
+                                                        {opt.desc}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Reason / Directive textarea */}
+                        <div style={{ marginBottom: '1.25rem' }}>
+                            <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#0F172A', fontWeight: 700, display: 'block', marginBottom: '0.375rem' }}>
+                                {actionModal.type === 'rekyc' ? 'Instructions for Citizen (Optional):' : 'Reason for Rejection:'}
+                            </label>
+                            <textarea
+                                value={actionReason}
+                                onChange={(e) => setActionReason(e.target.value)}
+                                placeholder={actionModal.type === 'rekyc' ? 'E.g. ID document is blurry. Please upload a clear photo of your original ID card.' : 'Enter reason for rejection...'}
+                                style={{
+                                    width: '100%',
+                                    minHeight: '85px',
+                                    padding: '10px',
+                                    fontSize: '0.85rem',
+                                    border: '1px solid #CBD5E1',
+                                    borderRadius: '8px',
+                                    backgroundColor: '#FFFFFF',
+                                    color: '#0F172A',
+                                    outline: 'none',
+                                    boxSizing: 'border-box',
+                                    resize: 'vertical'
+                                }}
+                            />
+                        </div>
+
                         {actionModal.error && (
-                            <div style={{ color: '#ef4444', fontSize: '0.8rem', marginBottom: '1rem' }}>
+                            <div style={{ color: '#B91C1C', fontSize: '0.82rem', marginBottom: '1rem', backgroundColor: '#FEF2F2', padding: '0.6rem 0.85rem', borderRadius: '6px', border: '1px solid #FECACA', fontWeight: 600 }}>
                                 {actionModal.error}
                             </div>
                         )}
+
+                        {/* Modal Action Buttons */}
                         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                             <button
                                 onClick={() => setActionModal({ isOpen: false, type: '', userId: null, error: '' })}
-                                className="btn btn-secondary"
+                                style={{
+                                    padding: '8px 16px',
+                                    borderRadius: '8px',
+                                    backgroundColor: '#FFFFFF',
+                                    border: '1px solid #CBD5E1',
+                                    color: '#334155',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={confirmAction}
-                                className={actionModal.type === 'approve' ? 'btn btn-primary' : 'btn btn-danger'}
                                 disabled={actionModal.type === 'reject' && !actionReason.trim()}
+                                style={{
+                                    padding: '8px 18px',
+                                    borderRadius: '8px',
+                                    backgroundColor: actionModal.type === 'approve' ? '#047857' : actionModal.type === 'rekyc' ? '#1E3A8A' : '#DC2626',
+                                    color: '#FFFFFF',
+                                    border: 'none',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 700,
+                                    cursor: (actionModal.type === 'reject' && !actionReason.trim()) ? 'not-allowed' : 'pointer',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                }}
                             >
-                                Confirm {actionModal.type === 'approve' ? 'Approval' : 'Rejection'}
+                                {actionModal.type === 'approve'
+                                    ? 'Approve Citizen'
+                                    : actionModal.type === 'rekyc'
+                                    ? `Send Re-Upload Request (${selectedKycParts.length} Selected)`
+                                    : 'Reject Request'}
                             </button>
                         </div>
                     </div>
@@ -380,17 +1024,34 @@ const KYCApproval = () => {
     );
 };
 
-const DetailField = ({ label, value, mono = false }) => (
+// Reusable Detail Field inside card
+const DetailField = ({ label, value, mono = false, copyable = false, onCopy, isCopied }) => (
     <div>
-        <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>
-            {label}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+            <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', margin: 0 }}>
+                {label}
+            </p>
+            {copyable && value && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (onCopy) onCopy();
+                    }}
+                    style={{ background: 'transparent', border: 'none', color: isCopied ? '#047857' : '#2563EB', padding: '0 4px', fontSize: '0.7rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                >
+                    {isCopied ? <><CheckCircle2 size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+                </button>
+            )}
+        </div>
         <p style={{
-            fontSize: '0.82rem', fontWeight: 500, color: 'rgba(255,255,255,0.75)',
-            fontFamily: mono ? 'monospace' : 'inherit',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            color: '#0F172A',
+            fontFamily: mono ? 'var(--font-mono, monospace)' : 'inherit',
             wordBreak: 'break-all',
+            margin: 0
         }}>
-            {value}
+            {value || '—'}
         </p>
     </div>
 );

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useWeb3 } from '../context/Web3Context';
 import './Sidebar.css';
 import {
     Home,
@@ -17,14 +18,22 @@ import {
     Search,
     Shield,
     FileText,
-    ArrowLeftRight
+    Copy,
+    Check,
+    Wallet,
+    Globe,
+    ChevronRight,
+    ShieldCheck,
+    ExternalLink
 } from 'lucide-react';
 
 const Sidebar = () => {
     const { logout, user } = useAuth();
+    const { account, chainId, connectWallet, isConnecting } = useWeb3();
     const navigate = useNavigate();
     const location = useLocation();
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     const isPathActive = (path) => location.pathname === path;
     const isPathStartsWith = (prefix) => location.pathname.startsWith(prefix);
@@ -34,15 +43,47 @@ const Sidebar = () => {
         navigate('/login');
     };
 
-    // ── Nav Item ──
+    const handleCopyAddress = (e) => {
+        e.stopPropagation();
+        if (account) {
+            navigator.clipboard.writeText(account);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    // Breadcrumb Resolver
+    const getBreadcrumbInfo = () => {
+        const path = location.pathname;
+        if (path === '/dashboard') return { category: 'Portal', title: 'Dashboard' };
+        if (path === '/profile') return { category: 'Account', title: 'Profile & Verification' };
+        if (path === '/my-properties') return { category: 'Properties', title: 'My Properties' };
+        if (path === '/register-property') return { category: 'Properties', title: 'Add Property' };
+        if (path === '/search-property') return { category: 'Registry', title: 'Search Properties' };
+        if (path.startsWith('/reapply-property') || path.endsWith('/reapply')) return { category: 'Properties', title: 'Reapply Property Registration' };
+        if (path.startsWith('/properties/')) return { category: 'Properties', title: 'Property Details' };
+        if (path === '/transactions') return { category: 'Transactions', title: 'Transaction History' };
+        if (path === '/sale') return { category: 'Sales', title: 'Sell Property' };
+        if (path.includes('/review')) return { category: 'Purchases', title: 'Review Purchase' };
+        if (path.includes('/fund-block')) return { category: 'Payments', title: 'Locked Payments' };
+        if (path === '/notifications') return { category: 'Updates', title: 'Notifications' };
+        if (path === '/wallet-recovery') return { category: 'Security', title: 'Wallet Recovery' };
+        if (path === '/reapply-kyc' || path === '/kyc/reapply') return { category: 'Account', title: 'Reapply Identity Verification (KYC)' };
+        return { category: 'Portal', title: 'Services' };
+    };
+
+    const breadcrumb = getBreadcrumbInfo();
+
+    // ── Nav Item Component ──
     const NavItem = ({ icon: Icon, label, active, onClick, badge }) => (
         <button
             onClick={onClick}
             className={`user-nav-item ${active ? 'active' : ''}`}
+            title={isCollapsed ? label : undefined}
         >
             <div className={`nav-content ${isCollapsed ? 'centered' : ''}`}>
-                <Icon size={18} />
-                {!isCollapsed && <span>{label}</span>}
+                <Icon size={18} className="nav-icon" />
+                {!isCollapsed && <span className="nav-label">{label}</span>}
             </div>
             {isCollapsed && <div className="user-tip">{label}</div>}
             {!isCollapsed && badge > 0 && (
@@ -51,7 +92,7 @@ const Sidebar = () => {
         </button>
     );
 
-    // ── Section ──
+    // ── Nav Section Component ──
     const NavSection = ({ title, children, divider = true }) => (
         <div className={`user-nav-section ${divider ? 'with-divider' : ''}`}>
             {!isCollapsed && title && (
@@ -62,36 +103,35 @@ const Sidebar = () => {
     );
 
     return (
-        <div className="flex" style={{ background: 'hsl(var(--color-bg-base))', minHeight: '100vh' }}>
-            {/* ── Sidebar ── */}
-            <aside className={`user-sidebar ${isCollapsed ? 'user-sidebar-collapsed' : 'user-sidebar-expanded'}`}
-                style={{ position: 'fixed', left: 0, top: 0, height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="portal-shell-container">
+            {/* ── Fixed Sidebar ── */}
+            <aside className={`user-sidebar ${isCollapsed ? 'user-sidebar-collapsed' : 'user-sidebar-expanded'}`}>
 
-                {/* Logo */}
+                {/* Top Institutional Bar / Emblem */}
                 <div className="user-topbar">
                     <div className={`user-logo-box ${isCollapsed ? 'collapsed' : ''}`}>
-                        <div className="user-logo-icon">
-                            <img src="/logo.png" alt="Digiverify" style={{ width: 24, height: 24 }} />
+                        <div className="gov-emblem-badge">
+                            <ShieldCheck size={20} className="emblem-icon" />
                         </div>
                         <div className="user-logo-text">
-                            <span className="title">Digi<span className="accent">verify</span></span>
-                            <span className="subtitle">Platform</span>
+                            <div className="title-row">
+                                <span className="title">Digi<span className="accent">Verify</span></span>
+                                <span className="gov-tag">GOV</span>
+                            </div>
+                            <span className="subtitle">Secure Land Registry Portal</span>
                         </div>
                     </div>
-                    <button onClick={() => setIsCollapsed(!isCollapsed)} className="user-collapse-btn">
-                        {isCollapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}
+                    <button
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        className="user-collapse-btn"
+                        title={isCollapsed ? "Expand Navigation" : "Collapse Navigation"}
+                        aria-label="Toggle Sidebar"
+                    >
+                        {isCollapsed ? <Menu size={17} /> : <ChevronLeft size={17} />}
                     </button>
                 </div>
 
-                {/* Status */}
-                {!isCollapsed && (
-                    <div className="user-status-bar">
-                        <div className="user-status-dot"></div>
-                        <span className="user-status-label">Network Active</span>
-                    </div>
-                )}
-
-                {/* Navigation */}
+                {/* Scrollable Navigation Area */}
                 <div className="user-nav-scroll">
                     <NavSection divider={true}>
                         <NavItem
@@ -102,10 +142,10 @@ const Sidebar = () => {
                         />
                     </NavSection>
 
-                    <NavSection title="Identity" divider={true}>
+                    <NavSection title="Account & Identity" divider={true}>
                         <NavItem
                             icon={UserIcon}
-                            label="Profile & KYC"
+                            label="Profile & Verification"
                             active={isPathActive('/profile')}
                             onClick={() => navigate('/profile')}
                         />
@@ -120,40 +160,39 @@ const Sidebar = () => {
                         />
                         <NavItem
                             icon={PlusCircle}
-                            label="Register Property"
+                            label="Add Property"
                             active={isPathActive('/register-property')}
                             onClick={() => navigate('/register-property')}
                         />
                         <NavItem
                             icon={Search}
-                            label="Search Assets"
+                            label="Search Properties"
                             active={isPathActive('/search-property')}
                             onClick={() => navigate('/search-property')}
                         />
                     </NavSection>
 
-                    <NavSection title="Transactions" divider={true}>
+                    <NavSection title="Transfers & Sales" divider={true}>
                         <NavItem
                             icon={Activity}
-                            label="My Transactions"
+                            label="Transactions"
                             active={isPathActive('/transactions')}
                             onClick={() => navigate('/transactions')}
                         />
                         <NavItem
                             icon={ArrowUpRight}
-                            label="Sale"
+                            label="Sell Property"
                             active={isPathActive('/sale')}
                             onClick={() => navigate('/sale')}
                         />
                     </NavSection>
 
-                    <NavSection title="System" divider={user?.role === 'AUTHORITY'}>
+                    <NavSection title="Support & Security" divider={user?.role === 'AUTHORITY'}>
                         <NavItem
                             icon={Bell}
                             label="Notifications"
                             active={isPathActive('/notifications')}
                             onClick={() => navigate('/notifications')}
-                            badge={0}
                         />
                         <NavItem
                             icon={Key}
@@ -164,16 +203,16 @@ const Sidebar = () => {
                     </NavSection>
 
                     {user?.role === 'AUTHORITY' && (
-                        <NavSection title="Authority Actions" divider={false}>
+                        <NavSection title="Authority Controls" divider={false}>
                             <NavItem
                                 icon={Shield}
-                                label="Command Center"
+                                label="Admin Center"
                                 active={isPathActive('/authority')}
                                 onClick={() => navigate('/authority')}
                             />
                             <NavItem
                                 icon={FileText}
-                                label="KYC Approvals"
+                                label="Verification Requests"
                                 active={isPathStartsWith('/authority/kyc')}
                                 onClick={() => navigate('/authority/kyc/latest')}
                             />
@@ -181,39 +220,124 @@ const Sidebar = () => {
                     )}
                 </div>
 
-                {/* Footer */}
+                {/* Sidebar Footer: User Account Info Chip & Logout */}
                 <div className="user-footer">
                     {user?.role === 'AUTHORITY' && !isCollapsed && (
                         <button onClick={() => navigate('/authority')} className="user-switch-btn">
                             <Shield size={14} />
-                            Switch to Authority
+                            <span>Switch to Authority</span>
                         </button>
                     )}
 
                     <div className={`user-user-row ${isCollapsed ? 'compact' : ''}`}>
-                        {!isCollapsed && (
+                        {!isCollapsed ? (
                             <div className="user-user-info">
                                 <div className="user-user-avatar">
                                     <div className="user-user-avatar-inner">
-                                        {user?.name?.charAt(0) || 'U'}
+                                        {user?.name ? user.name.charAt(0).toUpperCase() : 'C'}
                                     </div>
                                 </div>
                                 <div className="user-user-meta">
-                                    <div className="user-user-name">{user?.name || 'User'}</div>
-                                    <span className="user-user-role">{user?.role?.toUpperCase() || 'USER'}</span>
+                                    <div className="user-user-name" title={user?.name || 'Citizen'}>
+                                        {user?.name || 'Citizen'}
+                                    </div>
+                                    <div className="user-user-role-badge">
+                                        {user?.role === 'AUTHORITY' ? 'AUTHORITY' : 'CITIZEN'}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="user-user-avatar" title={`${user?.name || 'Citizen'} (${user?.role || 'Citizen'})`}>
+                                <div className="user-user-avatar-inner">
+                                    {user?.name ? user.name.charAt(0).toUpperCase() : 'C'}
                                 </div>
                             </div>
                         )}
-                        <button onClick={handleLogout} className="user-logout-btn" title="Logout">
-                            <LogOut size={18} />
+                        <button
+                            onClick={handleLogout}
+                            className="user-logout-btn"
+                            title="Sign Out"
+                            aria-label="Logout"
+                        >
+                            <LogOut size={16} />
                         </button>
                     </div>
                 </div>
             </aside>
 
-            {/* ── Main Content ── */}
+            {/* ── Main Layout & Content Area ── */}
             <main className={`user-main ${isCollapsed ? 'collapsed-main' : 'expanded'}`}>
-                <div style={{ height: '100%' }}>
+
+                {/* ── Top Header Bar (Singapore Gov / Stripe style) ── */}
+                <header className="gov-topbar">
+                    {/* Left: Breadcrumb & Title */}
+                    <div className="gov-topbar-left">
+                        <div className="gov-breadcrumb-trail">
+                            <span className="gov-breadcrumb-root">{breadcrumb.category}</span>
+                            <ChevronRight size={13} className="gov-breadcrumb-separator" />
+                            <span className="gov-breadcrumb-current">{breadcrumb.title}</span>
+                        </div>
+                        <h2 className="gov-page-header-title">{breadcrumb.title}</h2>
+                    </div>
+
+                    {/* Right: Web3 Wallet Chip, Notification, User Chip */}
+                    <div className="gov-topbar-right">
+                        {/* Web3 Wallet Chip with 1-Click Copy */}
+                        {account ? (
+                            <div
+                                className={`topbar-wallet-chip ${copied ? 'copied' : ''}`}
+                                onClick={handleCopyAddress}
+                                title="Click to copy wallet address"
+                            >
+                                <div className="wallet-chip-icon-box">
+                                    <Wallet size={14} />
+                                </div>
+                                <span className="wallet-chip-address font-mono">
+                                    {account.slice(0, 6)}...{account.slice(-4)}
+                                </span>
+                                <button className="wallet-chip-copy-btn" aria-label="Copy Address">
+                                    {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                                </button>
+                                {copied && <span className="wallet-copied-tooltip">Copied!</span>}
+                            </div>
+                        ) : (
+                            <button
+                                onClick={connectWallet}
+                                disabled={isConnecting}
+                                className="topbar-connect-wallet-btn"
+                            >
+                                <Wallet size={14} />
+                                <span>{isConnecting ? 'Connecting...' : 'Connect Wallet'}</span>
+                            </button>
+                        )}
+
+                        {/* Quick Notifications Shortcut */}
+                        <button
+                            onClick={() => navigate('/notifications')}
+                            className={`topbar-icon-btn ${isPathActive('/notifications') ? 'active' : ''}`}
+                            title="Notifications"
+                            aria-label="Notifications"
+                        >
+                            <Bell size={17} />
+                            <span className="topbar-notif-dot"></span>
+                        </button>
+
+                        {/* User Quick Profile Chip */}
+                        <button
+                            onClick={() => navigate('/profile')}
+                            className="topbar-user-chip"
+                            title="View Profile"
+                        >
+                            <div className="topbar-user-avatar">
+                                {user?.name ? user.name.charAt(0).toUpperCase() : 'C'}
+                            </div>
+                            <span className="topbar-user-name">{user?.name || 'Citizen'}</span>
+                        </button>
+                    </div>
+                </header>
+
+                {/* ── Page Content Container ── */}
+                <div className="user-page-container">
                     <Outlet />
                 </div>
             </main>

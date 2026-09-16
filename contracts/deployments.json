@@ -1,12 +1,16 @@
 {
-  "network": "Avalanche Fuji C-Chain (Testnet)",
-  "chainId": 43113,
-  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-  "deployedAt": "2026-09-04T17:47:50.070Z",
+  "network": "Ethereum Sepolia Testnet",
+  "chainId": 11155111,
+  "deployer": "0xf19384D7e862253b3454f4DB200464390b296062",
+  "deployedAt": "2026-09-16T10:14:25.540Z",
   "contracts": {
-    "LandNFT": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-    "LandRegistry": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-    "SaleContract": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-    "CourtOverride": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+    "LandNFT": "0xbCB28DC4eF6242572c0a65D1643595C582106249",
+    "LandRegistry": "0xd6e6e94c053D204Ad535Ef8f2b01A1835696e9B1",
+    "SaleContract": "0xA94321fA51b6F600Ef32Ab652965AC689D967b9B",
+    "CourtOverride": "0x4437904bF4cff91E91c16bB135752038d3418B8C",
+    "BankLienRegistry": "0x6E8953f0288820bDB77CA89eaAF6c54Ff1250300",
+    "InheritanceSuccession": "0x712a073f1849456b13c983195a62fc79D50F52B8",
+    "PropertyTaxVault": "0x4bC7B4A62b7a97c40Bf4F028EbF043Fb0AbB7999",
+    "CitizenIdentityRegistry": "0xCaa02E5ba741c314c12563dBE2eABCd2d6c5c6a3"
   }
 }

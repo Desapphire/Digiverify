@@ -4,7 +4,9 @@ import { adminService } from '../../services/admin.service';
 import {
     Landmark, CheckCircle2, XCircle, Loader2,
     RefreshCcw, Search, Wallet, Clock, ChevronDown,
-    ChevronUp, ShieldCheck, Hash, Ban, DollarSign
+    ChevronUp, ShieldCheck, Hash, Ban, DollarSign,
+    ArrowLeft, Check, Copy, AlertTriangle, ShieldAlert,
+    Building2, BadgePercent, Lock, ArrowUpRight, CheckCheck, Shield
 } from 'lucide-react';
 
 const FundBlockConfirmation = () => {
@@ -13,8 +15,10 @@ const FundBlockConfirmation = () => {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [filter, setFilter] = useState('');
     const [expandedBlock, setExpandedBlock] = useState(null);
     const [bankRefInput, setBankRefInput] = useState({});
+    const [copiedField, setCopiedField] = useState(null);
 
     const fetchFundBlocks = async () => {
         setLoading(true);
@@ -28,33 +32,42 @@ const FundBlockConfirmation = () => {
         }
     };
 
-    useEffect(() => { fetchFundBlocks(); }, []);
+    useEffect(() => {
+        fetchFundBlocks();
+    }, []);
+
+    const handleCopy = (text, id) => {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+        setCopiedField(id);
+        setTimeout(() => setCopiedField(null), 2000);
+    };
 
     const handleConfirm = async (blockId) => {
         const refId = bankRefInput[blockId];
         if (!refId || !refId.trim()) {
-            alert('Please enter a Bank Reference ID before confirming.');
+            alert('Please enter a valid Bank Reference Number before confirming.');
             return;
         }
         setActionLoading(blockId);
         try {
             await adminService.confirmFundBlock(blockId, refId.trim());
-            fetchFundBlocks();
+            await fetchFundBlocks();
         } catch (err) {
-            alert(err.response?.data?.message || 'Confirmation failed');
+            alert(err.response?.data?.message || 'Bank confirmation failed to process.');
         } finally {
             setActionLoading(null);
         }
     };
 
     const handleRelease = async (blockId) => {
-        if (!window.confirm('Release these blocked funds back to the buyer?')) return;
+        if (!window.confirm('Release this payment hold? This will unfreeze the funds back to the buyer.')) return;
         setActionLoading(blockId);
         try {
             await adminService.releaseFunds(blockId);
-            fetchFundBlocks();
+            await fetchFundBlocks();
         } catch (err) {
-            alert(err.response?.data?.message || 'Release failed');
+            alert(err.response?.data?.message || 'Payment release failed to process.');
         } finally {
             setActionLoading(null);
         }
@@ -63,7 +76,7 @@ const FundBlockConfirmation = () => {
     const shortenWallet = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '—';
     const shortenId = (id) => id ? id.toString().slice(0, 8) : '—';
 
-    // Normalize fields (backend may return snake_case from raw query)
+    // Normalize fields
     const normalize = (fb) => ({
         id: fb.id,
         transactionId: fb.transaction_id || fb.transactionId,
@@ -79,16 +92,17 @@ const FundBlockConfirmation = () => {
         bankUserId: fb.bank_user_id || fb.bankUserId,
     });
 
-    const statusStyle = (status) => {
-        switch (status) {
-            case 'blocked': return { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: '#22c55e' };
-            case 'released': return { bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.2)', text: '#3b82f6' };
-            case 'failed': return { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#ef4444' };
-            default: return { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.2)', text: '#eab308' };
-        }
-    };
+    const normalizedBlocks = fundBlocks.map(normalize);
 
-    const filteredBlocks = fundBlocks.map(normalize).filter(fb => {
+    const filteredBlocks = normalizedBlocks.filter(fb => {
+        if (filter === 'pending') {
+            if (fb.bankConfirmed || fb.status === 'released' || fb.status === 'failed') return false;
+        } else if (filter === 'confirmed') {
+            if (!fb.bankConfirmed) return false;
+        } else if (filter === 'released') {
+            if (fb.status !== 'released') return false;
+        }
+
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
         return (
@@ -99,151 +113,724 @@ const FundBlockConfirmation = () => {
         );
     });
 
+    const totalBlockedSum = normalizedBlocks
+        .filter(b => b.status === 'blocked' || b.bankConfirmed)
+        .reduce((sum, b) => sum + b.blockAmount, 0);
+
+    const pendingConfirmationCount = normalizedBlocks.filter(b => !b.bankConfirmed && b.status !== 'released').length;
+    const confirmedCount = normalizedBlocks.filter(b => b.bankConfirmed).length;
+    const releasedCount = normalizedBlocks.filter(b => b.status === 'released').length;
+
+    const FILTERS = [
+        { key: '', label: 'All Payments', count: normalizedBlocks.length },
+        { key: 'pending', label: 'Pending Confirmation', count: pendingConfirmationCount },
+        { key: 'confirmed', label: 'Confirmed', count: confirmedCount },
+        { key: 'released', label: 'Released', count: releasedCount },
+    ];
+
+    const getStatusBadge = (fb) => {
+        if (fb.status === 'released') {
+            return (
+                <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '3px 10px',
+                    borderRadius: '9999px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    backgroundColor: '#EFF6FF',
+                    color: '#1E40AF',
+                    border: '1px solid #BFDBFE'
+                }}>
+                    <CheckCircle2 size={12} style={{ color: '#2563EB' }} />
+                    Released
+                </span>
+            );
+        }
+        if (fb.bankConfirmed) {
+            return (
+                <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '3px 10px',
+                    borderRadius: '9999px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    backgroundColor: '#ECFDF5',
+                    color: '#065F46',
+                    border: '1px solid #A7F3D0'
+                }}>
+                    <CheckCircle2 size={12} style={{ color: '#059669' }} />
+                    Confirmed
+                </span>
+            );
+        }
+        if (fb.status === 'failed') {
+            return (
+                <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '3px 10px',
+                    borderRadius: '9999px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    backgroundColor: '#FEF2F2',
+                    color: '#991B1B',
+                    border: '1px solid #FECACA'
+                }}>
+                    <XCircle size={12} style={{ color: '#DC2626' }} />
+                    Failed
+                </span>
+            );
+        }
+        return (
+            <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '3px 10px',
+                borderRadius: '9999px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                backgroundColor: '#FEF3C7',
+                color: '#92400E',
+                border: '1px solid #FDE68A'
+            }}>
+                <Clock size={12} style={{ color: '#D97706' }} />
+                Pending Confirmation
+            </span>
+        );
+    };
+
     return (
-        <div className="dashboard-container">
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ width: '100%' }}>
+            {/* Header section */}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+                gap: '1.25rem',
+                marginBottom: '1.75rem',
+                backgroundColor: '#FFFFFF',
+                padding: '1.5rem 1.75rem',
+                borderRadius: '12px',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
+            }}>
                 <div>
-                    <h1 className="dashboard-title">
-                        Fund Block <span className="text-gradient">Confirmation</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            backgroundColor: '#EFF6FF',
+                            border: '1px solid #BFDBFE',
+                            color: '#1D4ED8',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '9999px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em'
+                        }}>
+                            <Landmark size={12} />
+                            Bank Payments
+                        </span>
+                    </div>
+                    <h1 style={{
+                        fontSize: '1.65rem',
+                        fontWeight: 800,
+                        color: '#0F172A',
+                        letterSpacing: '-0.02em',
+                        margin: 0
+                    }}>
+                        Bank Payments
                     </h1>
-                    <p className="text-muted mt-2" style={{ fontSize: '0.9rem' }}>
-                        Verify and confirm ASBA fund blocks against bank records.
+                    <p style={{ fontSize: '0.875rem', color: '#64748B', marginTop: '4px', margin: 0 }}>
+                        Verify held buyer payments, record bank reference numbers, and manage payment releases.
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button onClick={() => navigate('/authority')} className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>← Back</button>
-                    <button onClick={fetchFundBlocks} className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}><RefreshCcw size={14} /> Refresh</button>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button
+                        onClick={fetchFundBlocks}
+                        disabled={loading}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 16px',
+                            backgroundColor: '#FFFFFF',
+                            border: '1px solid #CBD5E1',
+                            borderRadius: '8px',
+                            color: '#334155',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#FFFFFF'; }}
+                    >
+                        <RefreshCcw size={15} className={loading ? 'animate-spin' : ''} style={{ color: '#2563EB' }} />
+                        {loading ? 'Refreshing...' : 'Refresh'}
+                    </button>
                 </div>
             </div>
 
-            {/* Search */}
-            <div className="glass-panel p-4 mb-6" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)' }}>
-                    {loading ? 'Loading...' : `${filteredBlocks.length} fund block${filteredBlocks.length !== 1 ? 's' : ''}`}
+            {/* KPI Stats Grid */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                gap: '1rem',
+                marginBottom: '1.75rem'
+            }}>
+                <div style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    padding: '1.25rem 1.5rem',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem'
+                }}>
+                    <div style={{
+                        width: '46px',
+                        height: '46px',
+                        borderRadius: '10px',
+                        backgroundColor: '#EFF6FF',
+                        border: '1px solid #BFDBFE',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#2563EB',
+                        flexShrink: 0
+                    }}>
+                        <Landmark size={22} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Total Held
+                        </div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2 }}>
+                            ₹{totalBlockedSum.toLocaleString()}
+                        </div>
+                    </div>
                 </div>
-                <div style={{ position: 'relative', minWidth: 240 }}>
-                    <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
-                    <input type="text" placeholder="Search by ID, wallet, bank ref..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                        className="input-premium" style={{ paddingLeft: 34, fontSize: '0.82rem', padding: '0.5rem 0.75rem 0.5rem 34px' }} />
+
+                <div style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    padding: '1.25rem 1.5rem',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem'
+                }}>
+                    <div style={{
+                        width: '46px',
+                        height: '46px',
+                        borderRadius: '10px',
+                        backgroundColor: '#FEF3C7',
+                        border: '1px solid #FDE68A',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#D97706',
+                        flexShrink: 0
+                    }}>
+                        <Clock size={22} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Pending Confirmation
+                        </div>
+                        <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2 }}>
+                            {pendingConfirmationCount}
+                        </div>
+                    </div>
+                </div>
+
+                <div style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    padding: '1.25rem 1.5rem',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem'
+                }}>
+                    <div style={{
+                        width: '46px',
+                        height: '46px',
+                        borderRadius: '10px',
+                        backgroundColor: '#ECFDF5',
+                        border: '1px solid #A7F3D0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#059669',
+                        flexShrink: 0
+                    }}>
+                        <CheckCircle2 size={22} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Confirmed
+                        </div>
+                        <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2 }}>
+                            {confirmedCount}
+                        </div>
+                    </div>
+                </div>
+
+                <div style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    padding: '1.25rem 1.5rem',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem'
+                }}>
+                    <div style={{
+                        width: '46px',
+                        height: '46px',
+                        borderRadius: '10px',
+                        backgroundColor: '#F1F5F9',
+                        border: '1px solid #CBD5E1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#475569',
+                        flexShrink: 0
+                    }}>
+                        <CheckCheck size={22} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Released
+                        </div>
+                        <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2 }}>
+                            {releasedCount}
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* List */}
-            {loading ? (
-                <div className="glass-panel p-8 flex items-center justify-center">
-                    <Loader2 size={32} className="animate-spin" style={{ color: '#ef4444' }} />
+            {/* Filter Pills & Search Control Card */}
+            <div style={{
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderRadius: '12px',
+                padding: '1.25rem 1.5rem',
+                marginBottom: '1.75rem',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+            }}>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '1rem',
+                    marginBottom: '1rem'
+                }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {FILTERS.map(f => {
+                            const isActive = filter === f.key;
+                            return (
+                                <button
+                                    key={f.key}
+                                    onClick={() => setFilter(f.key)}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '6px 14px',
+                                        borderRadius: '8px',
+                                        fontSize: '0.82rem',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        border: isActive ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                                        backgroundColor: isActive ? '#0F172A' : '#F8FAFC',
+                                        color: isActive ? '#FFFFFF' : '#475569',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    <span>{f.label}</span>
+                                    <span style={{
+                                        fontSize: '0.7rem',
+                                        fontWeight: 700,
+                                        padding: '1px 6px',
+                                        borderRadius: '9999px',
+                                        backgroundColor: isActive ? '#2563EB' : '#E2E8F0',
+                                        color: isActive ? '#FFFFFF' : '#334155'
+                                    }}>
+                                        {f.count}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748B' }}>
+                        Showing {filteredBlocks.length} of {normalizedBlocks.length} payments
+                    </div>
+                </div>
+
+                {/* Search Bar */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    width: '100%',
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    boxSizing: 'border-box',
+                    position: 'relative'
+                }}>
+                    <Search size={18} style={{ color: '#64748B', flexShrink: 0 }} />
+                    <input
+                        type="text"
+                        placeholder="Search by hold ID, buyer, sale ID, or bank reference..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{
+                            width: '100%',
+                            border: 'none',
+                            background: 'transparent',
+                            outline: 'none',
+                            padding: 0,
+                            margin: 0,
+                            fontSize: '0.875rem',
+                            color: '#0F172A',
+                            boxShadow: 'none'
+                        }}
+                    />
+                    {searchQuery && (
+                        <button
+                            onClick={() => setSearchQuery('')}
+                            style={{
+                                position: 'absolute',
+                                right: '12px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#94A3B8',
+                                cursor: 'pointer',
+                                fontSize: '0.8rem',
+                                fontWeight: 600
+                            }}
+                        >
+                            Clear
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Main Content List */}
+            {loading && !fundBlocks.length ? (
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4rem 2rem',
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '12px',
+                    border: '1px solid #E2E8F0'
+                }}>
+                    <Loader2 size={32} className="animate-spin" style={{ color: '#2563EB', marginBottom: '1rem' }} />
+                    <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#0F172A', margin: 0 }}>
+                        Loading payments...
+                    </p>
                 </div>
             ) : filteredBlocks.length === 0 ? (
-                <div className="glass-panel p-8 flex flex-col items-center justify-center" style={{ opacity: 0.5 }}>
-                    <Landmark size={48} style={{ marginBottom: '1rem', color: 'rgba(255,255,255,0.3)' }} />
-                    <p style={{ color: 'rgba(255,255,255,0.4)' }}>No pending fund blocks at this time.</p>
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4rem 2rem',
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '12px',
+                    border: '1px dashed #CBD5E1',
+                    textAlign: 'center'
+                }}>
+                    <div style={{
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '12px',
+                        backgroundColor: '#F1F5F9',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#64748B',
+                        marginBottom: '1rem'
+                    }}>
+                        <Landmark size={26} />
+                    </div>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0F172A', margin: '0 0 4px 0' }}>
+                        No payments found
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: '#64748B', margin: 0, maxWidth: '400px' }}>
+                        {searchQuery
+                            ? `No records match "${searchQuery}".`
+                            : 'There are currently no bank payments in this category.'}
+                    </p>
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {filteredBlocks.map(fb => {
-                        const sc = statusStyle(fb.status);
                         const isExpanded = expandedBlock === fb.id;
-                        const isActing = actionLoading === fb.id;
-                        const isPending = !fb.bankConfirmed && fb.status !== 'released' && fb.status !== 'failed';
+                        const isActionExecuting = actionLoading === fb.id;
+                        const blockAmountFormatted = Number(fb.blockAmount).toLocaleString();
 
                         return (
-                            <div key={fb.id} className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
-                                {/* Main Row */}
-                                <div onClick={() => setExpandedBlock(isExpanded ? null : fb.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', cursor: 'pointer' }}>
-                                    <div className="flex items-center gap-4">
+                            <div
+                                key={fb.id}
+                                style={{
+                                    backgroundColor: '#FFFFFF',
+                                    border: isExpanded ? '1px solid #94A3B8' : '1px solid #E2E8F0',
+                                    borderRadius: '12px',
+                                    boxShadow: isExpanded ? '0 4px 14px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.04)',
+                                    transition: 'all 0.2s ease',
+                                    overflow: 'hidden'
+                                }}
+                            >
+                                {/* Card Primary Header */}
+                                <div style={{
+                                    padding: '1.25rem 1.5rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    flexWrap: 'wrap',
+                                    gap: '1rem',
+                                    borderBottom: isExpanded ? '1px solid #E2E8F0' : 'none',
+                                    backgroundColor: isExpanded ? '#F8FAFC' : '#FFFFFF'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '240px' }}>
                                         <div style={{
-                                            width: 44, height: 44, borderRadius: '12px',
-                                            background: sc.bg, border: `1px solid ${sc.border}`,
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            color: sc.text, flexShrink: 0,
+                                            width: '44px',
+                                            height: '44px',
+                                            borderRadius: '10px',
+                                            backgroundColor: '#EFF6FF',
+                                            border: '1px solid #BFDBFE',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#1D4ED8',
+                                            flexShrink: 0
                                         }}>
-                                            <Landmark size={20} />
+                                            <Landmark size={22} />
                                         </div>
+
                                         <div>
-                                            <p style={{ fontWeight: 700, color: 'white', fontSize: '0.92rem' }}>
-                                                Fund Block #{shortenId(fb.id)}
-                                                <span style={{ fontWeight: 600, color: '#a78bfa', marginLeft: 10, fontSize: '0.92rem' }}>
-                                                    ₹{fb.blockAmount.toLocaleString()}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                <span style={{
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: 800,
+                                                    fontFamily: 'var(--font-mono, monospace)',
+                                                    color: '#0F172A',
+                                                    backgroundColor: '#F1F5F9',
+                                                    padding: '2px 8px',
+                                                    borderRadius: '6px',
+                                                    border: '1px solid #E2E8F0'
+                                                }}>
+                                                    HOLD #{shortenId(fb.id)}
                                                 </span>
-                                                <span style={{ fontWeight: 400, color: 'rgba(255,255,255,0.3)', marginLeft: 4, fontSize: '0.72rem' }}>
-                                                    {fb.currency}
+                                                <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0F172A' }}>
+                                                    ₹{blockAmountFormatted}
                                                 </span>
-                                            </p>
-                                            <div className="flex items-center gap-4" style={{ marginTop: 4 }}>
-                                                <span className="flex items-center gap-1" style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
-                                                    <Wallet size={11} /> Buyer: {shortenWallet(fb.buyerWallet)}
+                                                {getStatusBadge(fb)}
+                                            </div>
+
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '12px',
+                                                marginTop: '4px',
+                                                fontSize: '0.8rem',
+                                                color: '#64748B',
+                                                flexWrap: 'wrap'
+                                            }}>
+                                                <span>
+                                                    Buyer: <code style={{ fontSize: '0.75rem', color: '#0F172A' }}>{shortenWallet(fb.buyerWallet)}</code>
                                                 </span>
-                                                <span className="flex items-center gap-1" style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>
-                                                    <Hash size={11} /> Tx: {shortenId(fb.transactionId)}
+                                                <span>•</span>
+                                                <span>
+                                                    Sale ID: <code style={{ fontSize: '0.75rem', color: '#2563EB' }}>{shortenId(fb.transactionId)}</code>
                                                 </span>
+                                                {fb.bankReferenceId && (
+                                                    <>
+                                                        <span>•</span>
+                                                        <span>
+                                                            Bank Ref: <code style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 700 }}>{fb.bankReferenceId}</code>
+                                                        </span>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-3">
-                                        <span style={{
-                                            fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase',
-                                            letterSpacing: '0.04em', padding: '3px 10px', borderRadius: '9999px',
-                                            background: sc.bg, border: `1px solid ${sc.border}`, color: sc.text,
-                                        }}>
-                                            {fb.bankConfirmed ? 'confirmed' : fb.status}
-                                        </span>
+                                    {/* Action Buttons & Expand */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                        {!fb.bankConfirmed && fb.status !== 'released' && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Bank Ref Number"
+                                                    value={bankRefInput[fb.id] || ''}
+                                                    onChange={(e) => setBankRefInput({ ...bankRefInput, [fb.id]: e.target.value })}
+                                                    style={{
+                                                        padding: '6px 10px',
+                                                        fontSize: '0.8rem',
+                                                        borderRadius: '6px',
+                                                        border: '1px solid #CBD5E1',
+                                                        backgroundColor: '#FFFFFF',
+                                                        color: '#0F172A',
+                                                        width: '160px',
+                                                        outline: 'none'
+                                                    }}
+                                                />
+                                                <button
+                                                    onClick={() => handleConfirm(fb.id)}
+                                                    disabled={isActionExecuting}
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        padding: '7px 12px',
+                                                        borderRadius: '8px',
+                                                        backgroundColor: '#047857',
+                                                        color: '#FFFFFF',
+                                                        fontSize: '0.8rem',
+                                                        fontWeight: 700,
+                                                        border: 'none',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <CheckCircle2 size={13} />
+                                                    Confirm Payment
+                                                </button>
+                                            </div>
+                                        )}
 
-                                        {isExpanded ? <ChevronUp size={16} style={{ color: 'rgba(255,255,255,0.3)' }} /> : <ChevronDown size={16} style={{ color: 'rgba(255,255,255,0.3)' }} />}
+                                        {fb.bankConfirmed && fb.status !== 'released' && (
+                                            <button
+                                                onClick={() => handleRelease(fb.id)}
+                                                disabled={isActionExecuting}
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
+                                                    padding: '7px 12px',
+                                                    borderRadius: '8px',
+                                                    backgroundColor: '#FFFFFF',
+                                                    color: '#D97706',
+                                                    border: '1px solid #FDE68A',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: 700,
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <Lock size={13} />
+                                                Release Payment
+                                            </button>
+                                        )}
+
+                                        <button
+                                            onClick={() => setExpandedBlock(isExpanded ? null : fb.id)}
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                padding: '7px 12px',
+                                                borderRadius: '8px',
+                                                backgroundColor: '#FFFFFF',
+                                                border: '1px solid #CBD5E1',
+                                                color: '#334155',
+                                                fontSize: '0.8rem',
+                                                fontWeight: 600,
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {isExpanded ? 'Hide Details' : 'View Details'}
+                                            {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                                        </button>
                                     </div>
                                 </div>
 
-                                {/* Expanded */}
+                                {/* Expanded Detail Drawer */}
                                 {isExpanded && (
-                                    <div style={{ padding: '0 1.25rem 1.25rem', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '1rem' }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                                            <DetailField label="Block ID" value={fb.id} mono />
-                                            <DetailField label="Transaction ID" value={fb.transactionId || '—'} mono />
-                                            <DetailField label="Buyer Wallet" value={fb.buyerWallet || '—'} mono />
-                                            <DetailField label="Amount" value={`₹${fb.blockAmount.toLocaleString()} ${fb.currency}`} />
-                                            <DetailField label="Status" value={fb.status?.toUpperCase()} />
-                                            <DetailField label="Bank Confirmed" value={fb.bankConfirmed ? 'Yes' : 'No'} />
-                                            <DetailField label="Bank Reference" value={fb.bankReferenceId || 'Not set'} mono />
-                                            <DetailField label="Blocked At" value={fb.blockedAt ? new Date(fb.blockedAt).toLocaleString() : '—'} />
-                                            {fb.bankConfirmTs && <DetailField label="Confirmed At" value={new Date(fb.bankConfirmTs).toLocaleString()} />}
-                                            {fb.unblockedAt && <DetailField label="Released At" value={new Date(fb.unblockedAt).toLocaleString()} />}
-                                        </div>
-
-                                        {/* Actions */}
-                                        {isPending && (
-                                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '1rem' }}>
-                                                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                                                    <div style={{ flex: 1, minWidth: 200 }}>
-                                                        <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>
-                                                            Bank Reference ID
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            placeholder="e.g. REF-2026-XXXXX"
-                                                            value={bankRefInput[fb.id] || ''}
-                                                            onChange={(e) => setBankRefInput(prev => ({ ...prev, [fb.id]: e.target.value }))}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            className="input-premium"
-                                                            style={{ fontSize: '0.82rem', fontFamily: 'monospace', width: '100%' }}
-                                                        />
-                                                    </div>
-                                                    <button onClick={() => handleConfirm(fb.id)} disabled={isActing} style={{
-                                                        padding: '0.5rem 1rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 700,
-                                                        background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)',
-                                                        display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: isActing ? 0.5 : 1,
-                                                    }}>
-                                                        {isActing ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-                                                        Confirm Block
-                                                    </button>
-                                                    <button onClick={() => handleRelease(fb.id)} disabled={isActing} className="btn btn-danger" style={{
-                                                        padding: '0.5rem 1rem', fontSize: '0.78rem', opacity: isActing ? 0.5 : 1,
-                                                    }}>
-                                                        <Ban size={14} /> Release Funds
-                                                    </button>
+                                    <div style={{ padding: '1.5rem', backgroundColor: '#FFFFFF' }}>
+                                        <div style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                                            gap: '1.25rem',
+                                            marginBottom: '1.5rem'
+                                        }}>
+                                            <div style={{
+                                                backgroundColor: '#F8FAFC',
+                                                border: '1px solid #E2E8F0',
+                                                borderRadius: '10px',
+                                                padding: '1.25rem'
+                                            }}>
+                                                <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#1E3A8A', marginBottom: '0.75rem' }}>
+                                                    Payment Details
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
+                                                    <div><strong>Amount:</strong> ₹{blockAmountFormatted} {fb.currency}</div>
+                                                    <div><strong>Time:</strong> {fb.blockedAt ? new Date(fb.blockedAt).toLocaleString() : '—'}</div>
+                                                    <div><strong>Status:</strong> {fb.bankConfirmed ? 'Confirmed' : 'Pending Confirmation'}</div>
                                                 </div>
                                             </div>
-                                        )}
+
+                                            <div style={{
+                                                backgroundColor: '#F8FAFC',
+                                                border: '1px solid #E2E8F0',
+                                                borderRadius: '10px',
+                                                padding: '1.25rem'
+                                            }}>
+                                                <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#1E3A8A', marginBottom: '0.75rem' }}>
+                                                    Account & Reference
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
+                                                    <div><strong>Buyer Account:</strong> <code style={{ fontSize: '0.75rem' }}>{fb.buyerWallet}</code></div>
+                                                    <div><strong>Sale ID:</strong> <code style={{ fontSize: '0.75rem' }}>{fb.transactionId}</code></div>
+                                                    <div><strong>Bank Reference:</strong> <code style={{ fontSize: '0.75rem', color: '#059669' }}>{fb.bankReferenceId || 'Not Assigned'}</code></div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            padding: '10px 14px',
+                                            backgroundColor: '#F1F5F9',
+                                            borderRadius: '8px',
+                                            border: '1px solid #E2E8F0',
+                                            fontSize: '0.78rem',
+                                            color: '#475569'
+                                        }}>
+                                            <ShieldCheck size={16} style={{ color: '#059669', flexShrink: 0 }} />
+                                            <span>
+                                                <strong>Payment Security:</strong> Funds remain held in the buyer's account until the property transfer is officially approved.
+                                            </span>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -251,21 +838,8 @@ const FundBlockConfirmation = () => {
                     })}
                 </div>
             )}
-
-            {/* Footer */}
-            <div className="mt-8 flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.72rem', fontWeight: 600 }}>
-                <ShieldCheck size={14} style={{ color: '#ef4444' }} />
-                Fund block confirmations are cross-verified with the central banking ledger.
-            </div>
         </div>
     );
 };
-
-const DetailField = ({ label, value, mono = false }) => (
-    <div>
-        <p style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)', marginBottom: 3 }}>{label}</p>
-        <p style={{ fontSize: '0.8rem', fontWeight: 500, color: 'rgba(255,255,255,0.75)', fontFamily: mono ? 'monospace' : 'inherit', wordBreak: 'break-all' }}>{value}</p>
-    </div>
-);
 
 export default FundBlockConfirmation;

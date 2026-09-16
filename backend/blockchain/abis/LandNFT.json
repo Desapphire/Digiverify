@@ -233,6 +233,12 @@
         "internalType": "string",
         "name": "reason",
         "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "courtOrderHash",
+        "type": "string"
       }
     ],
     "name": "ForceTransfer",
@@ -258,6 +264,18 @@
         "internalType": "string",
         "name": "propertyCode",
         "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "surveyNumber",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "firstOwner",
+        "type": "address"
       }
     ],
     "name": "LandMinted",
@@ -303,6 +321,12 @@
         "internalType": "string",
         "name": "reason",
         "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "courtCaseNumber",
+        "type": "string"
       }
     ],
     "name": "PropertyFrozen",
@@ -316,6 +340,12 @@
         "internalType": "uint256",
         "name": "tokenId",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
       }
     ],
     "name": "PropertyUnfrozen",
@@ -567,6 +597,39 @@
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "courtOrderHash",
+        "type": "string"
+      }
+    ],
+    "name": "forceTransferWithCase",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint256",
         "name": "tokenId",
         "type": "uint256"
@@ -588,6 +651,29 @@
         "internalType": "uint256",
         "name": "tokenId",
         "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "caseNumber",
+        "type": "string"
+      }
+    ],
+    "name": "freezePropertyWithCase",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
       }
     ],
     "name": "getApproved",
@@ -596,6 +682,67 @@
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPropertyNFTDetails",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "propertyCode",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "surveyNumber",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "firstOwner",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "areaSqft",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "mintedAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "isFrozen",
+            "type": "bool"
+          },
+          {
+            "internalType": "string",
+            "name": "freezeReason",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "courtCaseNumber",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct LandNFT.PropertyNFTData",
+        "name": "",
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -690,7 +837,7 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "tokenId",
         "type": "uint256"
       }
     ],
@@ -729,12 +876,104 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "propertyCode",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "surveyNumber",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "areaSqft",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "metadataURI",
+        "type": "string"
+      }
+    ],
+    "name": "mintPropertyWithDetails",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "name",
     "outputs": [
       {
         "internalType": "string",
         "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "nftData",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "propertyCode",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "surveyNumber",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "firstOwner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "areaSqft",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "mintedAt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "isFrozen",
+        "type": "bool"
+      },
+      {
+        "internalType": "string",
+        "name": "freezeReason",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "courtCaseNumber",
         "type": "string"
       }
     ],

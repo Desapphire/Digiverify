@@ -1,7 +1,6 @@
 /**
- * Rate Limiting Middleware.
- * Prevents brute-force attacks and API abuse.
- * In development, rate limiting is completely bypassed.
+ * Comprehensive Rate Limiting Middlewares
+ * Protects against DDoS, brute-force attacks, and external cloud API quota exhaustion.
  */
 
 const rateLimit = require('express-rate-limit');
@@ -9,30 +8,75 @@ const env = require('../config/env');
 
 const isDev = env.NODE_ENV === 'development';
 
-// General API rate limiter — 500 req per 15 min per IP (dev: unlimited)
+// 1. General API limiter (all routes)
 const apiLimiter = rateLimit({
     windowMs: env.RATE_LIMIT.windowMs,
-    max: env.RATE_LIMIT.max,
-    skip: () => isDev,          // no throttling in local development
+    max: isDev ? 2000 : env.RATE_LIMIT.max,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
         success: false,
-        message: 'Too many requests. Please try again later.',
+        message: 'Too many requests from this IP. Please try again later.',
+        code: 'TOO_MANY_REQUESTS',
     },
 });
 
-// Strict limiter for auth endpoints (prevent brute-force) — dev: unlimited
+// 2. Strict limiter for Authentication (Login, Verify Signature, Nonce)
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,  // 15 minutes
-    max: 200,
-    skip: () => isDev,          // no throttling in local development
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: isDev ? 100 : 30,     // 30 attempts per 15 min
     standardHeaders: true,
     legacyHeaders: false,
     message: {
         success: false,
         message: 'Too many authentication attempts. Please try again in 15 minutes.',
+        code: 'AUTH_RATE_LIMIT_EXCEEDED',
     },
 });
 
-module.exports = { apiLimiter, authLimiter };
+// 3. Rate limiter for Onboarding & User Registration
+const onboardingLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: isDev ? 50 : 15,      // 15 registration requests per 15 min
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        success: false,
+        message: 'Too many registration requests from this IP. Please try again later.',
+        code: 'ONBOARDING_RATE_LIMIT_EXCEEDED',
+    },
+});
+
+// 4. Rate limiter for AWS Rekognition Biometric Endpoints (Protects AWS Quota)
+const biometricLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: isDev ? 80 : 25,      // 25 facial analysis calls per 15 min per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        success: false,
+        message: 'Too many biometric verification requests. Please try again in 15 minutes.',
+        code: 'BIOMETRIC_RATE_LIMIT_EXCEEDED',
+    },
+});
+
+// 5. Rate limiter for ML Risk Engine Inference (Protects CPU & Memory)
+const riskLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: isDev ? 120 : 40,     // 40 risk assessments per 15 min per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        success: false,
+        message: 'Too many risk evaluation requests. Please slow down.',
+        code: 'RISK_RATE_LIMIT_EXCEEDED',
+    },
+});
+
+module.exports = {
+    apiLimiter,
+    authLimiter,
+    onboardingLimiter,
+    biometricLimiter,
+    riskLimiter,
+};

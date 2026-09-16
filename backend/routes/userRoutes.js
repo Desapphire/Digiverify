@@ -3,7 +3,7 @@
  */
 const express = require('express');
 const router = express.Router();
-const { submitKyc, getProfile, updateProfile, bindFaceId, getMyNotifications } = require('../controllers/userController');
+const { submitKyc, getProfile, updateProfile, bindFaceId, getMyNotifications, reKyc } = require('../controllers/userController');
 const { requestRecovery, getMyRecoveries } = require('../controllers/walletRecoveryController');
 const authenticate = require('../middlewares/authenticate');
 const validate = require('../middlewares/validate');
@@ -12,6 +12,7 @@ const { updateKycSchema, updateProfileSchema, requestRecoverySchema, bindFaceIdS
 router.get('/profile', authenticate, getProfile);
 router.put('/profile', authenticate, validate(updateProfileSchema), updateProfile);
 router.post('/kyc', authenticate, validate(updateKycSchema), submitKyc);
+router.post('/rekyc', authenticate, reKyc);
 router.put('/face-id', authenticate, validate(bindFaceIdSchema), bindFaceId);
 
 // Notifications

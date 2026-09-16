@@ -26,7 +26,7 @@ const freezeProperty = async ({ propertyId, courtOrderHash, caseNumber, reason }
         );
 
         // Update property status
-        await Property.updateStatus(propertyId, 'frozen', client);
+        await Property.updateStatus(propertyId, 'frozen', null, client);
 
         // ── Blockchain: Judicial Freeze on-chain ──────────────
         if (property.nftTokenId) {
@@ -106,7 +106,7 @@ const reverseFreezeOrder = async (propertyOrFreezeId, { courtOrderHash, reversal
 
         // If no more active freezes, unfreeze the property
         if (otherFreezes.rows[0].count === 0) {
-            await Property.updateStatus(freezeOrder.property_id, 'active', client);
+            await Property.updateStatus(freezeOrder.property_id, 'active', null, client);
         }
 
         return result.rows[0];
