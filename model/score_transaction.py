@@ -11,6 +11,9 @@ PROJECT_DIR = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser(description="Score one property transaction")
 parser.add_argument("--models", type=Path, default=PROJECT_DIR / "artifacts")
 parser.add_argument("--city", default="Ahmedabad")
+parser.add_argument("--locality", default="")
+parser.add_argument("--sub-urban", default="")
+parser.add_argument("--property-type", default="Apartment")
 parser.add_argument("--bhk", default="3 BHK")
 parser.add_argument("--size", type=float, default=1750)
 parser.add_argument("--rera", action=argparse.BooleanOptionalAction, default=True)
@@ -26,6 +29,9 @@ args = parser.parse_args()
 engine = RiskEngine.load(args.models)
 result = engine.score({
     "city": args.city,
+    "locality": args.locality,
+    "sub_urban": args.sub_urban,
+    "property_type": args.property_type,
     "bhk": args.bhk,
     "size_sqft": args.size,
     "rera": args.rera,
