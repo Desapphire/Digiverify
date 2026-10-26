@@ -26,9 +26,12 @@ import AdminSidebar from './layouts/AdminSidebar';
 import AuthorityLogin from './pages/Admin/AuthorityLogin';
 import AdminDashboard from './pages/Admin/AuthorityDashboard';
 import KYCApproval from './pages/Admin/KYCApproval';
+import CitizenDetails from './pages/Admin/CitizenDetails';
 import ReKycApproval from './pages/Admin/ReKycApproval';
 import PropertyVerification from './pages/Admin/PropertyVerification';
+import AdminPropertyDetails from './pages/Admin/AdminPropertyDetails';
 import SaleApproval from './pages/Admin/SaleApproval';
+import AdminSaleDetails from './pages/Admin/AdminSaleDetails';
 import FundBlockConfirmation from './pages/Admin/FundBlockConfirmation';
 import WalletRecoveryApproval from './pages/Admin/WalletRecoveryApproval';
 import PropertyInvestigation from './pages/Admin/PropertyInvestigation';
@@ -110,13 +113,14 @@ function App() {
             <Route element={<AdminSidebar />}>
               <Route path="/authority" element={<AdminDashboard />} />
               <Route path="/authority/kyc" element={<KYCApproval />} />
-              <Route path="/authority/kyc/:id" element={<KYCApproval />} />
+              <Route path="/authority/kyc/:id" element={<CitizenDetails />} />
+              <Route path="/authority/citizen/:id" element={<CitizenDetails />} />
               <Route path="/authority/re-kyc" element={<ReKycApproval />} />
               <Route path="/authority/kyc/reapplications" element={<ReKycApproval />} />
               <Route path="/authority/property" element={<PropertyVerification />} />
-              <Route path="/authority/property/:id" element={<PropertyVerification />} />
+              <Route path="/authority/property/:id" element={<AdminPropertyDetails />} />
               <Route path="/authority/sale" element={<SaleApproval />} />
-              <Route path="/authority/sale/:id" element={<SaleApproval />} />
+              <Route path="/authority/sale/:id" element={<AdminSaleDetails />} />
               <Route path="/authority/fund" element={<FundBlockConfirmation />} />
               <Route path="/authority/fund/:id" element={<FundBlockConfirmation />} />
               <Route path="/authority/wallet-recovery" element={<WalletRecoveryApproval />} />

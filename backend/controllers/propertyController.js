@@ -193,7 +193,7 @@ const getPropertyMetadata = catchAsync(async (req, res) => {
 
     const metadata = {
         name: `DigiVerify Land Title — ${property.propertyCode}`,
-        description: `Official Sovereign Land Title Deed & Ownership Certificate for Property ${property.propertyCode}, Survey #${property.surveyNumber || 'N/A'} located in ${property.district || ''}, ${property.state || ''}. Digitally authenticated by Revenue Authority and anchored on Ethereum Sepolia Testnet.`,
+        description: `Official Land Title Deed & Ownership Certificate for Property ${property.propertyCode}, Survey #${property.surveyNumber || 'N/A'} located in ${property.district || ''}, ${property.state || ''}. Digitally authenticated by Revenue Authority and anchored on Ethereum Sepolia Testnet.`,
         image: imageUri,
         external_url: `https://sepolia.etherscan.io/token/0xbCB28DC4eF6242572c0a65D1643595C582106249`,
         attributes: [

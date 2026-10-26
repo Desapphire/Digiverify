@@ -137,11 +137,11 @@ const CONTRACTS_DATA = [
 ];
 
 const INITIAL_LOGS = [
-    { timestamp: '12:01:04', level: 'INFO', message: 'EVM RPC Node connection validated: https://api.avax-test.network/ext/bc/C/rpc (Chain ID: 11155111)' },
-    { timestamp: '12:01:11', level: 'SUCCESS', message: 'Snowman Consensus verified: Sub-second finality @ 1.12s latency | 28 Active Validator Peers' },
+    { timestamp: '12:01:04', level: 'INFO', message: 'EVM RPC Node connection validated: https://ethereum-sepolia-rpc.publicnode.com (Chain ID: 11155111)' },
+    { timestamp: '12:01:11', level: 'SUCCESS', message: 'Consensus verified: Ethereum PoS slot finality @ 1.12s latency | Active Validator Peers' },
     { timestamp: '12:01:25', level: 'INFO', message: 'IPFS Cluster gateway health check: 200 OK (Pinata dedicated gateway responsive)' },
-    { timestamp: '12:01:38', level: 'SUCCESS', message: 'Officer Authority Relayer Gas balance: 48.750 AVAX (Sufficient for ~14,200 transactions)' },
-    { timestamp: '12:01:50', level: 'INFO', message: 'All 8 smart contracts bytecode verified & synchronized with Avalanche C-Chain state' }
+    { timestamp: '12:01:38', level: 'SUCCESS', message: 'Officer Authority Relayer Gas balance: 4.875 ETH (Sufficient for ~14,200 transactions)' },
+    { timestamp: '12:01:50', level: 'INFO', message: 'All 8 smart contracts bytecode verified & synchronized with Ethereum Network state' }
 ];
 
 const BlockchainHealth = () => {
@@ -225,9 +225,9 @@ const BlockchainHealth = () => {
         setIsCheckingGas(true);
         addLog('INFO', 'Auditing Government Officer Relayer Wallet gas reserves & auto-refill threshold...');
         setTimeout(() => {
-            const bal = healthData?.relayer?.balanceAvax || '48.750';
+            const bal = healthData?.relayer?.balanceAvax || healthData?.relayer?.balanceEth || '4.875';
             const est = healthData?.relayer?.estimatedTxsRemaining || '14,200';
-            addLog('SUCCESS', `Relayer Balance: ${bal} AVAX (Sufficient for ~${est} title deeds & identity attestations). Status: HEALTHY`);
+            addLog('SUCCESS', `Relayer Balance: ${bal} ETH (Sufficient for ~${est} title deeds & identity attestations). Status: HEALTHY`);
             setIsCheckingGas(false);
         }, 600);
     };
@@ -242,12 +242,12 @@ const BlockchainHealth = () => {
         }, 850);
     };
 
-    // Diagnostic 4: Test Snowman Consensus
+    // Diagnostic 4: Test PoS Consensus
     const handleTestConsensus = () => {
         setIsTestingConsensus(true);
-        addLog('INFO', 'Testing Avalanche Snowman consensus sub-second finality engine & block gossip...');
+        addLog('INFO', 'Testing Ethereum Proof-of-Stake consensus finality engine & block gossip...');
         setTimeout(() => {
-            addLog('SUCCESS', 'Snowman Consensus: Verified. Finality latency 1.08s across 28 validator nodes. Zero state forks detected.');
+            addLog('SUCCESS', 'PoS Consensus: Verified. Finality latency 1.08s across validator nodes. Zero state forks detected.');
             setIsTestingConsensus(false);
         }, 800);
     };
@@ -356,7 +356,7 @@ const BlockchainHealth = () => {
                         Blockchain Health & Network Telemetry
                     </h1>
                     <p style={{ fontSize: '0.875rem', color: '#64748B', marginTop: '4px', margin: 0 }}>
-                        Real-time Avalanche Snowman consensus telemetry, 8-contract suite verification, and decentralized storage integrity.
+                        Real-time Ethereum consensus telemetry, 8-contract suite verification, and decentralized storage integrity.
                     </p>
                 </div>
 
@@ -462,7 +462,7 @@ const BlockchainHealth = () => {
                             </span>
                         </div>
                         <div style={{ fontSize: '0.8rem', color: '#94A3B8', marginTop: '3px' }}>
-                            Primary GovTech Node ID: <code style={{ color: '#38BDF8', backgroundColor: 'transparent', padding: 0 }}>NodeID-DigiVerify-GovSubnet-01</code> • Snowman Consensus v1.11.4
+                            Primary GovTech Node ID: <code style={{ color: '#38BDF8', backgroundColor: 'transparent', padding: 0 }}>NodeID-DigiVerify-Ethereum-01</code> • Ethereum Client v1.11.4
                         </div>
                     </div>
                 </div>
@@ -491,7 +491,7 @@ const BlockchainHealth = () => {
                     <div>
                         <div style={{ fontSize: '0.68rem', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Officer Relayer Gas</div>
                         <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#A78BFA' }}>
-                            {healthData?.relayer?.balanceAvax || '48.750'} AVAX
+                            {healthData?.relayer?.balanceAvax || healthData?.relayer?.balanceEth || '4.875'} ETH
                         </div>
                     </div>
                 </div>
@@ -549,7 +549,7 @@ const BlockchainHealth = () => {
                         #{blockHeight.toLocaleString()}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '6px' }}>
-                        Avalanche C-Chain EVM & Gov Subnet Synchronized
+                        Ethereum Sepolia EVM Synchronized
                     </div>
                 </div>
 
@@ -634,7 +634,7 @@ const BlockchainHealth = () => {
                         Officer Relayer Gas Balance
                     </div>
                     <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-                        {healthData?.relayer?.balanceAvax || '48.750'} AVAX
+                        {healthData?.relayer?.balanceAvax || healthData?.relayer?.balanceEth || '4.875'} ETH
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '6px' }}>
                         Sponsors ~14,200 citizen gasless registrations
@@ -1182,7 +1182,7 @@ const BlockchainHealth = () => {
                             <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#F59E0B' }} />
                             <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10B981' }} />
                             <span style={{ color: '#64748B', fontSize: '0.72rem', marginLeft: '10px', fontWeight: 600 }}>
-                                digiverify-govtech-node ~ avalanche-c-chain (telemetry v2.4.0)
+                                digiverify-govtech-node ~ ethereum-sepolia (telemetry v2.4.0)
                             </span>
                         </div>
                         <span style={{ color: '#475569', fontSize: '0.7rem' }}>

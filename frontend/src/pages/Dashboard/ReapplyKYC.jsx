@@ -3,14 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { userService } from '../../services/user.service';
 import {
-    User, ShieldCheck, Mail, Phone, Calendar, MapPin,
+    User, Phone, Calendar, MapPin,
     Camera, CheckCircle2, AlertTriangle, ArrowRight, ArrowLeft,
-    Loader2, Sparkles, RefreshCcw, Shield, FileText, Check,
-    AlertCircle, Building2, Send, Info
+    Loader2, RefreshCcw, Shield, FileText, Check,
+    AlertCircle, Building2, Send, ShieldCheck
 } from 'lucide-react';
 import BiometricCapture from '../Auth/BiometricCapture';
-import './Profile.css';
-import './PropertyPages.css';
+import './ReapplyKYC.css';
+
+const STEPS = [
+    { step: 1, title: 'Personal & ID', subtitle: 'Identity Information', icon: User },
+    { step: 2, title: 'Residential Address', subtitle: 'Proof of Residence', icon: MapPin },
+    { step: 3, title: 'Photo & Face Scan', subtitle: 'Biometric Verification', icon: Camera },
+    { step: 4, title: 'Review & Submit', subtitle: 'Final Confirmation', icon: CheckCircle2 }
+];
 
 const ReapplyKYC = () => {
     const { user } = useAuth();
@@ -18,7 +24,7 @@ const ReapplyKYC = () => {
 
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState(null);
-    const [currentStep, setCurrentStep] = useState(1); // 1: Personal & ID, 2: Address, 3: Biometric Face Scan, 4: Review & Submit
+    const [currentStep, setCurrentStep] = useState(1);
     const [submitting, setSubmitting] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [successMsg, setSuccessMsg] = useState(false);
@@ -27,7 +33,7 @@ const ReapplyKYC = () => {
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('+91 ');
     const [birthdate, setBirthdate] = useState('');
-    const [governmentIdType, setGovernmentIdType] = useState('Aadhaar Card');
+    const [governmentIdType, setGovernmentIdType] = useState('Aadhar');
     const [governmentId, setGovernmentId] = useState('');
 
     // Address states
@@ -43,6 +49,47 @@ const ReapplyKYC = () => {
     const [capturedImage, setCapturedImage] = useState(null);
     const [showBiometricCamera, setShowBiometricCamera] = useState(false);
 
+    // Declaration consent
+    const [consentChecked, setConsentChecked] = useState(true);
+
+    const handleGovtIdChange = (val) => {
+        if (governmentIdType === 'Aadhar') {
+            const rawDigits = val.replace(/\D/g, '').slice(0, 12);
+            const formatted = rawDigits.match(/.{1,4}/g)?.join(' ') || '';
+            setGovernmentId(formatted);
+        } else if (governmentIdType === 'Passport') {
+            const upper = val.toUpperCase();
+            let passportVal = '';
+            if (upper.length > 0) {
+                const firstChar = upper.charAt(0);
+                if (/^[A-Z]$/.test(firstChar)) {
+                    const digits = upper.slice(1).replace(/\D/g, '').slice(0, 7);
+                    passportVal = firstChar + digits;
+                }
+            }
+            setGovernmentId(passportVal);
+        } else {
+            setGovernmentId(val.toUpperCase());
+        }
+    };
+
+    const handleGovtIdTypeChange = (newType) => {
+        setGovernmentIdType(newType);
+        if (newType === 'Aadhar') {
+            const rawDigits = governmentId.replace(/\D/g, '').slice(0, 12);
+            setGovernmentId(rawDigits.match(/.{1,4}/g)?.join(' ') || '');
+        } else if (newType === 'Passport') {
+            const upper = governmentId.toUpperCase();
+            if (/^[A-Z]/.test(upper)) {
+                const firstChar = upper.charAt(0);
+                const digits = upper.slice(1).replace(/\D/g, '').slice(0, 7);
+                setGovernmentId(firstChar + digits);
+            } else {
+                setGovernmentId('');
+            }
+        }
+    };
+
     useEffect(() => {
         const fetchProfile = async () => {
             setLoading(true);
@@ -57,7 +104,7 @@ const ReapplyKYC = () => {
                 if (data.birthdate) {
                     setBirthdate(new Date(data.birthdate).toISOString().split('T')[0]);
                 }
-                setGovernmentIdType(data.governmentIdType || 'Aadhaar Card');
+                setGovernmentIdType(data.governmentIdType || 'Aadhar');
                 setHouseNumber(data.houseNumber || '');
                 setLocality(data.locality || '');
                 setCity(data.city || '');
@@ -123,9 +170,75 @@ const ReapplyKYC = () => {
         setShowBiometricCamera(false);
     };
 
+    const handleStep1Next = () => {
+        setErrorMsg('');
+        if (!name.trim()) {
+            setErrorMsg('Full Legal Name is required.');
+            return;
+        }
+        if (!phone.trim() || phone.trim() === '+91') {
+            setErrorMsg('Phone Number is required.');
+            return;
+        }
+        if (governmentId.trim()) {
+            if (governmentIdType === 'Aadhar') {
+                const raw = governmentId.replace(/\D/g, '');
+                if (raw.length !== 12) {
+                    setErrorMsg('Aadhar number must be exactly 12 digits (XXXX XXXX XXXX).');
+                    return;
+                }
+            } else if (governmentIdType === 'Passport') {
+                if (!/^[A-Z][0-9]{7}$/.test(governmentId.trim().toUpperCase())) {
+                    setErrorMsg('Passport must start with 1 capital letter followed by 7 numeric digits (e.g. Z1234567).');
+                    return;
+                }
+            }
+        }
+        setCurrentStep(2);
+    };
+
+    const handleStep2Next = () => {
+        setErrorMsg('');
+        if (!houseNumber.trim() && !locality.trim() && !city.trim()) {
+            setErrorMsg('Please provide your residential address details.');
+            return;
+        }
+        setCurrentStep(3);
+    };
+
+    const handleStep3Next = () => {
+        setErrorMsg('');
+        if (directives.requiresFace && !faceIdHash) {
+            setErrorMsg('Biometric face verification is required by the reviewing officer before submission.');
+            return;
+        }
+        setCurrentStep(4);
+    };
+
     const handleSubmitReKyc = async (e) => {
         if (e) e.preventDefault();
         setErrorMsg('');
+
+        if (governmentId.trim()) {
+            if (governmentIdType === 'Aadhar') {
+                const raw = governmentId.replace(/\D/g, '');
+                if (raw.length !== 12) {
+                    setErrorMsg('Aadhar number must be exactly 12 digits (XXXX XXXX XXXX).');
+                    return;
+                }
+            } else if (governmentIdType === 'Passport') {
+                if (!/^[A-Z][0-9]{7}$/.test(governmentId.trim().toUpperCase())) {
+                    setErrorMsg('Passport must start with 1 capital letter followed by 7 numeric digits (e.g. Z1234567).');
+                    return;
+                }
+            }
+        }
+
+        if (!consentChecked) {
+            setErrorMsg('Please confirm the declaration of accuracy before submitting.');
+            return;
+        }
+
         setSubmitting(true);
 
         try {
@@ -158,10 +271,10 @@ const ReapplyKYC = () => {
 
     if (loading) {
         return (
-            <div style={{ display: 'flex', height: '70vh', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', height: '65vh', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                    <Loader2 size={36} style={{ color: '#2563EB' }} className="animate-spin" />
-                    <p style={{ fontWeight: 600, color: '#1E293B', fontSize: '0.9rem' }}>Loading Identity Details...</p>
+                    <Loader2 size={38} style={{ color: '#2563EB' }} className="animate-spin" />
+                    <p style={{ fontWeight: 700, color: '#0F172A', fontSize: '0.95rem' }}>Loading Identity Records...</p>
                 </div>
             </div>
         );
@@ -169,560 +282,444 @@ const ReapplyKYC = () => {
 
     if (successMsg) {
         return (
-            <div style={{ maxWidth: '640px', margin: '3rem auto', padding: '0 1rem' }}>
-                <div style={{
-                    backgroundColor: '#FFFFFF',
-                    border: '1px solid #BBF7D0',
-                    borderRadius: '16px',
-                    padding: '3rem 2rem',
-                    textAlign: 'center',
-                    boxShadow: '0 4px 16px rgba(16, 185, 129, 0.08)'
-                }}>
-                    <div style={{
-                        width: '64px',
-                        height: '64px',
-                        borderRadius: '50%',
-                        backgroundColor: '#DCFCE7',
-                        border: '1px solid #86EFAC',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#15803D',
-                        margin: '0 auto 1.5rem'
-                    }}>
-                        <CheckCircle2 size={36} />
-                    </div>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0F172A', marginBottom: '0.5rem' }}>
-                        Re-KYC Submitted Successfully!
-                    </h2>
-                    <p style={{ color: '#64748B', fontSize: '0.95rem', maxWidth: '420px', margin: '0 auto 1.75rem', lineHeight: 1.6 }}>
-                        Your updated identity documents and details have been submitted to the Land Authority for review.
-                    </p>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.85rem', color: '#334155' }}>
-                        <Loader2 size={16} className="animate-spin" style={{ color: '#2563EB' }} />
-                        Redirecting to your Profile...
-                    </div>
+            <div className="rekyc-success-shell">
+                <div className="rekyc-success-icon-box">
+                    <CheckCircle2 size={40} />
+                </div>
+                <h2 className="rekyc-success-title">Re-KYC Submitted Successfully</h2>
+                <p className="rekyc-success-text">
+                    Your updated identity records and biometric verification have been submitted to the Land Registry Authority for formal review.
+                </p>
+                <div className="rekyc-redirect-chip">
+                    <Loader2 size={16} className="animate-spin" style={{ color: '#2563EB' }} />
+                    Redirecting to your Citizen Profile...
                 </div>
             </div>
         );
     }
 
+    const currentStepInfo = STEPS.find(s => s.step === currentStep) || STEPS[0];
+
     return (
-        <div style={{ maxWidth: '840px', margin: '0 auto', paddingBottom: '4rem' }}>
+        <div className="rekyc-container">
             {/* Top Navigation Row */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                <button
-                    onClick={() => navigate('/profile')}
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '8px 14px',
-                        backgroundColor: '#FFFFFF',
-                        border: '1px solid #CBD5E1',
-                        borderRadius: '8px',
-                        color: '#334155',
-                        fontSize: '0.85rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-                    }}
-                >
-                    <ArrowLeft size={16} /> Back to Profile
+            <div className="rekyc-top-bar">
+                <button onClick={() => navigate('/profile')} className="rekyc-back-btn">
+                    <ArrowLeft size={16} />
+                    <span>Back to Profile</span>
                 </button>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        backgroundColor: '#FEF3C7',
-                        border: '1px solid #FDE68A',
-                        color: '#B45309',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        padding: '4px 10px',
-                        borderRadius: '9999px',
-                        textTransform: 'uppercase'
-                    }}>
-                        <RefreshCcw size={13} />
-                        Action Required
-                    </span>
+                <div className="rekyc-status-chip">
+                    <span className="rekyc-pulse-dot" />
+                    <RefreshCcw size={13} />
+                    <span>Action Required by Authority</span>
                 </div>
             </div>
 
             {/* Officer Directives Banner */}
-            <div style={{
-                backgroundColor: '#FFFBEB',
-                border: '1px solid #FDE68A',
-                borderRadius: '12px',
-                padding: '1.25rem 1.5rem',
-                marginBottom: '1.75rem',
-                boxShadow: '0 1px 3px rgba(217, 119, 6, 0.05)'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                    <AlertTriangle size={22} style={{ color: '#D97706', marginTop: '2px', flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
-                            <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#92400E', margin: 0 }}>
-                                Re-Upload Requested by Authority
-                            </h3>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#B45309' }}>
-                                Land Records Officer
-                            </span>
+            <div className="rekyc-notice-card">
+                <div className="rekyc-notice-header">
+                    <div className="rekyc-notice-title-row">
+                        <div className="rekyc-notice-icon-box">
+                            <AlertTriangle size={18} />
                         </div>
-                        <p style={{ fontSize: '0.875rem', color: '#78350F', margin: '0 0 10px 0', lineHeight: 1.5 }}>
-                            {directives.directiveText}
-                        </p>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                            {directives.badges.map((badge, idx) => (
-                                <span key={idx} style={{
-                                    fontSize: '0.72rem',
-                                    fontWeight: 700,
-                                    padding: '3px 8px',
-                                    borderRadius: '6px',
-                                    backgroundColor: '#FEF3C7',
-                                    color: '#92400E',
-                                    border: '1px solid #FCD34D'
-                                }}>
-                                    • {badge}
-                                </span>
-                            ))}
-                        </div>
+                        <h3 className="rekyc-notice-title">Re-Verification Instructions</h3>
                     </div>
+                    <span className="rekyc-notice-officer-tag">Assigned Officer Review</span>
+                </div>
+                <p className="rekyc-notice-text">
+                    {directives.directiveText}
+                </p>
+                <div className="rekyc-notice-pills">
+                    {directives.badges.map((badge, idx) => (
+                        <span key={idx} className="rekyc-notice-pill">
+                            <AlertCircle size={12} />
+                            {badge}
+                        </span>
+                    ))}
                 </div>
             </div>
 
-            {/* Main Re-KYC Card */}
-            <div style={{
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                borderRadius: '16px',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                overflow: 'hidden'
-            }}>
-                {/* Wizard Header Steps */}
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
-                    borderBottom: '1px solid #E2E8F0',
-                    backgroundColor: '#F8FAFC'
-                }}>
-                    {[
-                        { step: 1, label: '1. Personal & ID', icon: User },
-                        { step: 2, label: '2. Address', icon: MapPin },
-                        { step: 3, label: '3. Photo Match', icon: Camera },
-                        { step: 4, label: '4. Submit', icon: CheckCircle2 }
-                    ].map(s => {
-                        const isActive = currentStep === s.step;
+            {/* Stepper Card with Segmented Flex Connectors */}
+            <div className="rekyc-stepper-card">
+                <div className="rekyc-stepper-meta">
+                    <div className="rekyc-stepper-step-pill">
+                        <span className="rekyc-stepper-step-pill-dot" />
+                        <span>Step {currentStep} of 4: {currentStepInfo.title}</span>
+                    </div>
+                    <span className="rekyc-stepper-current-label">{currentStepInfo.subtitle}</span>
+                </div>
+
+                <div className="rekyc-stepper-track">
+                    {STEPS.map((s, idx) => {
+                        const isCurrent = currentStep === s.step;
                         const isDone = currentStep > s.step;
                         return (
-                            <button
-                                key={s.step}
-                                onClick={() => setCurrentStep(s.step)}
-                                style={{
-                                    padding: '1rem 0.75rem',
-                                    border: 'none',
-                                    backgroundColor: isActive ? '#FFFFFF' : 'transparent',
-                                    borderBottom: isActive ? '2px solid #2563EB' : '2px solid transparent',
-                                    color: isActive ? '#1D4ED8' : isDone ? '#047857' : '#64748B',
-                                    fontWeight: isActive ? 800 : 600,
-                                    fontSize: '0.82rem',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '6px',
-                                    transition: 'all 0.15s ease'
-                                }}
-                            >
-                                <s.icon size={15} style={{ color: isActive ? '#2563EB' : isDone ? '#047857' : '#94A3B8' }} />
-                                <span>{s.label}</span>
-                                {isDone && <Check size={13} style={{ color: '#047857', strokeWidth: 3 }} />}
-                            </button>
+                            <React.Fragment key={s.step}>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (isDone || isCurrent) setCurrentStep(s.step);
+                                    }}
+                                    disabled={!isDone && !isCurrent}
+                                    className={`rekyc-stepper-node ${isCurrent ? 'active' : ''} ${isDone ? 'completed' : ''}`}
+                                >
+                                    <div className={`rekyc-circle ${isCurrent ? 'active' : isDone ? 'completed' : 'upcoming'}`}>
+                                        {isDone ? <Check size={18} strokeWidth={3} /> : s.step}
+                                    </div>
+                                    <div className="rekyc-node-labels">
+                                        <span className="rekyc-node-title">{s.title}</span>
+                                    </div>
+                                </button>
+
+                                {idx < STEPS.length - 1 && (
+                                    <div className="rekyc-connector-slot">
+                                        <div className={`rekyc-connector-bar ${currentStep > s.step ? 'completed' : ''}`} />
+                                    </div>
+                                )}
+                            </React.Fragment>
                         );
                     })}
                 </div>
+            </div>
 
-                {/* Form Content Area */}
-                <div style={{ padding: '2rem' }}>
+            {/* Main Form Content Card */}
+            <div className="rekyc-card">
+                <div className="rekyc-card-header">
+                    <span className="rekyc-card-header-badge">Step {currentStep} · {currentStepInfo.title}</span>
+                    <h2 className="rekyc-card-title">
+                        {currentStep === 1 && 'Personal Details & Official ID'}
+                        {currentStep === 2 && 'Residential Address'}
+                        {currentStep === 3 && 'Biometric Face Verification'}
+                        {currentStep === 4 && 'Review & Submit Application'}
+                    </h2>
+                    <p className="rekyc-card-desc">
+                        {currentStep === 1 && 'Please verify and correct your legal personal information and government ID.'}
+                        {currentStep === 2 && 'Enter your residential address matching your official documents.'}
+                        {currentStep === 3 && 'Capture a live webcam photo to match against your identity verification.'}
+                        {currentStep === 4 && 'Double check your updated details before sending to the Land Registry.'}
+                    </p>
+                </div>
+
+                <div className="rekyc-card-body">
                     {errorMsg && (
-                        <div style={{
-                            backgroundColor: '#FEF2F2',
-                            border: '1px solid #FECACA',
-                            borderRadius: '8px',
-                            padding: '0.875rem 1rem',
-                            marginBottom: '1.5rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            color: '#B91C1C',
-                            fontSize: '0.875rem'
-                        }}>
+                        <div className="rekyc-alert-danger">
                             <AlertCircle size={18} style={{ flexShrink: 0 }} />
                             <span>{errorMsg}</span>
                         </div>
                     )}
 
-                    {/* Step 1: Personal & Identification */}
+                    {/* ── STEP 1: Personal & ID Verification ── */}
                     {currentStep === 1 && (
                         <div>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: '0 0 4px 0' }}>
-                                    Personal & Identification Details
-                                </h3>
-                                <p style={{ fontSize: '0.85rem', color: '#64748B', margin: 0 }}>
-                                    Verify or update your legal name, phone number, and official government ID.
-                                </p>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                                        Full Legal Name *
+                            <div className="rekyc-grid-2">
+                                <div className="rekyc-field">
+                                    <label className="rekyc-label">
+                                        <span>Full Legal Name <span className="rekyc-label-req">*</span></span>
+                                        {directives.requiresNameContact && <span className="rekyc-flag-badge">Needs Update</span>}
                                     </label>
-                                    <input
-                                        type="text"
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        placeholder="e.g. Rahul Sharma"
-                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.9rem' }}
-                                    />
+                                    <div className="rekyc-input-wrapper">
+                                        <User size={16} className="rekyc-input-icon" />
+                                        <input
+                                            type="text"
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            placeholder="e.g. Rahul Sharma"
+                                            className="rekyc-input"
+                                        />
+                                    </div>
+                                    <p className="rekyc-help-text">As it appears on your official identity documents.</p>
                                 </div>
 
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                                        Phone Number *
+                                <div className="rekyc-field">
+                                    <label className="rekyc-label">
+                                        <span>Phone Number <span className="rekyc-label-req">*</span></span>
+                                        {directives.requiresNameContact && <span className="rekyc-flag-badge">Needs Update</span>}
                                     </label>
-                                    <input
-                                        type="tel"
-                                        value={phone}
-                                        onChange={(e) => {
-                                            let val = e.target.value;
-                                            if (!val.startsWith('+91')) {
-                                                val = '+91 ' + val.replace(/^\+?91\s*/, '');
+                                    <div className="rekyc-input-wrapper">
+                                        <Phone size={16} className="rekyc-input-icon" />
+                                        <input
+                                            type="tel"
+                                            value={phone}
+                                            onChange={(e) => {
+                                                let val = e.target.value;
+                                                if (!val.startsWith('+91')) {
+                                                    val = '+91 ' + val.replace(/^\+?91\s*/, '');
+                                                }
+                                                setPhone(val);
+                                            }}
+                                            placeholder="+91 98765 43210"
+                                            className="rekyc-input mono"
+                                        />
+                                    </div>
+                                    <p className="rekyc-help-text">Indian mobile number (+91).</p>
+                                </div>
+
+                                <div className="rekyc-field">
+                                    <label className="rekyc-label">
+                                        <span>Date of Birth</span>
+                                        {directives.requiresDob && <span className="rekyc-flag-badge">Needs Update</span>}
+                                    </label>
+                                    <div className="rekyc-input-wrapper">
+                                        <Calendar size={16} className="rekyc-input-icon" />
+                                        <input
+                                            type="date"
+                                            value={birthdate}
+                                            onChange={(e) => setBirthdate(e.target.value)}
+                                            className="rekyc-input"
+                                        />
+                                    </div>
+                                    <p className="rekyc-help-text">Citizen must be at least 18 years of age.</p>
+                                </div>
+
+                                <div className="rekyc-field">
+                                    <label className="rekyc-label">
+                                        <span>Document ID Type</span>
+                                    </label>
+                                    <div className="rekyc-input-wrapper">
+                                        <FileText size={16} className="rekyc-input-icon" />
+                                        <select
+                                            value={governmentIdType}
+                                            onChange={(e) => handleGovtIdTypeChange(e.target.value)}
+                                            className="rekyc-select"
+                                        >
+                                            <option value="Aadhar">Aadhar Card</option>
+                                            <option value="Passport">Passport</option>
+                                            <option value="Voter ID">Voter ID</option>
+                                            <option value="Driving License">Driving License</option>
+                                        </select>
+                                    </div>
+                                    <p className="rekyc-help-text">Primary identification proof document.</p>
+                                </div>
+
+                                <div className="rekyc-field rekyc-field-full">
+                                    <label className="rekyc-label">
+                                        <span>ID Number (Optional if already valid)</span>
+                                        {directives.requiresId && <span className="rekyc-flag-badge">Needs ID Update</span>}
+                                    </label>
+                                    <div className="rekyc-input-wrapper">
+                                        <Shield size={16} className="rekyc-input-icon" />
+                                        <input
+                                            type="text"
+                                            value={governmentId}
+                                            onChange={(e) => handleGovtIdChange(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (governmentIdType === 'Aadhar') {
+                                                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+                                                        e.preventDefault();
+                                                    }
+                                                } else if (governmentIdType === 'Passport') {
+                                                    if (governmentId.length === 0) {
+                                                        if (!/^[a-zA-Z]$/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+                                                            e.preventDefault();
+                                                        }
+                                                    } else {
+                                                        if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+                                                            e.preventDefault();
+                                                        }
+                                                    }
+                                                }
+                                            }}
+                                            maxLength={governmentIdType === 'Aadhar' ? 14 : governmentIdType === 'Passport' ? 8 : 20}
+                                            placeholder={
+                                                governmentIdType === 'Aadhar'
+                                                    ? 'XXXX XXXX XXXX (12 Digits)'
+                                                    : governmentIdType === 'Passport'
+                                                    ? 'e.g. Z1234567 (1 Letter + 7 Digits)'
+                                                    : 'Enter full ID number...'
                                             }
-                                            setPhone(val);
-                                        }}
-                                        placeholder="+91 98765 43210"
-                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.9rem' }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                                        Date of Birth
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={birthdate}
-                                        onChange={(e) => setBirthdate(e.target.value)}
-                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.9rem' }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                                        ID Document Type
-                                    </label>
-                                    <select
-                                        value={governmentIdType}
-                                        onChange={(e) => setGovernmentIdType(e.target.value)}
-                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.9rem', backgroundColor: '#FFFFFF' }}
-                                    >
-                                        <option value="Aadhaar Card">Aadhaar Card</option>
-                                        <option value="PAN Card">PAN Card</option>
-                                        <option value="Passport">Passport</option>
-                                        <option value="Voter ID">Voter ID</option>
-                                        <option value="Driving License">Driving License</option>
-                                    </select>
-                                </div>
-
-                                <div style={{ gridColumn: '1 / -1' }}>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                                        Government ID Number (Optional if already provided)
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={governmentId}
-                                        onChange={(e) => setGovernmentId(e.target.value)}
-                                        placeholder="Enter full ID number if updating..."
-                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.9rem', fontFamily: 'monospace' }}
-                                    />
+                                            className="rekyc-input mono"
+                                        />
+                                    </div>
+                                    <p className="rekyc-help-text">
+                                        {governmentIdType === 'Aadhar' && 'Format: 12 numeric digits spaced as 4-4-4.'}
+                                        {governmentIdType === 'Passport' && 'Format: 1 uppercase letter followed by 7 digits (e.g., Z1234567).'}
+                                        {governmentIdType !== 'Aadhar' && governmentIdType !== 'Passport' && 'Enter your complete document number.'}
+                                    </p>
                                 </div>
                             </div>
 
-                            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setCurrentStep(2)}
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '10px 20px',
-                                        backgroundColor: '#2563EB',
-                                        color: '#FFFFFF',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    Next: Address <ArrowRight size={16} />
+                            <div className="rekyc-actions-footer">
+                                <button type="button" onClick={() => navigate('/profile')} className="rekyc-btn-secondary">
+                                    Cancel
+                                </button>
+                                <button type="button" onClick={handleStep1Next} className="rekyc-btn-primary">
+                                    <span>Next: Residential Address</span>
+                                    <ArrowRight size={16} />
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* Step 2: Address */}
+                    {/* ── STEP 2: Residential Address ── */}
                     {currentStep === 2 && (
                         <div>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: '0 0 4px 0' }}>
-                                    Residential Address
-                                </h3>
-                                <p style={{ fontSize: '0.85rem', color: '#64748B', margin: 0 }}>
-                                    Please ensure your address matches your proof of residence or government ID.
-                                </p>
+                            <div className="rekyc-grid-2">
+                                <div className="rekyc-field">
+                                    <label className="rekyc-label">
+                                        <span>House / Flat / Building No.</span>
+                                        {directives.requiresAddress && <span className="rekyc-flag-badge">Needs Update</span>}
+                                    </label>
+                                    <div className="rekyc-input-wrapper">
+                                        <Building2 size={16} className="rekyc-input-icon" />
+                                        <input
+                                            type="text"
+                                            value={houseNumber}
+                                            onChange={(e) => setHouseNumber(e.target.value)}
+                                            placeholder="e.g. Flat 402, Lotus Tower"
+                                            className="rekyc-input"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="rekyc-field">
+                                    <label className="rekyc-label">
+                                        <span>Area / Street / Locality</span>
+                                        {directives.requiresAddress && <span className="rekyc-flag-badge">Needs Update</span>}
+                                    </label>
+                                    <div className="rekyc-input-wrapper">
+                                        <MapPin size={16} className="rekyc-input-icon" />
+                                        <input
+                                            type="text"
+                                            value={locality}
+                                            onChange={(e) => setLocality(e.target.value)}
+                                            placeholder="e.g. M.G. Road, Sector 15"
+                                            className="rekyc-input"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="rekyc-field">
+                                    <label className="rekyc-label">
+                                        <span>City / Town</span>
+                                    </label>
+                                    <div className="rekyc-input-wrapper">
+                                        <MapPin size={16} className="rekyc-input-icon" />
+                                        <input
+                                            type="text"
+                                            value={city}
+                                            onChange={(e) => setCity(e.target.value)}
+                                            placeholder="e.g. Bengaluru"
+                                            className="rekyc-input"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="rekyc-field">
+                                    <label className="rekyc-label">
+                                        <span>PIN Code</span>
+                                    </label>
+                                    <div className="rekyc-input-wrapper">
+                                        <FileText size={16} className="rekyc-input-icon" />
+                                        <input
+                                            type="text"
+                                            value={pinCode}
+                                            onChange={(e) => setPinCode(e.target.value)}
+                                            placeholder="e.g. 560001"
+                                            className="rekyc-input mono"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="rekyc-field">
+                                    <label className="rekyc-label">
+                                        <span>State</span>
+                                    </label>
+                                    <div className="rekyc-input-wrapper">
+                                        <MapPin size={16} className="rekyc-input-icon" />
+                                        <input
+                                            type="text"
+                                            value={state}
+                                            onChange={(e) => setState(e.target.value)}
+                                            placeholder="e.g. Karnataka"
+                                            className="rekyc-input"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="rekyc-field">
+                                    <label className="rekyc-label">
+                                        <span>Country</span>
+                                    </label>
+                                    <div className="rekyc-input-wrapper">
+                                        <MapPin size={16} className="rekyc-input-icon" />
+                                        <input
+                                            type="text"
+                                            value={country}
+                                            onChange={(e) => setCountry(e.target.value)}
+                                            placeholder="India"
+                                            className="rekyc-input"
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                                        House / Flat / Building No.
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={houseNumber}
-                                        onChange={(e) => setHouseNumber(e.target.value)}
-                                        placeholder="e.g. Flat 402, Lotus Tower"
-                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.9rem' }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                                        Area / Street / Locality
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={locality}
-                                        onChange={(e) => setLocality(e.target.value)}
-                                        placeholder="e.g. M.G. Road, Sector 15"
-                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.9rem' }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                                        City / Town
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={city}
-                                        onChange={(e) => setCity(e.target.value)}
-                                        placeholder="e.g. Bengaluru"
-                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.9rem' }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                                        PIN Code
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={pinCode}
-                                        onChange={(e) => setPinCode(e.target.value)}
-                                        placeholder="e.g. 560001"
-                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.9rem', fontFamily: 'monospace' }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                                        State
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={state}
-                                        onChange={(e) => setState(e.target.value)}
-                                        placeholder="e.g. Karnataka"
-                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.9rem' }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                                        Country
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={country}
-                                        onChange={(e) => setCountry(e.target.value)}
-                                        placeholder="India"
-                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.9rem' }}
-                                    />
-                                </div>
-                            </div>
-
-                            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'space-between' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setCurrentStep(1)}
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '10px 18px',
-                                        backgroundColor: '#FFFFFF',
-                                        border: '1px solid #CBD5E1',
-                                        borderRadius: '8px',
-                                        fontWeight: 600,
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    <ArrowLeft size={16} /> Back
+                            <div className="rekyc-actions-footer">
+                                <button type="button" onClick={() => setCurrentStep(1)} className="rekyc-btn-secondary">
+                                    <ArrowLeft size={16} />
+                                    <span>Back</span>
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setCurrentStep(3)}
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '10px 20px',
-                                        backgroundColor: '#2563EB',
-                                        color: '#FFFFFF',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    Next: Photo Match <ArrowRight size={16} />
+                                <button type="button" onClick={handleStep2Next} className="rekyc-btn-primary">
+                                    <span>Next: Photo & Face Scan</span>
+                                    <ArrowRight size={16} />
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* Step 3: Biometric Photo & Face Scan */}
+                    {/* ── STEP 3: Photo & Biometric Face Scan ── */}
                     {currentStep === 3 && (
                         <div>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: '0 0 4px 0' }}>
-                                    Photo & Face Match Verification
-                                </h3>
-                                <p style={{ fontSize: '0.85rem', color: '#64748B', margin: 0 }}>
-                                    Take a live camera photo to verify your identity with facial recognition.
-                                </p>
-                            </div>
-
                             {!showBiometricCamera ? (
-                                <div style={{
-                                    backgroundColor: '#F8FAFC',
-                                    border: '1px solid #E2E8F0',
-                                    borderRadius: '12px',
-                                    padding: '2rem',
-                                    textAlign: 'center'
-                                }}>
+                                <div className="rekyc-bio-box">
                                     {faceIdHash ? (
                                         <div>
-                                            <div style={{
-                                                width: '56px',
-                                                height: '56px',
-                                                borderRadius: '50%',
-                                                backgroundColor: '#DCFCE7',
-                                                border: '1px solid #86EFAC',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                color: '#15803D',
-                                                margin: '0 auto 1rem'
-                                            }}>
-                                                <CheckCircle2 size={30} />
+                                            <div className="rekyc-bio-icon-ring success">
+                                                <CheckCircle2 size={36} />
                                             </div>
-                                            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0F172A', margin: '0 0 4px 0' }}>
-                                                Face Match Record Ready
+                                            <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: '0 0 6px 0' }}>
+                                                Biometric Verification Record Ready
                                             </h4>
-                                            <p style={{ fontSize: '0.82rem', color: '#64748B', maxWidth: '380px', margin: '0 auto 1.25rem' }}>
-                                                Your facial verification token is generated and ready to attach.
+                                            <p style={{ fontSize: '0.86rem', color: '#64748B', maxWidth: '420px', margin: '0 auto 1.25rem', lineHeight: 1.5 }}>
+                                                A unique cryptographic facial verification token has been generated from your live capture.
                                             </p>
-                                            <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '8px 12px', maxWidth: '420px', margin: '0 auto 1.5rem' }}>
-                                                <code style={{ fontSize: '0.78rem', color: '#0F172A', wordBreak: 'break-all' }}>
-                                                    {faceIdHash}
-                                                </code>
+                                            <div className="rekyc-bio-hash-display">
+                                                <ShieldCheck size={16} style={{ color: '#16A34A', flexShrink: 0 }} />
+                                                <code className="rekyc-bio-hash-code">{faceIdHash}</code>
                                             </div>
                                             <button
                                                 type="button"
                                                 onClick={() => setShowBiometricCamera(true)}
-                                                style={{
-                                                    padding: '8px 16px',
-                                                    borderRadius: '8px',
-                                                    backgroundColor: '#EFF6FF',
-                                                    border: '1px solid #BFDBFE',
-                                                    color: '#1D4ED8',
-                                                    fontWeight: 600,
-                                                    fontSize: '0.82rem',
-                                                    cursor: 'pointer',
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    gap: '6px'
-                                                }}
+                                                className="rekyc-btn-secondary"
                                             >
-                                                <Camera size={14} /> Retake Live Photo
+                                                <Camera size={15} />
+                                                <span>Retake Live Photo</span>
                                             </button>
                                         </div>
                                     ) : (
                                         <div>
-                                            <div style={{
-                                                width: '56px',
-                                                height: '56px',
-                                                borderRadius: '50%',
-                                                backgroundColor: '#EFF6FF',
-                                                border: '1px solid #BFDBFE',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                color: '#2563EB',
-                                                margin: '0 auto 1rem'
-                                            }}>
-                                                <Camera size={28} />
+                                            <div className="rekyc-bio-icon-ring idle">
+                                                <Camera size={32} />
                                             </div>
-                                            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0F172A', margin: '0 0 4px 0' }}>
+                                            <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: '0 0 6px 0' }}>
                                                 Live Camera Verification
                                             </h4>
-                                            <p style={{ fontSize: '0.85rem', color: '#64748B', maxWidth: '400px', margin: '0 auto 1.5rem', lineHeight: 1.5 }}>
-                                                Click below to activate your webcam and perform facial recognition check.
+                                            <p style={{ fontSize: '0.86rem', color: '#64748B', maxWidth: '440px', margin: '0 auto 1.5rem', lineHeight: 1.5 }}>
+                                                Position yourself in front of your device camera with clear lighting to complete the facial liveness check.
                                             </p>
                                             <button
                                                 type="button"
                                                 onClick={() => setShowBiometricCamera(true)}
-                                                style={{
-                                                    padding: '10px 22px',
-                                                    borderRadius: '8px',
-                                                    backgroundColor: '#2563EB',
-                                                    border: 'none',
-                                                    color: '#FFFFFF',
-                                                    fontWeight: 700,
-                                                    fontSize: '0.9rem',
-                                                    cursor: 'pointer',
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    gap: '8px'
-                                                }}
+                                                className="rekyc-btn-primary"
                                             >
-                                                <Camera size={16} /> Open Camera & Verify Face
+                                                <Camera size={16} />
+                                                <span>Open Camera & Verify Face</span>
                                             </button>
                                         </div>
                                     )}
                                 </div>
                             ) : (
-                                <div style={{ backgroundColor: '#0F172A', borderRadius: '12px', padding: '1.5rem', color: '#FFFFFF' }}>
+                                <div className="rekyc-camera-viewport">
                                     <BiometricCapture
                                         onCaptureComplete={handleFaceCaptureDone}
                                         onBack={() => setShowBiometricCamera(false)}
@@ -730,182 +727,161 @@ const ReapplyKYC = () => {
                                 </div>
                             )}
 
-                            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'space-between' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setCurrentStep(2)}
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '10px 18px',
-                                        backgroundColor: '#FFFFFF',
-                                        border: '1px solid #CBD5E1',
-                                        borderRadius: '8px',
-                                        fontWeight: 600,
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    <ArrowLeft size={16} /> Back
+                            <div className="rekyc-actions-footer">
+                                <button type="button" onClick={() => setCurrentStep(2)} className="rekyc-btn-secondary">
+                                    <ArrowLeft size={16} />
+                                    <span>Back</span>
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setCurrentStep(4)}
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '10px 20px',
-                                        backgroundColor: '#2563EB',
-                                        color: '#FFFFFF',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    Next: Review & Submit <ArrowRight size={16} />
+                                <button type="button" onClick={handleStep3Next} className="rekyc-btn-primary">
+                                    <span>Next: Review & Submit</span>
+                                    <ArrowRight size={16} />
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* Step 4: Summary & Submit */}
+                    {/* ── STEP 4: Review & Submit ── */}
                     {currentStep === 4 && (
                         <div>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: '0 0 4px 0' }}>
-                                    Review & Submit Re-KYC
-                                </h3>
-                                <p style={{ fontSize: '0.85rem', color: '#64748B', margin: 0 }}>
-                                    Please review all updated details before submitting to the Land Authority.
-                                </p>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
-                                {/* Personal Info Card */}
-                                <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '1rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748B' }}>
-                                            Personal Details
-                                        </span>
-                                        <button onClick={() => setCurrentStep(1)} style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                            <div className="rekyc-review-grid">
+                                {/* Personal Info Summary */}
+                                <div className="rekyc-review-card">
+                                    <div className="rekyc-review-card-header">
+                                        <div className="rekyc-review-card-title">
+                                            <User size={14} />
+                                            <span>Personal Details</span>
+                                        </div>
+                                        <button type="button" onClick={() => setCurrentStep(1)} className="rekyc-review-edit-btn">Edit</button>
                                     </div>
-                                    <div style={{ fontSize: '0.88rem', color: '#0F172A', lineHeight: 1.6 }}>
-                                        <div><strong>Name:</strong> {name || '—'}</div>
-                                        <div><strong>Phone:</strong> {phone || '—'}</div>
-                                        <div><strong>DOB:</strong> {birthdate || '—'}</div>
-                                        <div><strong>ID:</strong> {governmentIdType} {governmentId ? `(${governmentId})` : ''}</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <div className="rekyc-review-row">
+                                            <span>Name:</span>
+                                            <strong>{name || '—'}</strong>
+                                        </div>
+                                        <div className="rekyc-review-row">
+                                            <span>Phone:</span>
+                                            <strong className="mono">{phone || '—'}</strong>
+                                        </div>
+                                        <div className="rekyc-review-row">
+                                            <span>DOB:</span>
+                                            <strong>{birthdate ? new Date(birthdate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}</strong>
+                                        </div>
+                                        <div className="rekyc-review-row">
+                                            <span>ID Type:</span>
+                                            <strong>{governmentIdType}</strong>
+                                        </div>
+                                        {governmentId && (
+                                            <div className="rekyc-review-row">
+                                                <span>ID Number:</span>
+                                                <strong className="mono">{governmentId}</strong>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
-                                {/* Address Card */}
-                                <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '1rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748B' }}>
-                                            Address
-                                        </span>
-                                        <button onClick={() => setCurrentStep(2)} style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                                {/* Address Summary */}
+                                <div className="rekyc-review-card">
+                                    <div className="rekyc-review-card-header">
+                                        <div className="rekyc-review-card-title">
+                                            <MapPin size={14} />
+                                            <span>Residential Address</span>
+                                        </div>
+                                        <button type="button" onClick={() => setCurrentStep(2)} className="rekyc-review-edit-btn">Edit</button>
                                     </div>
-                                    <div style={{ fontSize: '0.88rem', color: '#0F172A', lineHeight: 1.6 }}>
-                                        <div>{[houseNumber, locality, city].filter(Boolean).join(', ') || '—'}</div>
-                                        <div>{[state, pinCode, country].filter(Boolean).join(' - ') || '—'}</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <div className="rekyc-review-row">
+                                            <span>House / Flat:</span>
+                                            <strong>{houseNumber || '—'}</strong>
+                                        </div>
+                                        <div className="rekyc-review-row">
+                                            <span>Locality:</span>
+                                            <strong>{locality || '—'}</strong>
+                                        </div>
+                                        <div className="rekyc-review-row">
+                                            <span>City & State:</span>
+                                            <strong>{[city, state].filter(Boolean).join(', ') || '—'}</strong>
+                                        </div>
+                                        <div className="rekyc-review-row">
+                                            <span>PIN Code:</span>
+                                            <strong className="mono">{pinCode || '—'}</strong>
+                                        </div>
+                                        <div className="rekyc-review-row">
+                                            <span>Country:</span>
+                                            <strong>{country || 'India'}</strong>
+                                        </div>
                                     </div>
                                 </div>
 
                                 {/* Face Verification Card */}
-                                <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '1rem', gridColumn: '1 / -1' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748B' }}>
-                                            Face Verification
-                                        </span>
-                                        <button onClick={() => setCurrentStep(3)} style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Retake</button>
+                                <div className="rekyc-review-card full-width">
+                                    <div className="rekyc-review-card-header">
+                                        <div className="rekyc-review-card-title">
+                                            <Camera size={14} />
+                                            <span>Biometric Face Verification</span>
+                                        </div>
+                                        <button type="button" onClick={() => setCurrentStep(3)} className="rekyc-review-edit-btn">Retake</button>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{
-                                            fontSize: '0.72rem',
-                                            fontWeight: 700,
-                                            padding: '3px 8px',
-                                            borderRadius: '9999px',
-                                            backgroundColor: faceIdHash ? '#DCFCE7' : '#FEF3C7',
-                                            color: faceIdHash ? '#15803D' : '#B45309',
-                                            border: `1px solid ${faceIdHash ? '#86EFAC' : '#FDE68A'}`
-                                        }}>
-                                            {faceIdHash ? 'Face Verified' : 'Photo Pending'}
-                                        </span>
-                                        <code style={{ fontSize: '0.75rem', color: '#64748B', fontFamily: 'monospace' }}>
-                                            {faceIdHash ? `${faceIdHash.slice(0, 24)}...` : 'No face hash recorded.'}
-                                        </code>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span style={{
+                                                fontSize: '0.74rem',
+                                                fontWeight: 800,
+                                                padding: '4px 10px',
+                                                borderRadius: '9999px',
+                                                backgroundColor: faceIdHash ? '#DCFCE7' : '#FEF3C7',
+                                                color: faceIdHash ? '#15803D' : '#B45309',
+                                                border: `1px solid ${faceIdHash ? '#86EFAC' : '#FDE68A'}`
+                                            }}>
+                                                {faceIdHash ? 'Face Verified' : 'Photo Pending'}
+                                            </span>
+                                            <code style={{ fontSize: '0.78rem', color: '#475569', fontFamily: 'monospace' }}>
+                                                {faceIdHash ? `${faceIdHash.slice(0, 32)}...` : 'No face hash recorded.'}
+                                            </code>
+                                        </div>
+                                        {faceIdHash && (
+                                            <span style={{ fontSize: '0.78rem', color: '#16A34A', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                                <CheckCircle2 size={14} /> Ready for submission
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Disclaimer Box */}
-                            <div style={{
-                                backgroundColor: '#EFF6FF',
-                                border: '1px solid #BFDBFE',
-                                borderRadius: '10px',
-                                padding: '1rem',
-                                marginBottom: '2rem',
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: '10px'
-                            }}>
-                                <Info size={18} style={{ color: '#1D4ED8', flexShrink: 0, marginTop: '2px' }} />
-                                <p style={{ fontSize: '0.8rem', color: '#1E3A8A', margin: 0, lineHeight: 1.5 }}>
-                                    By submitting, you confirm that all provided details and identity records are genuine and legally valid. Your application will be reviewed by an authorized officer.
-                                </p>
+                            {/* Declaration Box */}
+                            <div className="rekyc-declaration-box">
+                                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', width: '100%' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={consentChecked}
+                                        onChange={(e) => setConsentChecked(e.target.checked)}
+                                        style={{ marginTop: '3px', cursor: 'pointer' }}
+                                    />
+                                    <p>
+                                        I hereby declare that all the information provided above is genuine, up-to-date, and matches my official government documents. I authorize the Land Registry Authority to verify these details.
+                                    </p>
+                                </label>
                             </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setCurrentStep(3)}
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '10px 18px',
-                                        backgroundColor: '#FFFFFF',
-                                        border: '1px solid #CBD5E1',
-                                        borderRadius: '8px',
-                                        fontWeight: 600,
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    <ArrowLeft size={16} /> Back
+                            <div className="rekyc-actions-footer">
+                                <button type="button" onClick={() => setCurrentStep(3)} className="rekyc-btn-secondary">
+                                    <ArrowLeft size={16} />
+                                    <span>Back</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handleSubmitReKyc}
-                                    disabled={submitting}
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '8px',
-                                        padding: '12px 28px',
-                                        backgroundColor: '#16A34A',
-                                        color: '#FFFFFF',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        fontWeight: 800,
-                                        fontSize: '0.95rem',
-                                        cursor: submitting ? 'not-allowed' : 'pointer',
-                                        boxShadow: '0 2px 8px rgba(22, 163, 74, 0.25)'
-                                    }}
+                                    disabled={submitting || !consentChecked}
+                                    className="rekyc-btn-submit"
                                 >
                                     {submitting ? (
                                         <>
                                             <Loader2 size={18} className="animate-spin" />
-                                            Submitting Re-KYC...
+                                            <span>Submitting Re-KYC...</span>
                                         </>
                                     ) : (
                                         <>
                                             <Send size={18} />
-                                            Submit Re-KYC for Review
+                                            <span>Submit Re-KYC for Review</span>
                                         </>
                                     )}
                                 </button>

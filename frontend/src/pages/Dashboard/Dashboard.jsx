@@ -193,7 +193,7 @@ const Dashboard = () => {
                             </div>
                             <div>
                                 <div className="wallet-card-label">Connected Wallet</div>
-                                <div className="wallet-network-tag">Avalanche Network</div>
+                                <div className="wallet-network-tag">Ethereum Network</div>
                             </div>
                         </div>
 

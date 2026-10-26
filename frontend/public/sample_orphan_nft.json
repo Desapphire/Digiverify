@@ -1,0 +1,43 @@
+{
+  "name": "DigiVerify Title Deed #PROP-ORPHAN-SAMPLE-01",
+  "description": "Cryptographically verified land title deed anchored on Ethereum Sepolia Testnet by DigiVerify.",
+  "image": "/sample_orphan_nft.svg",
+  "attributes": [
+    {
+      "trait_type": "Property Code",
+      "value": "PROP-ORPHAN-SAMPLE-01"
+    },
+    {
+      "trait_type": "Survey Number",
+      "value": "SRV-882/B"
+    },
+    {
+      "trait_type": "Plot Area (Sq Ft)",
+      "value": 3250
+    },
+    {
+      "trait_type": "District",
+      "value": "Hyderabad Cyberabad"
+    },
+    {
+      "trait_type": "State",
+      "value": "Telangana"
+    },
+    {
+      "trait_type": "Legal Status",
+      "value": "Clear Title"
+    },
+    {
+      "trait_type": "Encumbrance",
+      "value": "Unencumbered"
+    },
+    {
+      "trait_type": "Issuer",
+      "value": "DigiVerify Decentralized Land Registry"
+    },
+    {
+      "trait_type": "Network",
+      "value": "Ethereum Sepolia Testnet (11155111)"
+    }
+  ]
+}

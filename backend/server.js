@@ -21,6 +21,7 @@ const { apiLimiter } = require('./middlewares/rateLimiter');
 const requestTimeout = require('./middlewares/timeout');
 const errorHandler = require('./middlewares/errorHandler');
 const { startEventListeners } = require('./events/eventListener');
+const { startAutoMlScheduler } = require('./services/mlRiskService');
 
 // ── Route Imports ───────────────────────────────────────
 const authRoutes = require('./routes/authRoutes');
@@ -188,6 +189,13 @@ const startServer = async () => {
             startEventListeners();
         } catch (err) {
             console.warn(' Blockchain event listeners failed to start:', err.message);
+        }
+
+        // Start Auto-ML 60-minute scheduled background evaluations
+        try {
+            startAutoMlScheduler();
+        } catch (err) {
+            console.warn(' Auto-ML scheduler failed to start:', err.message);
         }
 
         const server = app.listen(env.PORT, () => {

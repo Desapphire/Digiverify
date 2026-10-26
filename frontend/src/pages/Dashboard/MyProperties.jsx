@@ -6,7 +6,7 @@ import {
     MapPin, CheckCircle2, Shield, AlertTriangle, ShieldAlert,
     Lock, Eye, ArrowUpRight, PlusCircle, Search, Loader2, ExternalLink,
     Building, FileText, ChevronRight, Filter, Layers, Check, ShieldCheck,
-    RotateCcw
+    RotateCcw, Copy
 } from 'lucide-react';
 import './PropertyPages.css';
 import './Dashboard.css';
@@ -18,6 +18,7 @@ const MyProperties = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [copied, setCopied] = useState(null);
 
     useEffect(() => {
         const fetchProperties = async () => {
@@ -299,7 +300,7 @@ const MyProperties = () => {
                                         <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '0.65rem 0.85rem', borderRadius: '8px' }}>
                                             <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: '#64748B', fontWeight: 700, display: 'block', marginBottom: '0.15rem' }}>Total Area</span>
                                             <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0F172A' }}>
-                                                {prop.areaSqft ? `${Number(prop.areaSqft).toLocaleString()} sq.ft` : 'N/A'}
+                                                {prop.areaSqft ? `${Number(prop.areaSqft).toLocaleString()} Sq.Ft.` : 'N/A'}
                                             </span>
                                         </div>
 
@@ -319,22 +320,23 @@ const MyProperties = () => {
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 style={{
-                                                    color: '#1E40AF',
-                                                    fontFamily: 'JetBrains Mono, monospace',
-                                                    fontSize: '0.72rem',
+                                                    color: '#1D4ED8',
+                                                    fontFamily: 'inherit',
+                                                    fontSize: '0.78rem',
                                                     display: 'inline-flex',
                                                     alignItems: 'center',
-                                                    gap: '0.35rem',
+                                                    gap: '0.4rem',
                                                     textDecoration: 'none',
                                                     background: '#EFF6FF',
-                                                    padding: '0.35rem 0.65rem',
-                                                    borderRadius: '6px',
+                                                    padding: '0.4rem 0.75rem',
+                                                    borderRadius: '8px',
                                                     border: '1px solid #BFDBFE',
-                                                    fontWeight: 600
+                                                    fontWeight: 700,
+                                                    transition: 'all 0.15s ease'
                                                 }}
                                                 onClick={(e) => e.stopPropagation()}
                                             >
-                                                Digital Certificate #{prop.nftTokenId} <ExternalLink size={11} />
+                                                Digital Certificate #{prop.nftTokenId} <ExternalLink size={12} />
                                             </a>
                                         </div>
                                     )}
@@ -424,21 +426,53 @@ const MyProperties = () => {
                                 </div>
 
                                 {/* Actions Row */}
-                                <div style={{ paddingTop: '0.85rem', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                    <span style={{ fontSize: '0.7rem', color: '#64748B', fontFamily: 'JetBrains Mono, monospace' }}>
-                                        ID: {prop.id?.slice(0, 8)}...
-                                    </span>
+                                <div style={{ paddingTop: '0.85rem', borderTop: '1px solid #F1F5F9', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#F8FAFC', padding: '3px 8px', borderRadius: '6px', border: '1px solid #E2E8F0', maxWidth: '100%' }}>
+                                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>ID:</span>
+                                            <span style={{ fontSize: '0.72rem', color: '#0F172A', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all' }}>
+                                                {prop.id}
+                                            </span>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigator.clipboard.writeText(prop.id);
+                                                    setCopied(`id-${prop.id}`);
+                                                    setTimeout(() => setCopied(null), 2000);
+                                                }}
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: copied === `id-${prop.id}` ? '#059669' : '#94A3B8' }}
+                                                title="Copy full Property ID"
+                                            >
+                                                {copied === `id-${prop.id}` ? <Check size={12} /> : <Copy size={12} />}
+                                            </button>
+                                        </div>
+                                    </div>
 
-                                    <div style={{ display: 'flex', gap: '0.45rem' }}>
+                                    <div style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: (prop.status === 'rejected' || prop.status === 'active' || prop.status === 'verified') ? '1fr 1fr' : '1fr',
+                                        gap: '0.65rem',
+                                        width: '100%'
+                                    }}>
                                         <button
                                             className="gov-cancel-btn"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 navigate(`/properties/${prop.id}`);
                                             }}
-                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
+                                            style={{
+                                                padding: '0.55rem 0.75rem',
+                                                fontSize: '0.82rem',
+                                                fontWeight: 700,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '6px',
+                                                width: '100%',
+                                                borderRadius: '8px'
+                                            }}
                                         >
-                                            <Eye size={13} /> View Details
+                                            <Eye size={14} /> View Details
                                         </button>
 
                                         {prop.status === 'rejected' && (
@@ -448,9 +482,20 @@ const MyProperties = () => {
                                                     e.stopPropagation();
                                                     navigate(`/reapply-property/${prop.id}`);
                                                 }}
-                                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', backgroundColor: '#2563EB' }}
+                                                style={{
+                                                    padding: '0.55rem 0.75rem',
+                                                    fontSize: '0.82rem',
+                                                    fontWeight: 700,
+                                                    backgroundColor: '#2563EB',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '6px',
+                                                    width: '100%',
+                                                    borderRadius: '8px'
+                                                }}
                                             >
-                                                <RotateCcw size={13} /> Reapply Application
+                                                <RotateCcw size={14} /> Reapply Application
                                             </button>
                                         )}
 
@@ -459,11 +504,21 @@ const MyProperties = () => {
                                                 className="gov-primary-btn"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    navigate(`/properties/${prop.id}`);
+                                                    navigate(`/sale?propertyId=${prop.id}`);
                                                 }}
-                                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
+                                                style={{
+                                                    padding: '0.55rem 0.75rem',
+                                                    fontSize: '0.82rem',
+                                                    fontWeight: 700,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '6px',
+                                                    width: '100%',
+                                                    borderRadius: '8px'
+                                                }}
                                             >
-                                                <ArrowUpRight size={13} /> Manage Property
+                                                <ArrowUpRight size={14} /> Sell / Transfer
                                             </button>
                                         )}
                                     </div>

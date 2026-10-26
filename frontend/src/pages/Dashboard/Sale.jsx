@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { propertyService } from '../../services/property.service';
 import { saleService } from '../../services/sale.service';
 import { useAuth } from '../../context/AuthContext';
@@ -20,6 +20,7 @@ const STEPS = [
 
 const Sale = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { user } = useAuth();
     const { account, connectWallet } = useWeb3();
 
@@ -61,7 +62,8 @@ const Sale = () => {
     }, []);
 
     // Form state
-    const [selectedPropertyId, setSelectedPropertyId] = useState('');
+    const initialPropId = searchParams.get('propertyId') || '';
+    const [selectedPropertyId, setSelectedPropertyId] = useState(initialPropId);
     const [salePrice, setSalePrice] = useState('');
     const [buyerWallet, setBuyerWallet] = useState('');
 
@@ -73,6 +75,10 @@ const Sale = () => {
                 const res = await propertyService.getMyProperties();
                 const verifiedProperties = (res.data?.data || []).filter(p => p.status === 'active' || p.status === 'verified');
                 setProperties(verifiedProperties);
+                if (initialPropId && verifiedProperties.some(p => p.id === initialPropId)) {
+                    setSelectedPropertyId(initialPropId);
+                    setStep(1); // Auto-advance to Price & Buyer step if property pre-selected
+                }
             } catch (err) {
                 console.error('Failed to load properties', err);
             } finally {

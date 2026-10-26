@@ -76,14 +76,14 @@ const RiskAnalysisWidget = ({ saleId, propertyId, initialData = null, compact = 
     const getLevelStyle = (level) => {
         switch ((level || '').toLowerCase()) {
             case 'low':
-                return { color: '#22c55e', bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.25)', icon: ShieldCheck };
+                return { color: '#047857', bg: '#ECFDF5', border: '#A7F3D0', icon: ShieldCheck };
             case 'medium':
-                return { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.25)', icon: AlertTriangle };
+                return { color: '#B45309', bg: '#FFFBEB', border: '#FDE68A', icon: AlertTriangle };
             case 'high':
-                return { color: '#f97316', bg: 'rgba(249,115,22,0.1)', border: 'rgba(249,115,22,0.25)', icon: ShieldAlert };
+                return { color: '#C2410C', bg: '#FFF7ED', border: '#FED7AA', icon: ShieldAlert };
             case 'critical':
             default:
-                return { color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.25)', icon: ShieldAlert };
+                return { color: '#B91C1C', bg: '#FEF2F2', border: '#FECACA', icon: ShieldAlert };
         }
     };
 
@@ -106,29 +106,38 @@ const RiskAnalysisWidget = ({ saleId, propertyId, initialData = null, compact = 
 
     return (
         <div style={{
-            background: 'linear-gradient(135deg, rgba(20,20,30,0.85) 0%, rgba(15,15,22,0.95) 100%)',
-            border: `1px solid ${style.border}`,
+            background: '#FFFFFF',
+            border: '1px solid #E2E8F0',
             borderRadius: '16px',
-            padding: '1.25rem',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-            marginTop: '1rem',
-            marginBottom: '1rem'
+            padding: '1.4rem 1.5rem',
+            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+            marginTop: '1.25rem',
+            marginBottom: '1.25rem'
         }}>
             {/* Header Banner */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.85rem', marginBottom: '1rem' }}>
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderBottom: '1px solid #F1F5F9',
+                paddingBottom: '0.9rem',
+                marginBottom: '1rem',
+                flexWrap: 'wrap',
+                gap: '0.75rem'
+            }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{
-                        width: 36, height: 36, borderRadius: '10px',
-                        background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.3)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c084fc'
+                        width: 38, height: 38, borderRadius: '10px',
+                        background: '#EFF6FF', border: '1px solid #BFDBFE',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1D4ED8'
                     }}>
                         <BrainCircuit size={20} />
                     </div>
                     <div>
-                        <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#f3f4f6', letterSpacing: '-0.01em', margin: 0 }}>
-                            AI Fraud & Market Risk Assessment
+                        <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em', margin: 0 }}>
+                            AI Fraud &amp; Market Risk Assessment
                         </h4>
-                        <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', margin: 0, marginTop: 2 }}>
+                        <p style={{ fontSize: '0.75rem', color: '#64748B', margin: 0, marginTop: 2 }}>
                             Random Forest Valuation + Isolation Forest AML + Buyer Income Verification
                         </p>
                     </div>
@@ -136,18 +145,30 @@ const RiskAnalysisWidget = ({ saleId, propertyId, initialData = null, compact = 
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{
-                        padding: '5px 12px', borderRadius: '9999px',
+                        padding: '4px 12px', borderRadius: '9999px',
                         background: style.bg, border: `1px solid ${style.border}`,
                         color: style.color, display: 'flex', alignItems: 'center', gap: 6,
-                        fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.02em', textTransform: 'uppercase'
+                        fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.02em', textTransform: 'uppercase'
                     }}>
                         <LevelIcon size={14} />
                         {riskLevel} Risk ({overallScore} / 100)
                     </div>
-                    <button onClick={fetchRisk} title="Re-evaluate" style={{
-                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '8px', padding: '6px', color: 'rgba(255,255,255,0.5)', cursor: 'pointer'
-                    }}>
+                    <button
+                        onClick={fetchRisk}
+                        title="Re-evaluate"
+                        style={{
+                            background: '#F8FAFC',
+                            border: '1px solid #CBD5E1',
+                            borderRadius: '8px',
+                            padding: '6px 8px',
+                            color: '#475569',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.15s ease'
+                        }}
+                    >
                         <RefreshCcw size={13} />
                     </button>
                 </div>
@@ -158,12 +179,12 @@ const RiskAnalysisWidget = ({ saleId, propertyId, initialData = null, compact = 
                 background: style.bg,
                 border: `1px solid ${style.border}`,
                 borderRadius: '10px',
-                padding: '0.65rem 1rem',
+                padding: '0.75rem 1rem',
                 marginBottom: '1rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                fontSize: '0.78rem',
+                fontSize: '0.8rem',
                 fontWeight: 600,
                 color: style.color
             }}>
@@ -174,27 +195,35 @@ const RiskAnalysisWidget = ({ saleId, propertyId, initialData = null, compact = 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem' }}>
                 {/* 1. Price Valuation */}
                 {priceRisk && (
-                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '0.85rem' }}>
+                    <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '1rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.05em' }}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.04em' }}>
                                 AI Fair Valuation
                             </span>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: priceRisk.score > 50 ? '#ef4444' : '#22c55e' }}>
+                            <span style={{
+                                fontSize: '0.68rem',
+                                fontWeight: 800,
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                background: priceRisk.score > 50 ? '#FEE2E2' : '#DCFCE7',
+                                color: priceRisk.score > 50 ? '#B91C1C' : '#15803D',
+                                border: `1px solid ${priceRisk.score > 50 ? '#FECACA' : '#86EFAC'}`
+                            }}>
                                 Score: {priceRisk.score}%
                             </span>
                         </div>
-                        <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#a78bfa' }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E293B', letterSpacing: '-0.02em', margin: '4px 0' }}>
                             ₹{Number(priceRisk.fair_price || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                         </div>
-                        <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>
+                        <div style={{ fontSize: '0.75rem', marginTop: 4 }}>
                             {priceRisk.deviation !== undefined && (
-                                <span style={{ color: Math.abs(priceRisk.deviation) > 0.25 ? '#f97316' : '#22c55e', fontWeight: 600 }}>
+                                <span style={{ color: Math.abs(priceRisk.deviation) > 0.25 ? '#C2410C' : '#15803D', fontWeight: 700 }}>
                                     {priceRisk.deviation > 0 ? `+${(priceRisk.deviation * 100).toFixed(1)}%` : `${(priceRisk.deviation * 100).toFixed(1)}%`} vs Listed
                                 </span>
                             )}
                         </div>
                         {priceRisk.reasons?.[0] && (
-                            <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginTop: 6, margin: 0, fontStyle: 'italic' }}>
+                            <p style={{ fontSize: '0.75rem', color: '#475569', marginTop: 6, margin: 0, lineHeight: 1.4 }}>
                                 {priceRisk.reasons[0]}
                             </p>
                         )}
@@ -203,23 +232,24 @@ const RiskAnalysisWidget = ({ saleId, propertyId, initialData = null, compact = 
 
                 {/* 2. AML Anomaly Detection */}
                 {amlRisk && (
-                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '0.85rem' }}>
+                    <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '1rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.05em' }}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.04em' }}>
                                 AML Pattern Detection
                             </span>
                             <span style={{
                                 fontSize: '0.68rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px',
-                                background: amlRisk.is_anomaly ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.15)',
-                                color: amlRisk.is_anomaly ? '#ef4444' : '#22c55e'
+                                background: amlRisk.is_anomaly ? '#FEE2E2' : '#DCFCE7',
+                                color: amlRisk.is_anomaly ? '#B91C1C' : '#15803D',
+                                border: `1px solid ${amlRisk.is_anomaly ? '#FECACA' : '#86EFAC'}`
                             }}>
                                 {amlRisk.is_anomaly ? 'ANOMALY DETECTED' : 'CLEAR'}
                             </span>
                         </div>
-                        <div style={{ fontSize: '1.05rem', fontWeight: 800, color: amlRisk.score > 50 ? '#ef4444' : '#22c55e' }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: amlRisk.score > 50 ? '#B91C1C' : '#15803D', margin: '4px 0' }}>
                             {amlRisk.score}% Risk
                         </div>
-                        <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginTop: 6, margin: 0 }}>
+                        <p style={{ fontSize: '0.75rem', color: '#475569', marginTop: 6, margin: 0, lineHeight: 1.4 }}>
                             {amlRisk.reasons?.[0] || 'Wallet volume consistent with normal behavior'}
                         </p>
                     </div>
@@ -227,27 +257,35 @@ const RiskAnalysisWidget = ({ saleId, propertyId, initialData = null, compact = 
 
                 {/* 3. Buyer Capacity & Velocity */}
                 {buyerRisk && (
-                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '0.85rem' }}>
+                    <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '1rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.05em' }}>
-                                Buyer Velocity & Income
+                            <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.04em' }}>
+                                Buyer Velocity &amp; Income
                             </span>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: buyerRisk.score > 50 ? '#ef4444' : '#22c55e' }}>
+                            <span style={{
+                                fontSize: '0.68rem',
+                                fontWeight: 800,
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                background: buyerRisk.score > 50 ? '#FEE2E2' : '#DCFCE7',
+                                color: buyerRisk.score > 50 ? '#B91C1C' : '#15803D',
+                                border: `1px solid ${buyerRisk.score > 50 ? '#FECACA' : '#86EFAC'}`
+                            }}>
                                 Score: {buyerRisk.score}%
                             </span>
                         </div>
-                        <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                        <div style={{ display: 'flex', gap: 16, margin: '8px 0' }}>
                             <div>
-                                <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)' }}>Mismatch:</span>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f3f4f6' }}>{buyerRisk.income_mismatch_score || 0}%</div>
+                                <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>Mismatch:</span>
+                                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0F172A' }}>{buyerRisk.income_mismatch_score || 0}%</div>
                             </div>
                             <div>
-                                <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)' }}>Frequency:</span>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f3f4f6' }}>{buyerRisk.frequency_score || 0}%</div>
+                                <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>Frequency:</span>
+                                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0F172A' }}>{buyerRisk.frequency_score || 0}%</div>
                             </div>
                         </div>
                         {buyerRisk.reasons?.[1] && (
-                            <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginTop: 6, margin: 0 }}>
+                            <p style={{ fontSize: '0.75rem', color: '#475569', marginTop: 6, margin: 0, lineHeight: 1.4 }}>
                                 {buyerRisk.reasons[1]}
                             </p>
                         )}

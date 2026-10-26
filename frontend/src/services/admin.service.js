@@ -3,6 +3,7 @@ import api from './api';
 export const adminService = {
     // ── Dashboard Data ─────────────────────────────────────────
     listUsers: (kycStatus) => api.get('/admin/users', { params: { kycStatus } }),
+    getUserById: (id) => api.get(`/admin/users/${id}`),
     listProperties: (status) => api.get('/admin/properties', { params: { status } }),
     listSales: () => api.get('/admin/sales'),
     getPendingFundBlocks: () => api.get('/admin/fund-blocks/pending'),

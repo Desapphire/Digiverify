@@ -49,6 +49,51 @@ const Profile = () => {
     const [reKycSaving, setReKycSaving] = useState(false);
     const [reKycError, setReKycError] = useState('');
 
+    const formatDobDisplay = (dateStr) => {
+        if (!dateStr) return 'Not Provided';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+    };
+
+    const handleReKycGovtIdChange = (val) => {
+        if (reKycGovtIdType === 'Aadhar') {
+            const rawDigits = val.replace(/\D/g, '').slice(0, 12);
+            const formatted = rawDigits.match(/.{1,4}/g)?.join(' ') || '';
+            setReKycGovtId(formatted);
+        } else if (reKycGovtIdType === 'Passport') {
+            const upper = val.toUpperCase();
+            let passportVal = '';
+            if (upper.length > 0) {
+                const firstChar = upper.charAt(0);
+                if (/^[A-Z]$/.test(firstChar)) {
+                    const digits = upper.slice(1).replace(/\D/g, '').slice(0, 7);
+                    passportVal = firstChar + digits;
+                }
+            }
+            setReKycGovtId(passportVal);
+        } else {
+            setReKycGovtId(val.toUpperCase());
+        }
+    };
+
+    const handleReKycGovtIdTypeChange = (newType) => {
+        setReKycGovtIdType(newType);
+        if (newType === 'Aadhar') {
+            const rawDigits = reKycGovtId.replace(/\D/g, '').slice(0, 12);
+            setReKycGovtId(rawDigits.match(/.{1,4}/g)?.join(' ') || '');
+        } else if (newType === 'Passport') {
+            const upper = reKycGovtId.toUpperCase();
+            if (/^[A-Z]/.test(upper)) {
+                const firstChar = upper.charAt(0);
+                const digits = upper.slice(1).replace(/\D/g, '').slice(0, 7);
+                setReKycGovtId(firstChar + digits);
+            } else {
+                setReKycGovtId('');
+            }
+        }
+    };
+
     // Wallet recovery state
     const [showRecovery, setShowRecovery] = useState(false);
     const [recoveryWallet, setRecoveryWallet] = useState('');
@@ -138,8 +183,24 @@ const Profile = () => {
 
     const handleReKycSubmit = async (e) => {
         if (e) e.preventDefault();
-        setReKycSaving(true);
         setReKycError('');
+
+        if (reKycGovtId.trim()) {
+            if (reKycGovtIdType === 'Aadhar') {
+                const raw = reKycGovtId.replace(/\D/g, '');
+                if (raw.length !== 12) {
+                    setReKycError('Aadhar Number must be exactly 12 digits (XXXX XXXX XXXX).');
+                    return;
+                }
+            } else if (reKycGovtIdType === 'Passport') {
+                if (!/^[A-Z][0-9]{7}$/.test(reKycGovtId.trim().toUpperCase())) {
+                    setReKycError('Passport must start with 1 capital letter followed by 7 numeric digits (e.g., Z1234567).');
+                    return;
+                }
+            }
+        }
+
+        setReKycSaving(true);
 
         try {
             const payload = {
@@ -338,14 +399,12 @@ const Profile = () => {
                             </>
                         )}
                     </div>
-                    <button onClick={openReKycModal} className="gov-rekyc-btn">
-                        <RotateCcw size={14} /> Update Verification
-                    </button>
+                    {/* Remove duplicate top button, keep clean header badge */}
                 </div>
             </div>
 
-            {/* ─── Land Authority Targeted Re-KYC Notice ─── */}
-            {data?.adminComments && (() => {
+            {/* ─── Targeted Re-KYC Notice (Only if action required / not verified) ─── */}
+            {!isVerified && data?.adminComments && (() => {
                 const directives = parseAdminDirectives(data.adminComments);
                 return (
                     <div className="targeted-rekyc-alert-box">
@@ -521,21 +580,6 @@ const Profile = () => {
                                 </div>
 
                                 <div className="id-data-card">
-                                    <span className="id-field-label">Account Role</span>
-                                    <span className="id-field-value role-badge">{data?.role?.toUpperCase() || 'CITIZEN'}</span>
-                                </div>
-
-                                <div className="id-data-card full-width">
-                                    <div className="card-top-row">
-                                        <span className="id-field-label">Account ID</span>
-                                        <button onClick={() => handleCopy(data?.id, 'userId')} className="copy-link">
-                                            {copiedField === 'userId' ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
-                                        </button>
-                                    </div>
-                                    <span className="id-field-value font-mono text-xs">{data?.id || '—'}</span>
-                                </div>
-
-                                <div className="id-data-card">
                                     <span className="id-field-label">Email Address</span>
                                     <span className="id-field-value">{data?.email || '—'}</span>
                                 </div>
@@ -547,17 +591,27 @@ const Profile = () => {
 
                                 <div className="id-data-card">
                                     <span className="id-field-label">Date of Birth</span>
-                                    <span className="id-field-value">{data?.birthdate ? new Date(data.birthdate).toLocaleDateString() : 'Not Provided'}</span>
+                                    <span className="id-field-value">{formatDobDisplay(data?.birthdate)}</span>
                                 </div>
 
                                 <div className="id-data-card">
                                     <div className="card-top-row">
-                                        <span className="id-field-label">Government ID</span>
+                                        <span className="id-field-label">Document ID</span>
                                         <span className="gov-id-type-tag">{data?.governmentIdType || 'National ID'}</span>
                                     </div>
                                     <span className="id-field-value font-mono">
                                         {data?.governmentId ? `•••• •••• ${data.governmentId.slice(-4)}` : 'On File (Encrypted)'}
                                     </span>
+                                </div>
+
+                                <div className="id-data-card">
+                                    <div className="card-top-row">
+                                        <span className="id-field-label">Account ID</span>
+                                        <button onClick={() => handleCopy(data?.id, 'userId')} className="copy-link">
+                                            {copiedField === 'userId' ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+                                        </button>
+                                    </div>
+                                    <span className="id-field-value font-mono text-xs">{data?.id || '—'}</span>
                                 </div>
 
                                 <div className="id-data-card full-width">
@@ -627,7 +681,7 @@ const Profile = () => {
                                 <Wallet size={18} className="text-blue-700" />
                                 <h3 className="panel-heading">Connected Wallet</h3>
                             </div>
-                            <span className="network-pill">Avalanche Network</span>
+                            <span className="network-pill">Ethereum Network</span>
                         </div>
 
                         <div className="wallet-dossier-box">
@@ -750,17 +804,125 @@ const Profile = () => {
 
                     {/* Security Immutability Seal */}
                     <div className="gov-immutability-card">
-                        <Shield size={24} className="text-blue-700 flex-shrink-0" />
+                        <Shield size={20} className="text-blue-700 flex-shrink-0" />
                         <div>
-                            <h6>Account Security</h6>
+                            <h6>Account Security &amp; Protocol Integrity</h6>
                             <p>
-                                Your personal details and property transactions are encrypted and secured on the blockchain with full audit protection.
+                                Personal identity records and on-chain property credentials are cryptographically anchored to Ethereum with immutable audit trails.
                             </p>
                         </div>
                     </div>
 
                 </div>
             </div>
+
+            {/* ─── Bottom Update Verification / KYC Audit Section ─── */}
+            {(() => {
+                const isFlagged = !isVerified && (Boolean(data?.adminComments) || data?.kycStatus === 'rejected');
+                return (
+                    <div className="gov-white-panel" style={{
+                        marginTop: '1.75rem',
+                        border: isFlagged ? '1px solid #FCD34D' : '1px solid #E2E8F0',
+                        backgroundColor: isFlagged ? '#FFFBEB' : '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '1.25rem'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', maxWidth: '640px' }}>
+                            <div style={{
+                                width: '42px',
+                                height: '42px',
+                                borderRadius: '12px',
+                                backgroundColor: isFlagged ? '#FEF3C7' : '#EFF6FF',
+                                border: isFlagged ? '1px solid #FDE68A' : '1px solid #BFDBFE',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: isFlagged ? '#D97706' : '#2563EB',
+                                flexShrink: 0
+                            }}>
+                                {isFlagged ? <AlertTriangle size={20} /> : <RotateCcw size={18} />}
+                            </div>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0F172A' }}>
+                                        Identity Verification &amp; KYC Update
+                                    </h4>
+                                    {isFlagged ? (
+                                        <span style={{
+                                            fontSize: '0.68rem',
+                                            fontWeight: 800,
+                                            textTransform: 'uppercase',
+                                            padding: '2px 8px',
+                                            borderRadius: '9999px',
+                                            backgroundColor: '#FEF3C7',
+                                            color: '#B45309',
+                                            border: '1px solid #FDE68A'
+                                        }}>
+                                            Reviewer Triggered
+                                        </span>
+                                    ) : (
+                                        <span style={{
+                                            fontSize: '0.68rem',
+                                            fontWeight: 800,
+                                            textTransform: 'uppercase',
+                                            padding: '2px 8px',
+                                            borderRadius: '9999px',
+                                            backgroundColor: '#DCFCE7',
+                                            color: '#15803D',
+                                            border: '1px solid #86EFAC'
+                                        }}>
+                                            Active
+                                        </span>
+                                    )}
+                                </div>
+                                <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748B', lineHeight: 1.45 }}>
+                                    {isFlagged ? (
+                                        <span style={{ color: '#92400E', fontWeight: 600 }}>
+                                            ⚠️ Action Required: An officer or automated verification check has flagged items for review: {data.adminComments}
+                                        </span>
+                                    ) : (
+                                        'Keep your profile record current. You can update your identity documents, address proof, or biometric facial scan whenever required.'
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <button
+                                onClick={() => {
+                                    if (isFlagged) {
+                                        navigate('/reapply-kyc');
+                                    } else {
+                                        openReKycModal();
+                                    }
+                                }}
+                                className="gov-secondary-btn"
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '9px 18px',
+                                    borderRadius: '8px',
+                                    backgroundColor: isFlagged ? '#D97706' : '#F8FAFC',
+                                    color: isFlagged ? '#FFFFFF' : '#1E293B',
+                                    border: isFlagged ? '1px solid #D97706' : '1px solid #CBD5E1',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                <RotateCcw size={15} />
+                                <span>Update Verification</span>
+                            </button>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* ─── Targeted Re-KYC Modal Dialog ─── */}
             {showReKycModal && (
@@ -814,7 +976,25 @@ const Profile = () => {
                         {reKycStep === 1 ? (() => {
                             const modalDirectives = parseAdminDirectives(profile?.adminComments || user?.adminComments);
                             return (
-                                <form onSubmit={(e) => { e.preventDefault(); setReKycStep(2); }}>
+                                <form onSubmit={(e) => {
+                                    e.preventDefault();
+                                    setReKycError('');
+                                    if (reKycGovtId.trim()) {
+                                        if (reKycGovtIdType === 'Aadhar') {
+                                            const raw = reKycGovtId.replace(/\D/g, '');
+                                            if (raw.length !== 12) {
+                                                setReKycError('Aadhar Number must be exactly 12 digits (XXXX XXXX XXXX).');
+                                                return;
+                                            }
+                                        } else if (reKycGovtIdType === 'Passport') {
+                                            if (!/^[A-Z][0-9]{7}$/.test(reKycGovtId.trim().toUpperCase())) {
+                                                setReKycError('Passport must start with 1 capital letter followed by 7 numeric digits (e.g., Z1234567).');
+                                                return;
+                                            }
+                                        }
+                                    }
+                                    setReKycStep(2);
+                                }}>
                                     <div className="modal-form-content">
                                         <div className="form-field">
                                             <div className="field-label-row">
@@ -858,23 +1038,22 @@ const Profile = () => {
                                             </div>
 
                                             <div className="form-field">
-                                                <label>Government ID Type</label>
+                                                <label>ID Document Type</label>
                                                 <select
                                                     value={reKycGovtIdType}
-                                                    onChange={(e) => setReKycGovtIdType(e.target.value)}
+                                                    onChange={(e) => handleReKycGovtIdTypeChange(e.target.value)}
                                                 >
-                                                    <option value="Aadhar">Aadhaar Card (UIDAI)</option>
-                                                    <option value="PAN">PAN Card</option>
+                                                    <option value="Aadhar">Aadhar Card</option>
                                                     <option value="Passport">Passport</option>
-                                                    <option value="VoterId">Voter ID Card</option>
-                                                    <option value="DrivingLicense">Driving License</option>
+                                                    <option value="Voter ID">Voter ID</option>
+                                                    <option value="Driving License">Driving License</option>
                                                 </select>
                                             </div>
                                         </div>
 
                                         <div className="form-field">
                                             <div className="field-label-row">
-                                                <label>Government ID Number</label>
+                                                <label>ID Document Number</label>
                                                 {modalDirectives.requiresId && (
                                                     <span className="field-flag-tag">⚠️ Needs ID Update</span>
                                                 )}
@@ -882,10 +1061,38 @@ const Profile = () => {
                                             <input
                                                 type="text"
                                                 value={reKycGovtId}
-                                                onChange={(e) => setReKycGovtId(e.target.value)}
+                                                onChange={(e) => handleReKycGovtIdChange(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (reKycGovtIdType === 'Aadhar') {
+                                                        if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+                                                            e.preventDefault();
+                                                        }
+                                                    } else if (reKycGovtIdType === 'Passport') {
+                                                        if (reKycGovtId.length === 0) {
+                                                            if (!/^[a-zA-Z]$/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+                                                                e.preventDefault();
+                                                            }
+                                                        } else {
+                                                            if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+                                                                e.preventDefault();
+                                                            }
+                                                        }
+                                                    }
+                                                }}
+                                                maxLength={reKycGovtIdType === 'Aadhar' ? 14 : reKycGovtIdType === 'Passport' ? 8 : 20}
                                                 className={modalDirectives.requiresId ? 'highlight-field' : ''}
-                                                placeholder="Enter ID number"
+                                                placeholder={
+                                                    reKycGovtIdType === 'Aadhar'
+                                                        ? 'XXXX XXXX XXXX (12 Digits)'
+                                                        : reKycGovtIdType === 'Passport'
+                                                        ? 'e.g. Z1234567 (1 Letter + 7 Digits)'
+                                                        : 'Enter ID number'
+                                                }
                                             />
+                                            <span style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '4px', display: 'block' }}>
+                                                {reKycGovtIdType === 'Aadhar' && 'Format: 12 numeric digits spaced as 4-4-4.'}
+                                                {reKycGovtIdType === 'Passport' && 'Format: 1 uppercase letter followed by 7 digits.'}
+                                            </span>
                                         </div>
 
                                         <div className="form-field">

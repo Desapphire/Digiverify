@@ -178,7 +178,7 @@ const PropertyDetails = () => {
                                         Property Registration Rejected
                                     </h3>
                                     <p style={{ fontSize: '0.78rem', color: '#B91C1C', margin: 0 }}>
-                                        Application was rejected by the Government Land Registry Authority
+                                        Application was rejected by the Land Registry Authority
                                     </p>
                                 </div>
                             </div>
@@ -238,12 +238,12 @@ const PropertyDetails = () => {
                     {/* Certificate Header */}
                     <div className="certificate-header">
                         <div className="certificate-emblem">
-                            <div className="certificate-seal-badge">
-                                <Award size={30} />
+                            <div className="certificate-seal-badge" style={{ padding: 0, overflow: 'hidden' }}>
+                                <img src="/logo.png" alt="DigiVerify Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             </div>
                             <div className="certificate-title-text">
                                 <h2>Property Details & Certificate</h2>
-                                <p>Official Land Ownership Record</p>
+                                <p>DigiVerify Verified Title Deed</p>
                             </div>
                         </div>
 
@@ -390,17 +390,15 @@ const PropertyDetails = () => {
                                                     <span style={{
                                                         display: 'inline-flex',
                                                         alignItems: 'center',
-                                                        gap: '3px',
                                                         fontSize: '0.75rem',
                                                         fontWeight: 800,
                                                         color: '#047857',
                                                         backgroundColor: '#ECFDF5',
-                                                        padding: '2px 7px',
+                                                        padding: '2px 8px',
                                                         borderRadius: '6px',
                                                         border: '1px solid #A7F3D0'
                                                     }}>
-                                                        <Percent size={11} />
-                                                        {co.sharePercentage}
+                                                        {co.sharePercentage ? (co.sharePercentage.endsWith('%') ? co.sharePercentage : `${co.sharePercentage}%`) : '100%'}
                                                     </span>
                                                 </div>
 
@@ -461,7 +459,7 @@ const PropertyDetails = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.5rem' }}>
                     {/* Sale Initiation (Owner only, Active status) */}
                     {isOwner && (property.status === 'active' || property.status === 'verified') && (
-                        <div className="gov-card">
+                        <div id="transfer" className="gov-card">
                             <div className="gov-card-header">
                                 <h3 className="gov-card-title">
                                     <DollarSign size={20} /> Sell / Transfer Property
@@ -806,8 +804,14 @@ const PropertyDetails = () => {
                         {/* Certificate Image Frame */}
                         <div style={{ padding: '1.5rem', overflowY: 'auto', textAlign: 'center', flex: 1 }}>
                             <img
-                                src={`/api/properties/${property.id}/certificate.svg`}
+                                src={`http://localhost:5000/api/properties/${property.id}/certificate.svg`}
                                 alt="Land Deed Certificate"
+                                onError={(e) => {
+                                    // Fallback if direct backend port fails
+                                    if (!e.target.src.includes(`/${property.propertyCode}_certificate.svg`)) {
+                                        e.target.src = `/${property.propertyCode}_certificate.svg`;
+                                    }
+                                }}
                                 style={{
                                     width: '100%',
                                     maxWidth: '820px',
@@ -831,11 +835,11 @@ const PropertyDetails = () => {
                             gap: '0.75rem'
                         }}>
                             <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
-                                On-Chain Sovereign Deed anchored on Ethereum Sepolia Testnet (11155111)
+                                On-Chain Autonomous Deed anchored on DigiVerify Decentralized Registry
                             </span>
                             <div style={{ display: 'flex', gap: '0.6rem' }}>
                                 <a
-                                    href={`/api/properties/${property.id}/certificate.svg`}
+                                    href={`http://localhost:5000/api/properties/${property.id}/certificate.svg`}
                                     download={`Deed_Certificate_${property.propertyCode || property.surveyNumber}.svg`}
                                     className="gov-btn"
                                     style={{

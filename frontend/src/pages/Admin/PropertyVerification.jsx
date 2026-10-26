@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { adminService } from '../../services/admin.service';
 import { riskService } from '../../services/risk.service';
 import {
@@ -15,6 +15,7 @@ import {
 
 const PropertyVerification = () => {
     const navigate = useNavigate();
+    const { id: routePropId } = useParams();
     const [properties, setProperties] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(null);
@@ -111,6 +112,16 @@ const PropertyVerification = () => {
     useEffect(() => {
         fetchProperties();
     }, [filter]);
+
+    // When route has /authority/property/:id, automatically expand and fetch full dossier
+    useEffect(() => {
+        if (!routePropId || properties.length === 0) return;
+        const target = properties.find(p => p.id === routePropId);
+        if (target) {
+            setExpandedProp(target.id);
+            fetchPropertyFullDetails(target);
+        }
+    }, [routePropId, properties]);
 
     const handleCopy = (text, id) => {
         if (!text) return;
@@ -752,16 +763,22 @@ const PropertyVerification = () => {
                                 }}
                             >
                                 {/* Card Primary Header */}
-                                <div style={{
-                                    padding: '1.25rem 1.5rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    flexWrap: 'wrap',
-                                    gap: '1rem',
-                                    borderBottom: isExpanded ? '1px solid #E2E8F0' : 'none',
-                                    backgroundColor: isExpanded ? '#F8FAFC' : '#FFFFFF'
-                                }}>
+                                <div
+                                    onClick={() => navigate(`/authority/property/${prop.id}`)}
+                                    style={{
+                                        padding: '1.25rem 1.5rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        flexWrap: 'wrap',
+                                        gap: '1rem',
+                                        cursor: 'pointer',
+                                        backgroundColor: '#FFFFFF',
+                                        transition: 'background-color 0.15s ease'
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#FFFFFF'; }}
+                                >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '240px' }}>
                                         <div style={{
                                             width: '46px',
@@ -941,24 +958,35 @@ const PropertyVerification = () => {
                                         )}
 
                                         <button
-                                            onClick={() => toggleExpand(prop)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                navigate(`/authority/property/${prop.id}`);
+                                            }}
                                             style={{
                                                 display: 'inline-flex',
                                                 alignItems: 'center',
-                                                gap: '6px',
+                                                gap: '5px',
                                                 padding: '7px 14px',
                                                 borderRadius: '8px',
-                                                backgroundColor: isExpanded ? '#0F172A' : '#FFFFFF',
-                                                border: isExpanded ? '1px solid #0F172A' : '1px solid #CBD5E1',
-                                                color: isExpanded ? '#FFFFFF' : '#334155',
+                                                backgroundColor: '#FFFFFF',
+                                                border: '1px solid #CBD5E1',
+                                                color: '#1E293B',
                                                 fontSize: '0.82rem',
                                                 fontWeight: 700,
                                                 cursor: 'pointer',
                                                 transition: 'all 0.15s ease'
                                             }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.borderColor = '#2563EB';
+                                                e.currentTarget.style.color = '#2563EB';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.borderColor = '#CBD5E1';
+                                                e.currentTarget.style.color = '#1E293B';
+                                            }}
                                         >
-                                            {isExpanded ? 'Close Full Dossier' : 'Inspect Land & History'}
-                                            {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                                            View Property Record
+                                            <ExternalLink size={13} />
                                         </button>
                                     </div>
                                 </div>
@@ -1192,17 +1220,15 @@ const PropertyVerification = () => {
                                                                     <span style={{
                                                                         display: 'inline-flex',
                                                                         alignItems: 'center',
-                                                                        gap: '3px',
                                                                         fontSize: '0.75rem',
                                                                         fontWeight: 800,
                                                                         color: '#047857',
                                                                         backgroundColor: '#ECFDF5',
-                                                                        padding: '2px 7px',
+                                                                        padding: '2px 8px',
                                                                         borderRadius: '6px',
                                                                         border: '1px solid #A7F3D0'
                                                                     }}>
-                                                                        <Percent size={11} />
-                                                                        {co.sharePercentage}
+                                                                        {co.sharePercentage ? (co.sharePercentage.endsWith('%') ? co.sharePercentage : `${co.sharePercentage}%`) : '100%'}
                                                                     </span>
                                                                 </div>
 
@@ -1296,7 +1322,7 @@ const PropertyVerification = () => {
                                                         <div style={{ gridColumn: 'span 2' }}>
                                                             <div style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>NFT Title Token ID</div>
                                                             <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#2563EB', fontFamily: 'monospace' }}>
-                                                                Token #{prop.nftTokenId} on Ethereum Sepolia Subnet
+                                                                Token #{prop.nftTokenId} on Ethereum Sepolia Network
                                                             </div>
                                                         </div>
                                                     )}

@@ -56,7 +56,7 @@ const Sidebar = () => {
     const getBreadcrumbInfo = () => {
         const path = location.pathname;
         if (path === '/dashboard') return { category: 'Portal', title: 'Dashboard' };
-        if (path === '/profile') return { category: 'Account', title: 'Profile & Verification' };
+        if (path === '/profile') return { category: 'Account', title: 'Profile' };
         if (path === '/my-properties') return { category: 'Properties', title: 'My Properties' };
         if (path === '/register-property') return { category: 'Properties', title: 'Add Property' };
         if (path === '/search-property') return { category: 'Registry', title: 'Search Properties' };
@@ -110,13 +110,12 @@ const Sidebar = () => {
                 {/* Top Institutional Bar / Emblem */}
                 <div className="user-topbar">
                     <div className={`user-logo-box ${isCollapsed ? 'collapsed' : ''}`}>
-                        <div className="gov-emblem-badge">
-                            <ShieldCheck size={20} className="emblem-icon" />
+                        <div className="gov-emblem-badge" style={{ padding: 0, overflow: 'hidden' }}>
+                            <img src="/logo.png" alt="DigiVerify Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                         <div className="user-logo-text">
                             <div className="title-row">
                                 <span className="title">Digi<span className="accent">Verify</span></span>
-                                <span className="gov-tag">GOV</span>
                             </div>
                             <span className="subtitle">Secure Land Registry Portal</span>
                         </div>
@@ -145,7 +144,7 @@ const Sidebar = () => {
                     <NavSection title="Account & Identity" divider={true}>
                         <NavItem
                             icon={UserIcon}
-                            label="Profile & Verification"
+                            label="Profile"
                             active={isPathActive('/profile')}
                             onClick={() => navigate('/profile')}
                         />

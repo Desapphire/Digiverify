@@ -111,7 +111,7 @@ const Notifications = () => {
                 return {
                     icon: ShieldCheck, color: '#059669', bg: '#ECFDF5', border: '#A7F3D0',
                     title: 'Sale Approved by Authority',
-                    description: `Transaction ${entity_id || 'N/A'} received official government approval.`,
+                    description: `Transaction ${entity_id || 'N/A'} received official protocol approval.`,
                 };
             case 'SALE_COMPLETED':
                 return {

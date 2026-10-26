@@ -705,7 +705,7 @@ const WalletSearch = () => {
                                     {result.user.birthdate && (
                                         <DetailItem
                                             label="Date of Birth & Age"
-                                            value={`${new Date(result.user.birthdate).toLocaleDateString()} (${Math.floor((new Date() - new Date(result.user.birthdate)) / (365.25 * 24 * 60 * 60 * 1000))} years)`}
+                                            value={`${new Date(result.user.birthdate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })} (${Math.floor((new Date() - new Date(result.user.birthdate)) / (365.25 * 24 * 60 * 60 * 1000))} years)`}
                                         />
                                     )}
 

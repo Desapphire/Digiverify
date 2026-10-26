@@ -8,9 +8,12 @@ const path = require('path');
 const { pool } = require('../config/db');
 const AppError = require('../utils/AppError');
 
+const fs = require('fs');
+
 const MODEL_DIR = path.resolve(__dirname, '../../model');
 const SCRIPT_PATH = path.join(MODEL_DIR, 'score_api.py');
-const PYTHON_CMD = process.env.PYTHON_PATH || 'python';
+const VENV_PYTHON = path.join(MODEL_DIR, 'venv/bin/python');
+const PYTHON_CMD = process.env.PYTHON_PATH || (fs.existsSync(VENV_PYTHON) ? VENV_PYTHON : 'python');
 
 /**
  * Execute the Python scoring engine with a JSON payload.
@@ -192,11 +195,16 @@ const assessSaleTransaction = async (saleId) => {
 
 /**
  * Predict fair price and price risk for a registered property.
+ * Checks for a cached evaluation within the cacheTTL (default: 60 minutes).
+ * If no valid cache exists or forceRefresh is true, runs the ML model and caches the result.
+ * 
  * @param {string} propertyId 
  * @param {number} [proposedPrice]
+ * @param {boolean} [forceRefresh=false]
+ * @param {number} [cacheTtlMinutes=60]
  * @returns {Promise<Object>}
  */
-const assessPropertyValuation = async (propertyId, proposedPrice = null) => {
+const assessPropertyValuation = async (propertyId, proposedPrice = null, forceRefresh = false, cacheTtlMinutes = 60) => {
     const propRes = await pool.query(
         `SELECT * FROM properties WHERE id = $1 LIMIT 1`,
         [propertyId]
@@ -207,6 +215,39 @@ const assessPropertyValuation = async (propertyId, proposedPrice = null) => {
     }
 
     const prop = propRes.rows[0];
+
+    // Check recent cached evaluation from property_risk_evaluations if not forcing refresh
+    if (!forceRefresh) {
+        try {
+            const cacheRes = await pool.query(
+                `SELECT * FROM property_risk_evaluations 
+                 WHERE property_id = $1 
+                   AND calculated_at > NOW() - ($2 || ' minutes')::INTERVAL
+                 ORDER BY calculated_at DESC 
+                 LIMIT 1`,
+                [propertyId, cacheTtlMinutes]
+            );
+
+            if (cacheRes.rows.length > 0) {
+                const cached = cacheRes.rows[0];
+                return {
+                    propertyId: prop.id,
+                    propertyCode: prop.property_code,
+                    surveyNumber: prop.survey_number,
+                    district: prop.district,
+                    areaSqft: prop.area_sqft,
+                    fairPriceEstimated: parseFloat(cached.fair_price_estimated),
+                    priceRisk: cached.full_analysis?.price_risk || null,
+                    fullRiskAnalysis: cached.full_analysis,
+                    isCached: true,
+                    calculatedAt: cached.calculated_at,
+                };
+            }
+        } catch (cacheErr) {
+            console.warn('⚠️ Error reading property_risk_evaluations cache:', cacheErr.message);
+        }
+    }
+
     const price = proposedPrice ? parseFloat(proposedPrice) : 5000000;
 
     let bhk = '3 BHK';
@@ -231,7 +272,27 @@ const assessPropertyValuation = async (propertyId, proposedPrice = null) => {
 
     const riskReport = await runModelScoring(payload);
 
-    // Persist estimated fair price into database
+    // Save evaluation to database table
+    try {
+        await pool.query(
+            `INSERT INTO property_risk_evaluations 
+             (property_id, overall_score, risk_level, recommended_action, fair_price_estimated, price_deviation, full_analysis, calculated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+            [
+                prop.id,
+                riskReport.overall_score || 0,
+                riskReport.risk_level || 'Low',
+                riskReport.action || 'Allow with standard monitoring',
+                riskReport.price_risk?.fair_price || null,
+                riskReport.price_risk?.deviation || null,
+                JSON.stringify(riskReport)
+            ]
+        );
+    } catch (insertErr) {
+        console.warn('⚠️ Could not insert into property_risk_evaluations:', insertErr.message);
+    }
+
+    // Update estimated_fair_price on the property row
     if (riskReport?.price_risk?.fair_price) {
         try {
             await pool.query(
@@ -252,7 +313,67 @@ const assessPropertyValuation = async (propertyId, proposedPrice = null) => {
         fairPriceEstimated: riskReport.price_risk.fair_price,
         priceRisk: riskReport.price_risk,
         fullRiskAnalysis: riskReport,
+        isCached: false,
+        calculatedAt: new Date().toISOString(),
     };
+};
+
+/**
+ * Background batch job: Recalculates ML risk evaluations for all approved properties every 60 minutes.
+ */
+const runBatchPropertyRiskCalculations = async () => {
+    try {
+        const propsRes = await pool.query(
+            `SELECT p.id, p.property_code 
+             FROM properties p
+             LEFT JOIN LATERAL (
+                 SELECT calculated_at 
+                 FROM property_risk_evaluations 
+                 WHERE property_id = p.id 
+                 ORDER BY calculated_at DESC 
+                 LIMIT 1
+             ) r ON true
+             WHERE r.calculated_at IS NULL 
+                OR r.calculated_at <= NOW() - INTERVAL '60 minutes'`
+        );
+
+        if (propsRes.rows.length === 0) {
+            return;
+        }
+
+        console.log(`🤖 [Auto-ML] Running scheduled 60-min risk evaluations for ${propsRes.rows.length} properties...`);
+        for (const row of propsRes.rows) {
+            try {
+                await assessPropertyValuation(row.id, null, true);
+            } catch (pErr) {
+                console.warn(`⚠️ [Auto-ML] Failed evaluation for property ${row.property_code}:`, pErr.message);
+            }
+        }
+        console.log(`🤖 [Auto-ML] Completed scheduled 60-min risk evaluations.`);
+    } catch (err) {
+        console.error('❌ [Auto-ML] Error running batch property evaluations:', err.message);
+    }
+};
+
+/**
+ * Start the recurring 60-minute ML cron/interval.
+ */
+let autoMlInterval = null;
+const startAutoMlScheduler = () => {
+    if (autoMlInterval) return;
+
+    // Run an initial batch calculation 10 seconds after server startup
+    setTimeout(() => {
+        runBatchPropertyRiskCalculations();
+    }, 10000);
+
+    // Schedule every 60 minutes (3,600,000 ms)
+    const SIXTY_MINUTES_MS = 60 * 60 * 1000;
+    autoMlInterval = setInterval(() => {
+        runBatchPropertyRiskCalculations();
+    }, SIXTY_MINUTES_MS);
+
+    console.log(' Scheduled Auto-ML Property Risk calculation active (interval: 60 minutes).');
 };
 
 /**
@@ -269,4 +390,6 @@ module.exports = {
     assessSaleTransaction,
     assessPropertyValuation,
     assessCustomRisk,
+    startAutoMlScheduler,
+    runBatchPropertyRiskCalculations,
 };

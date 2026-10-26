@@ -101,8 +101,8 @@ const AdminSidebar = () => {
                 {/* Logo */}
                 <div className="admin-topbar">
                     <div className={`admin-logo-box ${isCollapsed ? 'collapsed' : ''}`}>
-                        <div className="admin-logo-icon">
-                            <Shield size={20} color="#FFFFFF" />
+                        <div className="admin-logo-icon" style={{ padding: 0, overflow: 'hidden' }}>
+                            <img src="/logo.png" alt="DigiVerify Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                         {!isCollapsed && (
                             <div className="admin-logo-text">

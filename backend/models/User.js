@@ -78,17 +78,19 @@ const findAll = async (limit = 50, offset = 0) => {
 const create = async ({
     walletAddress, name, email, password, phone, governmentIdHash, governmentIdType,
     houseNumber, locality, city, pinCode, state, country, role, authNonce, birthdate,
+    faceIdHash, faceVerified,
 }) => {
     const id = crypto.randomUUID();
     const normalizedWallet = walletAddress ? walletAddress.toLowerCase() : null;
+    const isFaceVerified = faceVerified !== undefined ? faceVerified : !!faceIdHash;
     const result = await pool.query(
         `INSERT INTO users (id, wallet_address, name, email, password, phone, government_id_hash, government_id_type,
-         house_number, locality, city, pin_code, state, country, role, auth_nonce, birthdate)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+         house_number, locality, city, pin_code, state, country, role, auth_nonce, birthdate, face_id_hash, face_verified)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
      RETURNING *`,
         [id, normalizedWallet, name, email, password || null, phone || null, governmentIdHash || null, governmentIdType || null,
          houseNumber || null, locality || null, city || null, pinCode || null, state || null, country || null,
-         role || 'user', authNonce || null, birthdate || null]
+         role || 'user', authNonce || null, birthdate || null, faceIdHash || null, isFaceVerified]
     );
     return mapUser(result.rows[0]);
 };

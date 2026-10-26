@@ -386,20 +386,22 @@ const KYCApproval = () => {
                                     transition: 'all 0.2s ease'
                                 }}
                             >
-                                {/* Collapsed Row Summary */}
+                                {/* Clickable Row */}
                                 <div
-                                    onClick={() => setExpandedUser(isExpanded ? null : u.id)}
+                                    onClick={() => navigate(`/authority/kyc/${u.id}`)}
                                     style={{
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'space-between',
                                         padding: '1.1rem 1.25rem',
                                         cursor: 'pointer',
-                                        backgroundColor: isExpanded ? '#F8FAFC' : '#FFFFFF',
-                                        borderBottom: isExpanded ? '1px solid #E2E8F0' : 'none',
+                                        backgroundColor: '#FFFFFF',
                                         flexWrap: 'wrap',
-                                        gap: '1rem'
+                                        gap: '1rem',
+                                        transition: 'background-color 0.15s ease'
                                     }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#FFFFFF'; }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                                         {/* Avatar Icon */}
@@ -554,289 +556,38 @@ const KYCApproval = () => {
                                         )}
 
                                         <button
-                                            onClick={() => setExpandedUser(isExpanded ? null : u.id)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                navigate(`/authority/kyc/${u.id}`);
+                                            }}
                                             style={{
-                                                padding: '6px 10px',
+                                                padding: '6px 12px',
                                                 borderRadius: '6px',
                                                 backgroundColor: '#FFFFFF',
                                                 border: '1px solid #CBD5E1',
-                                                color: '#475569',
+                                                color: '#1E293B',
                                                 fontSize: '0.78rem',
-                                                fontWeight: 600,
+                                                fontWeight: 700,
                                                 cursor: 'pointer',
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                gap: '4px'
+                                                gap: '5px',
+                                                transition: 'all 0.15s ease'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.borderColor = '#2563EB';
+                                                e.currentTarget.style.color = '#2563EB';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.borderColor = '#CBD5E1';
+                                                e.currentTarget.style.color = '#1E293B';
                                             }}
                                         >
-                                            {isExpanded ? (
-                                                <>Hide Details <ChevronUp size={14} /></>
-                                            ) : (
-                                                <>View Details <ChevronDown size={14} /></>
-                                            )}
+                                            View Citizen Record
+                                            <ExternalLink size={13} />
                                         </button>
                                     </div>
                                 </div>
-
-                                {/* Detailed Inspection Expanded Pane */}
-                                {isExpanded && (
-                                    <div style={{ padding: '1.5rem', backgroundColor: '#FFFFFF' }}>
-                                        {/* Officer Remarks if present */}
-                                        {u.adminComments && (
-                                            <div style={{
-                                                marginBottom: '1.25rem',
-                                                padding: '0.875rem 1rem',
-                                                backgroundColor: '#EFF6FF',
-                                                border: '1px solid #BFDBFE',
-                                                borderRadius: '8px',
-                                                display: 'flex',
-                                                alignItems: 'flex-start',
-                                                gap: '10px'
-                                            }}>
-                                                <AlertCircle size={18} style={{ color: '#1D4ED8', marginTop: '2px', flexShrink: 0 }} />
-                                                <div>
-                                                    <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#1D4ED8', display: 'block' }}>
-                                                        Officer Notes:
-                                                    </span>
-                                                    <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: '#1E293B', fontWeight: 500 }}>
-                                                        {u.adminComments}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Section 1: Core Citizen Personal Details */}
-                                        <div style={{
-                                            backgroundColor: '#F8FAFC',
-                                            border: '1px solid #E2E8F0',
-                                            borderRadius: '10px',
-                                            padding: '1.15rem',
-                                            marginBottom: '1.25rem'
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.85rem', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.5rem' }}>
-                                                <User size={16} style={{ color: '#1E3A8A' }} />
-                                                <h4 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0F172A', margin: 0 }}>
-                                                    1. Personal Details
-                                                </h4>
-                                            </div>
-
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                                                <DetailField label="Full Name" value={u.name || '—'} />
-                                                <DetailField label="Email Address" value={u.email || '—'} />
-                                                <DetailField label="Phone Number" value={u.phone || '—'} />
-                                                <div>
-                                                    <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', margin: '0 0 4px 0' }}>
-                                                        Date of Birth
-                                                    </p>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0F172A' }}>
-                                                            {u.birthdate ? new Date(u.birthdate).toLocaleDateString() : '—'}
-                                                        </span>
-                                                        {u.birthdate && (
-                                                            <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', backgroundColor: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }}>
-                                                                Age Verified ({Math.floor((new Date() - new Date(u.birthdate)) / (365.25 * 24 * 60 * 60 * 1000))} yrs)
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <DetailField label="Role" value={u.role?.toUpperCase() || 'USER'} />
-                                                <DetailField label="Status" value={u.kycStatus?.toUpperCase() || 'PENDING'} />
-                                                <DetailField label="Account" value={u.isActive !== false ? 'Active' : 'Suspended'} />
-                                                <DetailField label="Registered Date" value={u.createdAt ? new Date(u.createdAt).toLocaleString() : '—'} />
-                                            </div>
-                                        </div>
-
-                                        {/* Section 2: ID Document & Verification Details */}
-                                        <div style={{
-                                            backgroundColor: '#F8FAFC',
-                                            border: '1px solid #E2E8F0',
-                                            borderRadius: '10px',
-                                            padding: '1.15rem',
-                                            marginBottom: '1.25rem'
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.85rem', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.5rem' }}>
-                                                <Shield size={16} style={{ color: '#D97706' }} />
-                                                <h4 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0F172A', margin: 0 }}>
-                                                    2. ID Documents
-                                                </h4>
-                                            </div>
-
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-                                                <DetailField label="Document Type" value={u.governmentIdType || 'Aadhaar Card'} />
-                                                <DetailField
-                                                    label="ID Number"
-                                                    value={u.governmentId || 'Not Provided'}
-                                                    mono
-                                                    copyable={!!u.governmentId}
-                                                    onCopy={() => handleCopyText(u.governmentId, `idnum-${u.id}`)}
-                                                    isCopied={copiedId === `idnum-${u.id}`}
-                                                />
-                                                {u.governmentIdHash && (
-                                                    <DetailField
-                                                        label="Digital ID Record"
-                                                        value={u.governmentIdHash}
-                                                        mono
-                                                        copyable
-                                                        onCopy={() => handleCopyText(u.governmentIdHash, `gid-${u.id}`)}
-                                                        isCopied={copiedId === `gid-${u.id}`}
-                                                    />
-                                                )}
-                                                {u.kycDocumentHash && (
-                                                    <div>
-                                                        <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', margin: '0 0 4px 0' }}>
-                                                            Identity Document
-                                                        </p>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                                            <code style={{ fontSize: '0.78rem', backgroundColor: '#FFFFFF', padding: '2px 6px', borderRadius: '4px', border: '1px solid #CBD5E1', color: '#0F172A' }}>
-                                                                {u.kycDocumentHash}
-                                                            </code>
-                                                            <button
-                                                                onClick={() => handleCopyText(u.kycDocumentHash, `ipfs-${u.id}`)}
-                                                                style={{ background: '#FFFFFF', border: '1px solid #CBD5E1', color: copiedId === `ipfs-${u.id}` ? '#047857' : '#2563EB', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
-                                                            >
-                                                                {copiedId === `ipfs-${u.id}` ? <CheckCircle2 size={11} /> : <Copy size={11} />}
-                                                            </button>
-                                                            <a
-                                                                href={`https://gateway.pinata.cloud/ipfs/${u.kycDocumentHash}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                style={{ color: '#2563EB', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '3px', textDecoration: 'none', fontWeight: 600 }}
-                                                            >
-                                                                View Document <ExternalLink size={11} />
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Section 3: Home Address */}
-                                        <div style={{
-                                            backgroundColor: '#F8FAFC',
-                                            border: '1px solid #E2E8F0',
-                                            borderRadius: '10px',
-                                            padding: '1.15rem',
-                                            marginBottom: '1.25rem'
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.85rem', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.5rem' }}>
-                                                <MapPin size={16} style={{ color: '#047857' }} />
-                                                <h4 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0F172A', margin: 0 }}>
-                                                    3. Home Address
-                                                </h4>
-                                            </div>
-
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
-                                                <DetailField label="Address Line" value={u.houseNumber || '—'} />
-                                                <DetailField label="Area / Locality" value={u.locality || '—'} />
-                                                <DetailField label="City" value={u.city || '—'} />
-                                                <DetailField label="PIN Code" value={u.pinCode || '—'} mono />
-                                                <DetailField label="State" value={u.state || '—'} />
-                                                <DetailField label="Country" value={u.country || 'India'} />
-                                                <div style={{ gridColumn: '1 / -1' }}>
-                                                    <DetailField
-                                                        label="Full Address"
-                                                        value={[u.houseNumber, u.locality, u.city, u.pinCode ? `PIN: ${u.pinCode}` : '', u.state, u.country].filter(Boolean).join(', ') || 'Not Provided'}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Section 4: Photo & Face Verification */}
-                                        <div style={{
-                                            backgroundColor: '#F0FDF4',
-                                            border: '1px solid #BBF7D0',
-                                            borderRadius: '10px',
-                                            padding: '1.15rem',
-                                            marginBottom: '1.25rem'
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '8px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <Camera size={18} style={{ color: '#047857' }} />
-                                                    <h4 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0F172A', margin: 0 }}>
-                                                        4. Photo & Face Match
-                                                    </h4>
-                                                </div>
-                                                <span style={{
-                                                    fontSize: '0.72rem',
-                                                    fontWeight: 700,
-                                                    padding: '3px 10px',
-                                                    borderRadius: '9999px',
-                                                    backgroundColor: u.faceVerified || u.faceIdHash ? '#DCFCE7' : '#FEF3C7',
-                                                    color: u.faceVerified || u.faceIdHash ? '#15803D' : '#B45309',
-                                                    border: `1px solid ${u.faceVerified || u.faceIdHash ? '#86EFAC' : '#FDE68A'}`
-                                                }}>
-                                                    {u.faceVerified || u.faceIdHash ? 'Photo Matched' : 'Photo Pending'}
-                                                </span>
-                                            </div>
-
-                                            <div style={{ backgroundColor: '#FFFFFF', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                                                    <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#64748B', fontWeight: 700 }}>
-                                                        Photo Match ID
-                                                    </span>
-                                                    {u.faceIdHash && (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleCopyText(u.faceIdHash, `face-${u.id}`);
-                                                            }}
-                                                            style={{ background: 'transparent', border: '1px solid #CBD5E1', color: copiedId === `face-${u.id}` ? '#047857' : '#2563EB', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                                        >
-                                                            {copiedId === `face-${u.id}` ? <><CheckCircle2 size={11} /> Copied</> : <><Copy size={11} /> Copy ID</>}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                <code style={{ fontSize: '0.8rem', color: u.faceIdHash ? '#0F172A' : '#94A3B8', wordBreak: 'break-all', display: 'block', fontFamily: 'monospace' }}>
-                                                    {u.faceIdHash || 'No photo match record for this citizen.'}
-                                                </code>
-                                            </div>
-                                        </div>
-
-                                        {/* Section 5: Account & Wallet Details */}
-                                        <div style={{
-                                            backgroundColor: '#F8FAFC',
-                                            border: '1px solid #E2E8F0',
-                                            borderRadius: '10px',
-                                            padding: '1.15rem'
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.85rem', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.5rem' }}>
-                                                <Wallet size={16} style={{ color: '#7C3AED' }} />
-                                                <h4 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0F172A', margin: 0 }}>
-                                                    5. Account Details
-                                                </h4>
-                                            </div>
-
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-                                                <DetailField
-                                                    label="Citizen ID"
-                                                    value={u.id}
-                                                    mono
-                                                    copyable
-                                                    onCopy={() => handleCopyText(u.id, `id-${u.id}`)}
-                                                    isCopied={copiedId === `id-${u.id}`}
-                                                />
-                                                <DetailField
-                                                    label="Account Address"
-                                                    value={u.walletAddress || 'Not Connected'}
-                                                    mono
-                                                    copyable={!!u.walletAddress}
-                                                    onCopy={() => handleCopyText(u.walletAddress, `wallet-${u.id}`)}
-                                                    isCopied={copiedId === `wallet-${u.id}`}
-                                                />
-                                                {u.authNonce && (
-                                                    <DetailField
-                                                        label="Security Token"
-                                                        value={u.authNonce}
-                                                        mono
-                                                        copyable
-                                                        onCopy={() => handleCopyText(u.authNonce, `nonce-${u.id}`)}
-                                                        isCopied={copiedId === `nonce-${u.id}`}
-                                                    />
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         );
                     })}

@@ -7,12 +7,12 @@ const { submitKyc, getProfile, updateProfile, bindFaceId, getMyNotifications, re
 const { requestRecovery, getMyRecoveries } = require('../controllers/walletRecoveryController');
 const authenticate = require('../middlewares/authenticate');
 const validate = require('../middlewares/validate');
-const { updateKycSchema, updateProfileSchema, requestRecoverySchema, bindFaceIdSchema } = require('../utils/validators');
+const { updateKycSchema, updateProfileSchema, requestRecoverySchema, bindFaceIdSchema, reKycSchema } = require('../utils/validators');
 
 router.get('/profile', authenticate, getProfile);
 router.put('/profile', authenticate, validate(updateProfileSchema), updateProfile);
 router.post('/kyc', authenticate, validate(updateKycSchema), submitKyc);
-router.post('/rekyc', authenticate, reKyc);
+router.post('/rekyc', authenticate, validate(reKycSchema), reKyc);
 router.put('/face-id', authenticate, validate(bindFaceIdSchema), bindFaceId);
 
 // Notifications

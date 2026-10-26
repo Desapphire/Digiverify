@@ -98,7 +98,7 @@ const FundBlockConfirmation = () => {
         if (filter === 'pending') {
             if (fb.bankConfirmed || fb.status === 'released' || fb.status === 'failed') return false;
         } else if (filter === 'confirmed') {
-            if (!fb.bankConfirmed) return false;
+            if (!fb.bankConfirmed || fb.status === 'released') return false;
         } else if (filter === 'released') {
             if (fb.status !== 'released') return false;
         }
@@ -114,11 +114,11 @@ const FundBlockConfirmation = () => {
     });
 
     const totalBlockedSum = normalizedBlocks
-        .filter(b => b.status === 'blocked' || b.bankConfirmed)
+        .filter(b => b.status === 'blocked' && b.status !== 'released')
         .reduce((sum, b) => sum + b.blockAmount, 0);
 
     const pendingConfirmationCount = normalizedBlocks.filter(b => !b.bankConfirmed && b.status !== 'released').length;
-    const confirmedCount = normalizedBlocks.filter(b => b.bankConfirmed).length;
+    const confirmedCount = normalizedBlocks.filter(b => b.bankConfirmed && b.status !== 'released').length;
     const releasedCount = normalizedBlocks.filter(b => b.status === 'released').length;
 
     const FILTERS = [
