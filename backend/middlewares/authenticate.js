@@ -20,7 +20,8 @@ const authenticate = (req, res, next) => {
         const decoded = jwt.verify(token, env.JWT.secret);
         req.user = {
             id: decoded.id,
-            walletAddress: decoded.walletAddress,
+            walletAddress: decoded.walletAddress || decoded.wallet_address,
+            wallet_address: decoded.wallet_address || decoded.walletAddress,
             role: decoded.role,
             email: decoded.email,
         };

@@ -7,7 +7,11 @@ const router = express.Router();
 const {
     verifyFace,
     livenessCheck,
+    identifyCitizenByFace,
 } = require('../controllers/biometricController');
+const authenticate = require('../middlewares/authenticate');
+const authorize = require('../middlewares/authorize');
+const { ROLES } = require('../config/constants');
 
 // Optional authentication middleware so both guests (onboarding) and logged-in users can verify
 const jwt = require('jsonwebtoken');
@@ -35,5 +39,13 @@ const { biometricLimiter } = require('../middlewares/rateLimiter');
 
 router.post('/verify-face', biometricLimiter, optionalAuth, verifyFace);
 router.post('/liveness-check', biometricLimiter, livenessCheck);
+
+// Authority Officer Biometric Citizen Identification
+router.post(
+    '/identify-face',
+    authenticate,
+    authorize(ROLES.AUTHORITY, ROLES.SUPER_ADMIN),
+    identifyCitizenByFace
+);
 
 module.exports = router;

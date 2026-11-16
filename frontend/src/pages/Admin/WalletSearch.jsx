@@ -7,7 +7,8 @@ import {
     ArrowRight, MapPin, Ruler, ScrollText, AlertCircle,
     Copy, CheckCircle2, Phone, Shield, FileText, ExternalLink,
     Fingerprint, Sparkles, UserCheck, AlertTriangle, Printer,
-    RefreshCcw, ChevronRight, Eye, Calendar, Award, Check
+    RefreshCcw, ChevronRight, Eye, Calendar, Award, Check,
+    ScanFace
 } from 'lucide-react';
 
 const WalletSearch = () => {
@@ -158,6 +159,25 @@ const WalletSearch = () => {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                        onClick={() => navigate('/authority/face-scan')}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '8px 14px',
+                            backgroundColor: '#EFF6FF',
+                            border: '1px solid #BFDBFE',
+                            borderRadius: '8px',
+                            color: '#1D4ED8',
+                            fontSize: '0.82rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                        }}
+                    >
+                        <ScanFace size={15} />
+                        Biometric Face Scan
+                    </button>
                     <button
                         onClick={() => window.print()}
                         style={{

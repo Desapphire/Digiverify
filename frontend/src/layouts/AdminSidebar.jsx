@@ -22,7 +22,9 @@ import {
     ShieldAlert,
     Receipt,
     Gavel,
-    Cpu
+    Cpu,
+    Scale,
+    ScanFace
 } from 'lucide-react';
 
 const AdminSidebar = () => {
@@ -49,9 +51,12 @@ const AdminSidebar = () => {
         if (path.startsWith('/authority/wallet-recovery')) return 'Account Recovery';
         if (path.startsWith('/authority/risk-monitor')) return 'AI Fraud & Risk Monitor';
         if (path.startsWith('/authority/search')) return 'Search Citizens';
+        if (path.startsWith('/authority/face-scan')) return 'Biometric Face ID Citizen Scan';
         if (path.startsWith('/authority/investigation')) return 'Property Investigation';
         if (path.startsWith('/authority/revenue')) return 'Stamp Duty & Revenue Analytics';
         if (path.startsWith('/authority/disputes')) return 'Legal Disputes & Court Cases';
+        if (path.startsWith('/authority/succession')) return 'Legal Heir Succession Review';
+        if (path.startsWith('/authority/tax-vault')) return 'Municipal Tax Ledger & NOC Vault';
         if (path.startsWith('/authority/blockchain-health')) return 'Blockchain & System Infrastructure';
         if (path.startsWith('/authority/logs')) return 'Activity Logs';
         return 'Officer Portal';
@@ -180,6 +185,18 @@ const AdminSidebar = () => {
                             onClick={() => navigate('/authority/disputes')}
                         />
                         <NavItem
+                            icon={Scale}
+                            label="Succession Claims"
+                            active={isPathStartsWith('/authority/succession')}
+                            onClick={() => navigate('/authority/succession')}
+                        />
+                        <NavItem
+                            icon={Landmark}
+                            label="Municipal Tax Vault"
+                            active={isPathStartsWith('/authority/tax-vault')}
+                            onClick={() => navigate('/authority/tax-vault')}
+                        />
+                        <NavItem
                             icon={ShieldAlert}
                             label="Risk Monitor"
                             active={isPathStartsWith('/authority/risk-monitor')}
@@ -189,6 +206,13 @@ const AdminSidebar = () => {
                     </NavSection>
 
                     <NavSection title="Search & Records" divider={true}>
+                        <NavItem
+                            icon={ScanFace}
+                            label="Biometric Face ID"
+                            active={isPathActive('/authority/face-scan')}
+                            onClick={() => navigate('/authority/face-scan')}
+                            badge="AI"
+                        />
                         <NavItem
                             icon={Search}
                             label="Find Citizen"

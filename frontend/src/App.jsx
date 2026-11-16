@@ -20,6 +20,8 @@ import WalletRecovery from './pages/Dashboard/WalletRecovery';
 import Transactions from './pages/Dashboard/Transactions';
 import ReapplyKYC from './pages/Dashboard/ReapplyKYC';
 import ReapplyProperty from './pages/Dashboard/ReapplyProperty';
+import SuccessionClaim from './pages/Dashboard/SuccessionClaim';
+import PropertyTaxVault from './pages/Dashboard/PropertyTaxVault';
 import Sidebar from './layouts/Sidebar';
 import AdminSidebar from './layouts/AdminSidebar';
 //Authority Admin Routes 
@@ -41,6 +43,9 @@ import RiskMonitor from './pages/Admin/RiskMonitor';
 import RevenueAnalytics from './pages/Admin/RevenueAnalytics';
 import DisputeCenter from './pages/Admin/DisputeCenter';
 import BlockchainHealth from './pages/Admin/BlockchainHealth';
+import SuccessionApproval from './pages/Admin/SuccessionApproval';
+import TaxVaultManagement from './pages/Admin/TaxVaultManagement';
+import FaceScanLookup from './pages/Admin/FaceScanLookup';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -107,6 +112,8 @@ function App() {
               <Route path="/reapply-property/:id" element={<ReapplyProperty />} />
               <Route path="/properties/:id/reapply" element={<ReapplyProperty />} />
               <Route path="/transactions" element={<Transactions />} />
+              <Route path="/succession" element={<SuccessionClaim />} />
+              <Route path="/tax-vault" element={<PropertyTaxVault />} />
             </Route>
 
             {/* Authority Admin Routes — separate AdminSidebar layout */}
@@ -129,9 +136,12 @@ function App() {
               <Route path="/authority/investigation/:id" element={<PropertyInvestigation />} />
               <Route path="/authority/risk-monitor" element={<RiskMonitor />} />
               <Route path="/authority/search" element={<WalletSearch />} />
+              <Route path="/authority/face-scan" element={<FaceScanLookup />} />
               <Route path="/authority/revenue" element={<RevenueAnalytics />} />
               <Route path="/authority/disputes" element={<DisputeCenter />} />
               <Route path="/authority/blockchain-health" element={<BlockchainHealth />} />
+              <Route path="/authority/succession" element={<SuccessionApproval />} />
+              <Route path="/authority/tax-vault" element={<TaxVaultManagement />} />
               <Route path="/authority/logs" element={<SystemLogs />} />
             </Route>
           </Routes>

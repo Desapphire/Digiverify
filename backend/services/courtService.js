@@ -124,6 +124,21 @@ const forceTransfer = async ({ propertyId, newOwnerWallet, courtOrderHash, reaso
         // 1. Blockchain: Judicial Force Transfer on-chain
         if (property.nftTokenId) {
             try {
+                const { getContracts } = require('../blockchain/contracts');
+                const { landNFT } = getContracts();
+                const isFrozen = await landNFT.isFrozen(property.nftTokenId).catch(() => false);
+
+                // If currently frozen, unfreeze first so the smart contract transfer won't revert
+                if (isFrozen) {
+                    console.log(`Unfreezing NFT Token ${property.nftTokenId} to execute judicial transfer...`);
+                    const { getSigner } = require('../config/blockchain');
+                    const signer = getSigner();
+                    if (signer) {
+                        const unfreezeTx = await landNFT.connect(signer).unfreezeProperty(property.nftTokenId);
+                        await unfreezeTx.wait();
+                    }
+                }
+
                 await contractService.courtReverseTransfer(
                     property.nftTokenId,
                     newOwnerWallet,

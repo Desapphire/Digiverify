@@ -24,7 +24,9 @@ import {
     Globe,
     ChevronRight,
     ShieldCheck,
-    ExternalLink
+    ExternalLink,
+    Scale,
+    Landmark
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -68,6 +70,8 @@ const Sidebar = () => {
         if (path.includes('/fund-block')) return { category: 'Payments', title: 'Locked Payments' };
         if (path === '/notifications') return { category: 'Updates', title: 'Notifications' };
         if (path === '/wallet-recovery') return { category: 'Security', title: 'Wallet Recovery' };
+        if (path === '/succession') return { category: 'Succession', title: 'Legal Heir Succession Claims' };
+        if (path === '/tax-vault') return { category: 'Municipal Tax', title: 'Property Tax & NOC Vault' };
         if (path === '/reapply-kyc' || path === '/kyc/reapply') return { category: 'Account', title: 'Reapply Identity Verification (KYC)' };
         return { category: 'Portal', title: 'Services' };
     };
@@ -183,6 +187,21 @@ const Sidebar = () => {
                             label="Sell Property"
                             active={isPathActive('/sale')}
                             onClick={() => navigate('/sale')}
+                        />
+                    </NavSection>
+
+                    <NavSection title="Succession & Taxes" divider={true}>
+                        <NavItem
+                            icon={Scale}
+                            label="Succession Claims"
+                            active={isPathActive('/succession')}
+                            onClick={() => navigate('/succession')}
+                        />
+                        <NavItem
+                            icon={Landmark}
+                            label="Property Tax Vault"
+                            active={isPathActive('/tax-vault')}
+                            onClick={() => navigate('/tax-vault')}
                         />
                     </NavSection>
 

@@ -5,6 +5,7 @@ export const adminService = {
     listUsers: (kycStatus) => api.get('/admin/users', { params: { kycStatus } }),
     getUserById: (id) => api.get(`/admin/users/${id}`),
     listProperties: (status) => api.get('/admin/properties', { params: { status } }),
+    listRiskEvaluations: () => api.get('/admin/risk/evaluations'),
     listSales: () => api.get('/admin/sales'),
     getPendingFundBlocks: () => api.get('/admin/fund-blocks/pending'),
     lookupWallet: (address) => api.get(`/admin/wallet/${address}`),
@@ -59,9 +60,13 @@ export const adminService = {
     releaseFunds: (blockId) => api.put(`/admin/bank/fund-block/${blockId}/release`),
 
     // Court Document Upload — returns IPFS hash via existing /api/ipfs/upload
+    // Court Document Upload — returns IPFS hash via existing /api/ipfs/upload
     uploadCourtDocument: (file) => {
         const form = new FormData();
         form.append('file', file);
         return api.post('/ipfs/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
     },
+
+    // Biometric Face Identification
+    identifyCitizenByFace: (data) => api.post('/biometric/identify-face', data),
 };

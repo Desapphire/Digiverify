@@ -34,6 +34,8 @@ const adminRoutes = require('./routes/adminRoutes');
 const ipfsRoutes = require('./routes/ipfsRoutes');
 const mlRiskRoutes = require('./routes/mlRiskRoutes');
 const biometricRoutes = require('./routes/biometricRoutes');
+const successionRoutes = require('./routes/successionRoutes');
+const taxRoutes = require('./routes/taxRoutes');
 
 // ── Bootstrap ───────────────────────────────────────────
 const app = express();
@@ -78,6 +80,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/ipfs', ipfsRoutes);
 app.use('/api/risk', mlRiskRoutes);
 app.use('/api/biometric', biometricRoutes);
+app.use('/api/succession', successionRoutes);
+app.use('/api/tax', taxRoutes);
 
 // ── Health Check ────────────────────────────────────────
 app.get('/', (req, res) => {

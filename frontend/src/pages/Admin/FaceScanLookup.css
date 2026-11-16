@@ -1,0 +1,670 @@
+/* ==========================================================================
+   Biometric Face ID Citizen Recognition Portal — High-Tech GovTech Styling
+   ========================================================================== */
+
+.fscan-root {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #0F172A;
+}
+
+/* ── Top Header Bar ── */
+.fscan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.fscan-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.fscan-header-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    border: 1px solid #BFDBFE;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #2563EB;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+}
+
+.fscan-title {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #0F172A;
+    margin: 0 0 0.25rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.fscan-version-tag {
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 0.2rem 0.55rem;
+    background: #EFF6FF;
+    color: #2563EB;
+    border: 1px solid #BFDBFE;
+    border-radius: 9999px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.fscan-subtitle {
+    font-size: 0.84rem;
+    color: #64748B;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.fscan-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.fscan-telemetry-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    padding: 0.5rem 0.85rem;
+    border-radius: 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+.fscan-pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #10B981;
+    box-shadow: 0 0 8px #10B981;
+    animation: fscanPulse 1.8s infinite;
+}
+
+@keyframes fscanPulse {
+    0% { transform: scale(0.9); opacity: 0.8; }
+    50% { transform: scale(1.3); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+.fscan-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: #FFFFFF;
+    border: 1px solid #CBD5E1;
+    color: #334155;
+    padding: 0.55rem 1rem;
+    border-radius: 10px;
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fscan-btn-secondary:hover {
+    background: #F8FAFC;
+    border-color: #94A3B8;
+}
+
+/* ── Main Workbench Grid ── */
+.fscan-workbench {
+    display: grid;
+    grid-template-columns: 440px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+@media (max-width: 1080px) {
+    .fscan-workbench {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Left Scanner Terminal Card ── */
+.fscan-terminal-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 1.35rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+}
+
+.fscan-tabs-row {
+    display: flex;
+    background: #F1F5F9;
+    padding: 4px;
+    border-radius: 12px;
+    margin-bottom: 1.25rem;
+}
+
+.fscan-tab-btn {
+    flex: 1;
+    padding: 0.6rem;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #64748B;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    transition: all 0.2s ease;
+}
+
+.fscan-tab-btn.active {
+    background: #FFFFFF;
+    color: #2563EB;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Tactical HUD Viewport ── */
+.fscan-viewport {
+    position: relative;
+    width: 100%;
+    height: 380px;
+    background: #090D16;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid #1E293B;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.fscan-video-element {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+}
+
+.fscan-preview-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ── Holographic Corner Brackets ── */
+.fscan-bracket-tl {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    width: 24px;
+    height: 24px;
+    border-top: 3px solid #06B6D4;
+    border-left: 3px solid #06B6D4;
+    pointer-events: none;
+}
+
+.fscan-bracket-tr {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 24px;
+    height: 24px;
+    border-top: 3px solid #06B6D4;
+    border-right: 3px solid #06B6D4;
+    pointer-events: none;
+}
+
+.fscan-bracket-bl {
+    position: absolute;
+    bottom: 14px;
+    left: 14px;
+    width: 24px;
+    height: 24px;
+    border-bottom: 3px solid #06B6D4;
+    border-left: 3px solid #06B6D4;
+    pointer-events: none;
+}
+
+.fscan-bracket-br {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    width: 24px;
+    height: 24px;
+    border-bottom: 3px solid #06B6D4;
+    border-right: 3px solid #06B6D4;
+    pointer-events: none;
+}
+
+/* ── Central Oval Scanning Reticle ── */
+.fscan-reticle-oval {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 220px;
+    height: 280px;
+    border-radius: 50%;
+    border: 2px dashed rgba(6, 182, 212, 0.6);
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.25);
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.fscan-reticle-oval.scanning {
+    border: 3px solid #10B981;
+    box-shadow: 0 0 35px rgba(16, 185, 129, 0.55);
+}
+
+.fscan-laser-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #10B981, #06B6D4, transparent);
+    box-shadow: 0 0 15px #10B981;
+    animation: fscanLaserSweep 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes fscanLaserSweep {
+    0% { top: 10%; }
+    100% { top: 90%; }
+}
+
+/* ── HUD Telemetry Footers ── */
+.fscan-hud-top {
+    position: absolute;
+    top: 14px;
+    left: 50px;
+    right: 50px;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: #38BDF8;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(6px);
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.fscan-hud-bottom {
+    position: absolute;
+    bottom: 14px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: #CBD5E1;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    padding: 0.45rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+/* ── File Upload Zone ── */
+.fscan-upload-dropzone {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 2rem;
+    text-align: center;
+    background: radial-gradient(circle at center, #1E293B 0%, #090D16 100%);
+    transition: all 0.2s ease;
+}
+
+.fscan-upload-dropzone:hover {
+    background: radial-gradient(circle at center, #334155 0%, #090D16 100%);
+}
+
+.fscan-upload-icon-circle {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: rgba(37, 99, 235, 0.15);
+    border: 2px dashed #3B82F6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #60A5FA;
+    margin-bottom: 1rem;
+}
+
+/* ── Trigger Action Controls ── */
+.fscan-trigger-btn {
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.85rem;
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+    border: none;
+    border-radius: 12px;
+    color: #FFFFFF;
+    font-size: 0.95rem;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+    transition: all 0.2s ease;
+}
+
+.fscan-trigger-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%);
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+    transform: translateY(-1px);
+}
+
+.fscan-trigger-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.fscan-trigger-btn.scanning-active {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
+}
+
+/* ── Roster Demo Selector ── */
+.fscan-roster-box {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid #F1F5F9;
+}
+
+.fscan-roster-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.74rem;
+    font-weight: 800;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.45rem;
+}
+
+.fscan-roster-select {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border-radius: 9px;
+    border: 1px solid #CBD5E1;
+    background: #FFFFFF;
+    font-size: 0.82rem;
+    color: #0F172A;
+    font-weight: 600;
+}
+
+/* ── Right Output / Dossier Area ── */
+.fscan-dossier-area {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* ── Hero Verified Banner ── */
+.fscan-hero-banner {
+    background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #1E3A8A 100%);
+    border-radius: 16px;
+    padding: 1.5rem;
+    color: #FFFFFF;
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.3);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fscan-hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+}
+
+.fscan-badge-verified {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #10B981;
+    color: #FFFFFF;
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 0.3rem 0.75rem;
+    border-radius: 8px;
+    letter-spacing: 0.03em;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+}
+
+.fscan-citizen-name {
+    font-size: 1.75rem;
+    font-weight: 900;
+    margin: 0.5rem 0 0.35rem 0;
+    color: #FFFFFF;
+    letter-spacing: -0.02em;
+}
+
+.fscan-wallet-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    color: #93C5FD;
+}
+
+.fscan-copy-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 6px;
+    color: #FFFFFF;
+    padding: 0.2rem 0.45rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    transition: all 0.2s;
+}
+
+.fscan-copy-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.fscan-hero-stats {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.fscan-hero-valuation {
+    font-size: 1.85rem;
+    font-weight: 900;
+    color: #86EFAC;
+    line-height: 1.1;
+    margin: 0.2rem 0;
+}
+
+/* ── Biometric Proof Side-by-Side Strip ── */
+.fscan-proof-strip {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1.25rem;
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.fscan-proof-thumb {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 2px solid #38BDF8;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.fscan-hash-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: #E2E8F0;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.5rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ── KPI Quick Row ── */
+.fscan-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 900px) {
+    .fscan-kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.fscan-kpi-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 1.1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.fscan-kpi-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.35rem;
+}
+
+.fscan-kpi-value {
+    font-size: 1.35rem;
+    font-weight: 900;
+    color: #0F172A;
+}
+
+.fscan-kpi-sub {
+    font-size: 0.74rem;
+    color: #10B981;
+    font-weight: 700;
+    margin-top: 0.2rem;
+}
+
+/* ── Dossier Tabs Section ── */
+.fscan-section-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.fscan-dossier-nav {
+    display: flex;
+    border-bottom: 2px solid #F1F5F9;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.fscan-dossier-nav-btn {
+    padding: 0.75rem 0.5rem;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #64748B;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.fscan-dossier-nav-btn.active {
+    color: #2563EB;
+    border-bottom-color: #2563EB;
+}
+
+/* ── Empty State Card ── */
+.fscan-empty-state {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 3.5rem 2rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.fscan-empty-icon-ring {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #EFF6FF;
+    border: 2px solid #BFDBFE;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #2563EB;
+    margin-bottom: 1.25rem;
+}
+
+.fscan-empty-title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #0F172A;
+    margin: 0 0 0.5rem 0;
+}
+
+.fscan-empty-desc {
+    font-size: 0.9rem;
+    color: #64748B;
+    max-width: 500px;
+    line-height: 1.6;
+    margin: 0 0 1.5rem 0;
+}

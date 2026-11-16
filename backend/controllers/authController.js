@@ -98,9 +98,18 @@ const requestNonceRegistration = catchAsync(async (req, res) => {
  */
 const verifySignatureRegistration = catchAsync(async (req, res) => {
     const { walletAddress, signature, nonce } = req.body;
-    const recoveredAddress = verifySignature(nonce, signature);
+    if (!walletAddress || !signature || !nonce) {
+        return res.status(400).json({ success: false, message: 'walletAddress, signature, and nonce are required' });
+    }
 
-    if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+    let recoveredAddress;
+    try {
+        recoveredAddress = verifySignature(nonce, signature);
+    } catch (_) {
+        return res.status(400).json({ success: false, message: 'Invalid cryptographic signature format' });
+    }
+
+    if (!recoveredAddress || recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
         return res.status(400).json({ success: false, message: 'Invalid signature' });
     }
 

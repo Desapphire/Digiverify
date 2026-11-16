@@ -22,6 +22,14 @@ const verifySignatureSchema = z.object({
     }),
 });
 
+const verifySignatureRegistrationSchema = z.object({
+    body: z.object({
+        walletAddress,
+        signature: z.string().min(130).max(132),
+        nonce: z.string().min(1, 'Nonce is required'),
+    }),
+});
+
 // ── Government ID Validator Helper ────────────────────────
 const validateGovtId = (data, ctx) => {
     if (data.governmentId && data.governmentIdType) {
@@ -222,12 +230,67 @@ const completeRecoverySchema = z.object({
     }),
 });
 
+const uploadDocumentSchema = z.object({
+    params: z.object({
+        id: uuid,
+    }),
+    body: z.object({
+        documentType: z.string().min(1, 'Document type is required'),
+        ipfsHash: ipfsHash,
+        description: z.string().optional(),
+    }),
+});
+
+// ── Succession Schemas ──────────────────────────────────
+const fileSuccessionClaimSchema = z.object({
+    body: z.object({
+        property_id: uuid,
+        deceased_owner_wallet: walletAddress,
+        death_certificate_hash: z.string().min(5).max(128),
+        probate_order_hash: z.string().max(128).optional().nullable(),
+        court_bench: z.string().max(128).optional().nullable(),
+        primary_successor_wallet: walletAddress.optional().nullable(),
+        heirs: z.array(z.object({
+            heir_wallet: walletAddress,
+            full_name: z.string().min(2).max(128),
+            relation_to_deceased: z.string().min(2).max(60),
+            share_percentage_bps: z.number().int().min(1).max(10000),
+            kyc_hash: z.string().max(128).optional().nullable(),
+        })).min(1, 'At least one legal heir must be specified'),
+    }),
+});
+
+const reviewSuccessionSchema = z.object({
+    body: z.object({
+        remarks: z.string().optional(),
+    }),
+});
+
+// ── Property Tax Schemas ────────────────────────────────
+const recordTaxAssessmentSchema = z.object({
+    body: z.object({
+        property_id: uuid,
+        financial_year: z.number().int().min(20000000).max(21000000),
+        base_tax_amount: z.number().min(0),
+        cess_amount: z.number().min(0).optional().default(0),
+        penalty_amount: z.number().min(0).optional().default(0),
+    }),
+});
+
+const payTaxSchema = z.object({
+    body: z.object({
+        payment_method: z.string().optional(),
+    }),
+});
+
 module.exports = {
     walletAddress,
     uuid,
     ipfsHash,
     getNonceSchema,
     verifySignatureSchema,
+    verifySignatureRegistrationSchema,
+    uploadDocumentSchema,
     registerUserSchema,
     updateKycSchema,
     updateProfileSchema,
@@ -244,4 +307,8 @@ module.exports = {
     completeRecoverySchema,
     bindFaceIdSchema,
     reKycSchema,
+    fileSuccessionClaimSchema,
+    reviewSuccessionSchema,
+    recordTaxAssessmentSchema,
+    payTaxSchema,
 };

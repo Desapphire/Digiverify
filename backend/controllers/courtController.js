@@ -91,12 +91,17 @@ const forceTransfer = catchAsync(async (req, res) => {
             metadata: { newOwnerWallet: req.body.newOwnerWallet },
         });
 
+        if (res.headersSent) return;
         return res.status(200).json({
             success: true,
             message: 'Ownership force-transferred by court order.',
             data: property,
         });
     } catch (err) {
+        if (res.headersSent) {
+            console.warn('[Warning] Headers already sent before catch block in forceTransfer:', err.message);
+            return;
+        }
         for (const hash of uploadedList) {
             await tempStorage.unpinFromPinata(hash);
         }

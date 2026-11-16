@@ -76,10 +76,10 @@ router.post('/sale/:id/reject', rejectSale);
 router.post('/sale/:id/complete', completeSale);
 router.put('/property/:id/encumbrance', setEncumbrance);
 
-// --- Property Legal Actions (Court) ---
-router.post('/property/freeze', validate(freezePropertySchema), freezeProperty);
-router.post('/property/reverse-freeze/:freezeOrderId', validate(reverseFreezeOrderSchema), reverseFreezeOrder);
-router.post('/property/force-transfer', validate(forceTransferSchema), forceTransfer);
+// --- Property Legal Actions (Court: long timeout for on-chain block mining) ---
+router.post('/property/freeze', (req, res, next) => { if (res.extendTimeout) res.extendTimeout(300000); next(); }, validate(freezePropertySchema), freezeProperty);
+router.post('/property/reverse-freeze/:freezeOrderId', (req, res, next) => { if (res.extendTimeout) res.extendTimeout(300000); next(); }, validate(reverseFreezeOrderSchema), reverseFreezeOrder);
+router.post('/property/force-transfer', (req, res, next) => { if (res.extendTimeout) res.extendTimeout(300000); next(); }, validate(forceTransferSchema), forceTransfer);
 
 // --- Blockchain Network & Health Telemetry ---
 router.get('/blockchain-health', catchAsync(async (req, res) => {
@@ -363,7 +363,7 @@ router.get('/property/:id/history', catchAsync(async (req, res) => {
 // --- User KYC Management ---
 router.get('/users', listUsers);
 router.get('/users/:id', getUserById);
-router.put('/kyc/:id/approve', approveKyc);
+router.put('/kyc/:id/approve', (req, res, next) => { req.setTimeout(300000); res.setTimeout(300000); next(); }, approveKyc);
 router.put('/kyc/:id/reject', rejectKyc);
 router.put('/kyc/:id/request-rekyc', requestReKyc);
 router.put('/kyc/:id/rekyc', requestReKyc);
@@ -386,6 +386,21 @@ router.get('/properties', catchAsync(async (req, res) => {
     const { status, limit = 50, offset = 0 } = req.query;
     const properties = await Property.search({ status, limit: parseInt(limit), offset: parseInt(offset) });
     return res.json({ success: true, data: properties });
+}));
+
+router.get('/risk/evaluations', catchAsync(async (req, res) => {
+    const { pool: dbPool } = require('../config/db');
+    const result = await dbPool.query(`
+        SELECT DISTINCT ON (pre.property_id) 
+            pre.id, pre.property_id, pre.overall_score, pre.risk_level, 
+            pre.recommended_action, pre.fair_price_estimated, pre.price_deviation, 
+            pre.full_analysis, pre.calculated_at,
+            p.property_code, p.survey_number, p.district, p.state, p.owner_wallet
+        FROM property_risk_evaluations pre
+        JOIN properties p ON pre.property_id = p.id
+        ORDER BY pre.property_id, pre.calculated_at DESC
+    `);
+    return res.json({ success: true, data: result.rows });
 }));
 
 router.get('/sales', catchAsync(async (req, res) => {
