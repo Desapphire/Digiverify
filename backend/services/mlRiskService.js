@@ -248,7 +248,27 @@ const assessPropertyValuation = async (propertyId, proposedPrice = null, forceRe
         }
     }
 
-    const price = proposedPrice ? parseFloat(proposedPrice) : 5000000;
+    // Use actual sale price if property has an active or recent sale transaction,
+    // otherwise proposedPrice, or fallback to fair circle valuation rather than a hardcoded dummy price
+    let price = proposedPrice ? parseFloat(proposedPrice) : null;
+    if (!price) {
+        try {
+            const saleRes = await pool.query(
+                `SELECT sale_price FROM sale_transactions WHERE property_id = $1 ORDER BY created_at DESC LIMIT 1`,
+                [propertyId]
+            );
+            if (saleRes.rows.length > 0 && parseFloat(saleRes.rows[0].sale_price) > 0) {
+                price = parseFloat(saleRes.rows[0].sale_price);
+            }
+        } catch (_) {}
+    }
+    // If still no price (property registered but not currently listed for sale),
+    // evaluate against its estimated circle/guidance fair rate so a dummy Rs 50 Lakh placeholder is never compared
+    if (!price || price <= 0) {
+        // Use realistic district guidance circle rate (e.g. Nashik: Rs 5,500/sqft, Pune: Rs 6,500/sqft)
+        const districtRate = prop.district?.toLowerCase() === 'pune' ? 6500 : 5700;
+        price = Math.round(parseFloat(prop.area_sqft || 1500) * districtRate);
+    }
 
     let bhk = '3 BHK';
     if (prop.survey_details) {

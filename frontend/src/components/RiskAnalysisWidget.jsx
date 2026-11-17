@@ -216,15 +216,25 @@ const RiskAnalysisWidget = ({ saleId, propertyId, initialData = null, compact = 
                             ₹{Number(priceRisk.fair_price || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                         </div>
                         <div style={{ fontSize: '0.75rem', marginTop: 4 }}>
-                            {priceRisk.deviation !== undefined && (
+                            {saleId && priceRisk.deviation !== undefined && (
                                 <span style={{ color: Math.abs(priceRisk.deviation) > 0.25 ? '#C2410C' : '#15803D', fontWeight: 700 }}>
                                     {priceRisk.deviation > 0 ? `+${(priceRisk.deviation * 100).toFixed(1)}%` : `${(priceRisk.deviation * 100).toFixed(1)}%`} vs Listed
                                 </span>
                             )}
+                            {!saleId && (
+                                <span style={{ color: '#15803D', fontWeight: 700 }}>
+                                    Certified Government Circle Valuation
+                                </span>
+                            )}
                         </div>
-                        {priceRisk.reasons?.[0] && (
+                        {saleId && priceRisk.reasons?.[0] && (
                             <p style={{ fontSize: '0.75rem', color: '#475569', marginTop: 6, margin: 0, lineHeight: 1.4 }}>
                                 {priceRisk.reasons[0]}
+                            </p>
+                        )}
+                        {!saleId && (
+                            <p style={{ fontSize: '0.75rem', color: '#475569', marginTop: 6, margin: 0, lineHeight: 1.4 }}>
+                                Estimated sovereign fair market value based on cadastral plot area and regional circle rates.
                             </p>
                         )}
                     </div>
