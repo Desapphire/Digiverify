@@ -77,6 +77,9 @@ const isTempHash = (hash) => {
  * Unpins a CID from Pinata.
  */
 const unpinFromPinata = async (ipfsHash) => {
+    // Only attempt unpin if it looks like a real Pinata IPFS CID and not a mock/empty hash
+    if (!ipfsHash || typeof ipfsHash !== 'string' || ipfsHash.startsWith('temp_')) return;
+
     const pinataApiKey = process.env.PINATA_API_KEY;
     const pinataSecretApiKey = process.env.PINATA_SECRET_API_KEY;
     if (!pinataApiKey || !pinataSecretApiKey) return;
@@ -86,11 +89,17 @@ const unpinFromPinata = async (ipfsHash) => {
             headers: {
                 pinata_api_key: pinataApiKey,
                 pinata_secret_api_key: pinataSecretApiKey,
-            }
+            },
+            timeout: 5000,
         });
         console.log(`Unpinned ${ipfsHash} from Pinata`);
     } catch (err) {
-        console.error(`Failed to unpin ${ipfsHash} from Pinata:`, err.response?.data || err.message);
+        // Silently ignore 404 or unpin policy errors if the CID was never actually pinned by Pinata
+        const errData = err.response?.data;
+        if (errData?.error?.reason === 'CURRENT_USER_HAS_NOT_PINNED_CID' || err.response?.status === 404) {
+            return;
+        }
+        console.warn(`Could not unpin ${ipfsHash} from Pinata:`, errData?.error?.details || errData || err.message);
     }
 };
 

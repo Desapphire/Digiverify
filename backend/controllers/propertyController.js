@@ -28,6 +28,8 @@ const registerProperty = catchAsync(async (req, res) => {
             entityType: 'property',
         });
 
+        if (res.headersSent) return;
+
         return res.status(201).json({
             success: true,
             message: 'Property registered and queued for approval.',
@@ -39,7 +41,9 @@ const registerProperty = catchAsync(async (req, res) => {
         for (const hash of uploadedList) {
             await tempStorage.unpinFromPinata(hash);
         }
-        throw err;
+        if (!res.headersSent) {
+            throw err;
+        }
     }
 });
 
@@ -67,6 +71,8 @@ const reapplyProperty = catchAsync(async (req, res) => {
             metadata: { reapply: true, propertyCode: property.propertyCode }
         });
 
+        if (res.headersSent) return;
+
         return res.status(200).json({
             success: true,
             message: 'Property application successfully resubmitted for authority review.',
@@ -77,7 +83,9 @@ const reapplyProperty = catchAsync(async (req, res) => {
         for (const hash of uploadedList) {
             await tempStorage.unpinFromPinata(hash);
         }
-        throw err;
+        if (!res.headersSent) {
+            throw err;
+        }
     }
 });
 
