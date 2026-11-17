@@ -387,12 +387,11 @@ class PriceRiskModel:
         pred_rate = max(400.0, pred_rate)
 
         # Apply realistic bulk land/plot discount curve for large land parcels
-        # In real estate economics, land parcels (>5,000 sq.ft.) trade at a lower rate per sq.ft.
-        # than high-rise multi-story apartments.
+        # In real estate economics, large land parcels (>4,000 sq.ft. to acre-scale plots)
+        # trade at land rate economics (~Rs 1,000 - 1,500/sq.ft.) rather than multi-story luxury apartment rates.
         if size > 4000.0:
-            # Gradually scale bulk discount: e.g. ~10% at 5,000 sqft, ~25% at 15,000 sqft, ~35-45% at 35,000+ sqft
-            bulk_factor = max(0.45, 1.0 - (0.10 * np.log10(size / 3000.0) * 3.5))
-            pred_rate = pred_rate * bulk_factor
+            bulk_factor = (4000.0 / size) ** 1.12
+            pred_rate = max(400.0, pred_rate * bulk_factor)
 
         fair_price = pred_rate * size
         return float(round(max(100000.0, fair_price), 2))
