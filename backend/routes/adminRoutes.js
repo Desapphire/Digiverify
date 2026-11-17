@@ -69,11 +69,11 @@ router.use(authorize(ROLES.AUTHORITY, ROLES.COURT, ROLES.BANK_ADMIN, ROLES.SUPER
 
 // --- Property & Sale Management (Authority) ---
 // Approve property: long timeout (5 min) — Sepolia needs ~12s per block, IPFS + 2 txns can take 2-3 min
-router.put('/property/:id/approve', (req, res, next) => { res.setTimeout(300000); next(); }, approveProperty);
+router.put('/property/:id/approve', (req, res, next) => { if (res.extendTimeout) res.extendTimeout(300000); next(); }, approveProperty);
 router.put('/property/:id/reject', rejectProperty);
-router.post('/sale/:id/approve', approveSale);
+router.post('/sale/:id/approve', (req, res, next) => { if (res.extendTimeout) res.extendTimeout(300000); next(); }, approveSale);
 router.post('/sale/:id/reject', rejectSale);
-router.post('/sale/:id/complete', completeSale);
+router.post('/sale/:id/complete', (req, res, next) => { if (res.extendTimeout) res.extendTimeout(300000); next(); }, completeSale);
 router.put('/property/:id/encumbrance', setEncumbrance);
 
 // --- Property Legal Actions (Court: long timeout for on-chain block mining) ---
@@ -363,7 +363,7 @@ router.get('/property/:id/history', catchAsync(async (req, res) => {
 // --- User KYC Management ---
 router.get('/users', listUsers);
 router.get('/users/:id', getUserById);
-router.put('/kyc/:id/approve', (req, res, next) => { req.setTimeout(300000); res.setTimeout(300000); next(); }, approveKyc);
+router.put('/kyc/:id/approve', (req, res, next) => { if (res.extendTimeout) res.extendTimeout(300000); next(); }, approveKyc);
 router.put('/kyc/:id/reject', rejectKyc);
 router.put('/kyc/:id/request-rekyc', requestReKyc);
 router.put('/kyc/:id/rekyc', requestReKyc);

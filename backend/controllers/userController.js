@@ -113,6 +113,8 @@ const approveKyc = catchAsync(async (req, res) => {
         metadata: { reason },
     });
 
+    if (res.headersSent) return;
+
     return res.status(200).json({
         success: true,
         message: 'KYC approved.',
@@ -135,6 +137,8 @@ const rejectKyc = catchAsync(async (req, res) => {
         entityType: 'user',
         metadata: { reason },
     });
+
+    if (res.headersSent) return;
 
     return res.status(200).json({
         success: true,
