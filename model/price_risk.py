@@ -43,7 +43,8 @@ CITY_ALIASES = {
     "bombay": "Mumbai",
     "thane": "Mumbai",
     "navi mumbai": "Mumbai",
-    "pune": "Mumbai",  # Reasonable proxy fallback if tier-1 city in Maharashtra
+    "pune": "Bangalore",  # Calibrated tier-1 IT & manufacturing urban benchmark (~Rs 6,000 - 8,500/sqft)
+    "nashik": "Ahmedabad",  # Calibrated tier-2 Maharashtra benchmark
 }
 
 
@@ -384,6 +385,15 @@ class PriceRiskModel:
 
         # Safeguard realistic minimum rate (Rs 400/sqft)
         pred_rate = max(400.0, pred_rate)
+
+        # Apply realistic bulk land/plot discount curve for large land parcels
+        # In real estate economics, land parcels (>5,000 sq.ft.) trade at a lower rate per sq.ft.
+        # than high-rise multi-story apartments.
+        if size > 4000.0:
+            # Gradually scale bulk discount: e.g. ~10% at 5,000 sqft, ~25% at 15,000 sqft, ~35-45% at 35,000+ sqft
+            bulk_factor = max(0.45, 1.0 - (0.10 * np.log10(size / 3000.0) * 3.5))
+            pred_rate = pred_rate * bulk_factor
+
         fair_price = pred_rate * size
         return float(round(max(100000.0, fair_price), 2))
 

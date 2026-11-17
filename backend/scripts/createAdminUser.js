@@ -10,7 +10,7 @@ async function createAdminUser() {
 
     const adminEmail = process.env.ADMIN_EMAIL || 'officer@landregistry.gov.in';
     const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123456';
-    const adminName = 'Sri Rajesh Kumar (Chief Land Registrar)';
+    const adminName = 'Admin CHIEF LAND REGISTAR';
     const adminWallet = '0xf19384d7e862253b3454f4db200464390b296062';
     const adminPhone = '+91 9876543210';
     const adminRole = 'authority'; // 'authority' or 'super_admin'
