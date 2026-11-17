@@ -200,17 +200,31 @@ const RiskAnalysisWidget = ({ saleId, propertyId, initialData = null, compact = 
                             <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.04em' }}>
                                 AI Fair Valuation
                             </span>
-                            <span style={{
-                                fontSize: '0.68rem',
-                                fontWeight: 800,
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                background: priceRisk.score > 50 ? '#FEE2E2' : '#DCFCE7',
-                                color: priceRisk.score > 50 ? '#B91C1C' : '#15803D',
-                                border: `1px solid ${priceRisk.score > 50 ? '#FECACA' : '#86EFAC'}`
-                            }}>
-                                Score: {priceRisk.score}%
-                            </span>
+                            {saleId ? (
+                                <span style={{
+                                    fontSize: '0.68rem',
+                                    fontWeight: 800,
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    background: priceRisk.score > 50 ? '#FEE2E2' : '#DCFCE7',
+                                    color: priceRisk.score > 50 ? '#B91C1C' : '#15803D',
+                                    border: `1px solid ${priceRisk.score > 50 ? '#FECACA' : '#86EFAC'}`
+                                }}>
+                                    Score: {priceRisk.score}%
+                                </span>
+                            ) : (
+                                <span style={{
+                                    fontSize: '0.68rem',
+                                    fontWeight: 800,
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    background: '#DCFCE7',
+                                    color: '#15803D',
+                                    border: '1px solid #86EFAC'
+                                }}>
+                                    VERIFIED
+                                </span>
+                            )}
                         </div>
                         <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E293B', letterSpacing: '-0.02em', margin: '4px 0' }}>
                             ₹{Number(priceRisk.fair_price || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
