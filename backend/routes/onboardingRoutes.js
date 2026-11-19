@@ -10,12 +10,12 @@ const {
 } = require('../controllers/authController');
 const { register } = require('../controllers/userController');
 const validate = require('../middlewares/validate');
-const { registerUserSchema } = require('../utils/validators');
+const { registerUserSchema, verifySignatureRegistrationSchema } = require('../utils/validators');
 const { onboardingLimiter } = require('../middlewares/rateLimiter');
 
 // --- Unified Registration Flow ---
 router.post('/request-nonce', onboardingLimiter, requestNonce);
-router.post('/verify-signature', onboardingLimiter, verifySignatureRegistration);
+router.post('/verify-signature', onboardingLimiter, validate(verifySignatureRegistrationSchema), verifySignatureRegistration);
 router.post('/register', onboardingLimiter, validate(registerUserSchema), register);
 
 module.exports = router;

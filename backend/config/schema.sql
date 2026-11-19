@@ -481,6 +481,24 @@ CREATE TABLE IF NOT EXISTS property_co_owners (
 CREATE INDEX IF NOT EXISTS idx_pco_property ON property_co_owners (property_id);
 CREATE INDEX IF NOT EXISTS idx_pco_wallet   ON property_co_owners (owner_wallet);
 
+-- ────────────────────────────────────────────────────────────
+-- 17. PROPERTY RISK EVALUATIONS (Scheduled Auto-ML 60-min Cache)
+-- ────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS property_risk_evaluations (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_id             UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+    overall_score           NUMERIC(5, 2) NOT NULL,
+    risk_level              VARCHAR(32) NOT NULL,
+    recommended_action      TEXT,
+    fair_price_estimated    NUMERIC(15, 2),
+    price_deviation         NUMERIC(6, 4),
+    full_analysis           JSONB NOT NULL,
+    calculated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_prop_risk_prop_id       ON property_risk_evaluations (property_id);
+CREATE INDEX IF NOT EXISTS idx_prop_risk_calculated_at ON property_risk_evaluations (calculated_at DESC);
+
 
 
 -- ============================================================

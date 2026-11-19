@@ -1,5 +1,5 @@
 /**
- * Blockchain configuration for Avalanche Fuji C-Chain.
+ * Blockchain configuration for Ethereum Sepolia Testnet.
  * Provides Ethers.js provider and signer instances.
  */
 
@@ -10,13 +10,13 @@ let provider = null;
 let signer = null;
 
 /**
- * Get the JSON-RPC provider for Avalanche Fuji.
+ * Get the JSON-RPC provider for Ethereum Sepolia.
  * Lazily initialized, cached for reuse.
  */
 const getProvider = () => {
     if (!provider) {
         provider = new ethers.JsonRpcProvider(env.BLOCKCHAIN.rpcUrl, {
-            name: 'avalanche-fuji',
+            name: 'sepolia',
             chainId: env.BLOCKCHAIN.chainId,
         });
     }

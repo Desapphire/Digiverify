@@ -1418,7 +1418,7 @@ const RevenueAnalytics = () => {
                     color: '#64748B'
                 }}>
                     <span>Showing <strong>{filteredTransactions.length}</strong> real transactions</span>
-                    <span>All transactions signed with Avalanche EVM smart contracts</span>
+                    <span>All transactions signed with Ethereum EVM smart contracts</span>
                 </div>
             </div>
 

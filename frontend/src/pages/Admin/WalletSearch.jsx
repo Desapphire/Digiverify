@@ -7,7 +7,8 @@ import {
     ArrowRight, MapPin, Ruler, ScrollText, AlertCircle,
     Copy, CheckCircle2, Phone, Shield, FileText, ExternalLink,
     Fingerprint, Sparkles, UserCheck, AlertTriangle, Printer,
-    RefreshCcw, ChevronRight, Eye, Calendar, Award, Check
+    RefreshCcw, ChevronRight, Eye, Calendar, Award, Check,
+    ScanFace
 } from 'lucide-react';
 
 const WalletSearch = () => {
@@ -158,6 +159,25 @@ const WalletSearch = () => {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                        onClick={() => navigate('/authority/face-scan')}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '8px 14px',
+                            backgroundColor: '#EFF6FF',
+                            border: '1px solid #BFDBFE',
+                            borderRadius: '8px',
+                            color: '#1D4ED8',
+                            fontSize: '0.82rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                        }}
+                    >
+                        <ScanFace size={15} />
+                        Biometric Face Scan
+                    </button>
                     <button
                         onClick={() => window.print()}
                         style={{
@@ -705,7 +725,7 @@ const WalletSearch = () => {
                                     {result.user.birthdate && (
                                         <DetailItem
                                             label="Date of Birth & Age"
-                                            value={`${new Date(result.user.birthdate).toLocaleDateString()} (${Math.floor((new Date() - new Date(result.user.birthdate)) / (365.25 * 24 * 60 * 60 * 1000))} years)`}
+                                            value={`${new Date(result.user.birthdate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })} (${Math.floor((new Date() - new Date(result.user.birthdate)) / (365.25 * 24 * 60 * 60 * 1000))} years)`}
                                         />
                                     )}
 

@@ -21,6 +21,7 @@ const { apiLimiter } = require('./middlewares/rateLimiter');
 const requestTimeout = require('./middlewares/timeout');
 const errorHandler = require('./middlewares/errorHandler');
 const { startEventListeners } = require('./events/eventListener');
+const { startAutoMlScheduler } = require('./services/mlRiskService');
 
 // ── Route Imports ───────────────────────────────────────
 const authRoutes = require('./routes/authRoutes');
@@ -33,6 +34,8 @@ const adminRoutes = require('./routes/adminRoutes');
 const ipfsRoutes = require('./routes/ipfsRoutes');
 const mlRiskRoutes = require('./routes/mlRiskRoutes');
 const biometricRoutes = require('./routes/biometricRoutes');
+const successionRoutes = require('./routes/successionRoutes');
+const taxRoutes = require('./routes/taxRoutes');
 
 // ── Bootstrap ───────────────────────────────────────────
 const app = express();
@@ -77,6 +80,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/ipfs', ipfsRoutes);
 app.use('/api/risk', mlRiskRoutes);
 app.use('/api/biometric', biometricRoutes);
+app.use('/api/succession', successionRoutes);
+app.use('/api/tax', taxRoutes);
 
 // ── Health Check ────────────────────────────────────────
 app.get('/', (req, res) => {
@@ -188,6 +193,13 @@ const startServer = async () => {
             startEventListeners();
         } catch (err) {
             console.warn(' Blockchain event listeners failed to start:', err.message);
+        }
+
+        // Start Auto-ML 60-minute scheduled background evaluations
+        try {
+            startAutoMlScheduler();
+        } catch (err) {
+            console.warn(' Auto-ML scheduler failed to start:', err.message);
         }
 
         const server = app.listen(env.PORT, () => {

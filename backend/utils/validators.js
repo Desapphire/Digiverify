@@ -22,6 +22,38 @@ const verifySignatureSchema = z.object({
     }),
 });
 
+const verifySignatureRegistrationSchema = z.object({
+    body: z.object({
+        walletAddress,
+        signature: z.string().min(130).max(132),
+        nonce: z.string().min(1, 'Nonce is required'),
+    }),
+});
+
+// ── Government ID Validator Helper ────────────────────────
+const validateGovtId = (data, ctx) => {
+    if (data.governmentId && data.governmentIdType) {
+        if (data.governmentIdType === 'Aadhar') {
+            const rawDigits = data.governmentId.replace(/\D/g, '');
+            if (rawDigits.length !== 12) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'Aadhar number must be exactly 12 numeric digits (format: XXXX XXXX XXXX)',
+                    path: ['governmentId']
+                });
+            }
+        } else if (data.governmentIdType === 'Passport') {
+            if (!/^[A-Z][0-9]{7}$/.test(data.governmentId.trim().toUpperCase())) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'Passport number must start with 1 uppercase letter followed by 7 digits (e.g. Z1234567)',
+                    path: ['governmentId']
+                });
+            }
+        }
+    }
+};
+
 // ── User Registration ───────────────────────────────────
 const registerUserSchema = z.object({
     body: z.object({
@@ -53,7 +85,25 @@ const registerUserSchema = z.object({
                 message: 'You must be at least 18 years old to register.'
             }),
         role: z.enum(ALL_ROLES).optional(),
-    }),
+        faceIdHash: z.string().min(32).max(128).optional(),
+    }).superRefine((val, ctx) => validateGovtId(val, ctx)),
+});
+
+const reKycSchema = z.object({
+    body: z.object({
+        name: z.string().min(2).max(128).optional(),
+        phone: z.string().min(7).max(20).optional(),
+        governmentId: z.string().min(4).max(50).optional(),
+        governmentIdType: z.enum(['Aadhar', 'Passport', 'Voter ID', 'Driving License']).optional(),
+        birthdate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        houseNumber: z.string().max(256).optional(),
+        locality: z.string().max(256).optional(),
+        city: z.string().max(128).optional(),
+        pinCode: z.string().max(20).optional(),
+        state: z.string().max(128).optional(),
+        country: z.string().max(128).optional(),
+        faceIdHash: z.string().min(32).max(128).optional(),
+    }).superRefine((val, ctx) => validateGovtId(val, ctx)),
 });
 
 const updateKycSchema = z.object({
@@ -180,12 +230,67 @@ const completeRecoverySchema = z.object({
     }),
 });
 
+const uploadDocumentSchema = z.object({
+    params: z.object({
+        id: uuid,
+    }),
+    body: z.object({
+        documentType: z.string().min(1, 'Document type is required'),
+        ipfsHash: ipfsHash,
+        description: z.string().optional(),
+    }),
+});
+
+// ── Succession Schemas ──────────────────────────────────
+const fileSuccessionClaimSchema = z.object({
+    body: z.object({
+        property_id: uuid,
+        deceased_owner_wallet: walletAddress,
+        death_certificate_hash: z.string().min(5).max(128),
+        probate_order_hash: z.string().max(128).optional().nullable(),
+        court_bench: z.string().max(128).optional().nullable(),
+        primary_successor_wallet: walletAddress.optional().nullable(),
+        heirs: z.array(z.object({
+            heir_wallet: walletAddress,
+            full_name: z.string().min(2).max(128),
+            relation_to_deceased: z.string().min(2).max(60),
+            share_percentage_bps: z.number().int().min(1).max(10000),
+            kyc_hash: z.string().max(128).optional().nullable(),
+        })).min(1, 'At least one legal heir must be specified'),
+    }),
+});
+
+const reviewSuccessionSchema = z.object({
+    body: z.object({
+        remarks: z.string().optional(),
+    }),
+});
+
+// ── Property Tax Schemas ────────────────────────────────
+const recordTaxAssessmentSchema = z.object({
+    body: z.object({
+        property_id: uuid,
+        financial_year: z.number().int().min(20000000).max(21000000),
+        base_tax_amount: z.number().min(0),
+        cess_amount: z.number().min(0).optional().default(0),
+        penalty_amount: z.number().min(0).optional().default(0),
+    }),
+});
+
+const payTaxSchema = z.object({
+    body: z.object({
+        payment_method: z.string().optional(),
+    }),
+});
+
 module.exports = {
     walletAddress,
     uuid,
     ipfsHash,
     getNonceSchema,
     verifySignatureSchema,
+    verifySignatureRegistrationSchema,
+    uploadDocumentSchema,
     registerUserSchema,
     updateKycSchema,
     updateProfileSchema,
@@ -201,4 +306,9 @@ module.exports = {
     requestRecoverySchema,
     completeRecoverySchema,
     bindFaceIdSchema,
+    reKycSchema,
+    fileSuccessionClaimSchema,
+    reviewSuccessionSchema,
+    recordTaxAssessmentSchema,
+    payTaxSchema,
 };

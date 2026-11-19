@@ -20,15 +20,20 @@ import WalletRecovery from './pages/Dashboard/WalletRecovery';
 import Transactions from './pages/Dashboard/Transactions';
 import ReapplyKYC from './pages/Dashboard/ReapplyKYC';
 import ReapplyProperty from './pages/Dashboard/ReapplyProperty';
+import SuccessionClaim from './pages/Dashboard/SuccessionClaim';
+import PropertyTaxVault from './pages/Dashboard/PropertyTaxVault';
 import Sidebar from './layouts/Sidebar';
 import AdminSidebar from './layouts/AdminSidebar';
 //Authority Admin Routes 
 import AuthorityLogin from './pages/Admin/AuthorityLogin';
 import AdminDashboard from './pages/Admin/AuthorityDashboard';
 import KYCApproval from './pages/Admin/KYCApproval';
+import CitizenDetails from './pages/Admin/CitizenDetails';
 import ReKycApproval from './pages/Admin/ReKycApproval';
 import PropertyVerification from './pages/Admin/PropertyVerification';
+import AdminPropertyDetails from './pages/Admin/AdminPropertyDetails';
 import SaleApproval from './pages/Admin/SaleApproval';
+import AdminSaleDetails from './pages/Admin/AdminSaleDetails';
 import FundBlockConfirmation from './pages/Admin/FundBlockConfirmation';
 import WalletRecoveryApproval from './pages/Admin/WalletRecoveryApproval';
 import PropertyInvestigation from './pages/Admin/PropertyInvestigation';
@@ -38,6 +43,9 @@ import RiskMonitor from './pages/Admin/RiskMonitor';
 import RevenueAnalytics from './pages/Admin/RevenueAnalytics';
 import DisputeCenter from './pages/Admin/DisputeCenter';
 import BlockchainHealth from './pages/Admin/BlockchainHealth';
+import SuccessionApproval from './pages/Admin/SuccessionApproval';
+import TaxVaultManagement from './pages/Admin/TaxVaultManagement';
+import FaceScanLookup from './pages/Admin/FaceScanLookup';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -104,19 +112,22 @@ function App() {
               <Route path="/reapply-property/:id" element={<ReapplyProperty />} />
               <Route path="/properties/:id/reapply" element={<ReapplyProperty />} />
               <Route path="/transactions" element={<Transactions />} />
+              <Route path="/succession" element={<SuccessionClaim />} />
+              <Route path="/tax-vault" element={<PropertyTaxVault />} />
             </Route>
 
             {/* Authority Admin Routes — separate AdminSidebar layout */}
             <Route element={<AdminSidebar />}>
               <Route path="/authority" element={<AdminDashboard />} />
               <Route path="/authority/kyc" element={<KYCApproval />} />
-              <Route path="/authority/kyc/:id" element={<KYCApproval />} />
+              <Route path="/authority/kyc/:id" element={<CitizenDetails />} />
+              <Route path="/authority/citizen/:id" element={<CitizenDetails />} />
               <Route path="/authority/re-kyc" element={<ReKycApproval />} />
               <Route path="/authority/kyc/reapplications" element={<ReKycApproval />} />
               <Route path="/authority/property" element={<PropertyVerification />} />
-              <Route path="/authority/property/:id" element={<PropertyVerification />} />
+              <Route path="/authority/property/:id" element={<AdminPropertyDetails />} />
               <Route path="/authority/sale" element={<SaleApproval />} />
-              <Route path="/authority/sale/:id" element={<SaleApproval />} />
+              <Route path="/authority/sale/:id" element={<AdminSaleDetails />} />
               <Route path="/authority/fund" element={<FundBlockConfirmation />} />
               <Route path="/authority/fund/:id" element={<FundBlockConfirmation />} />
               <Route path="/authority/wallet-recovery" element={<WalletRecoveryApproval />} />
@@ -125,9 +136,12 @@ function App() {
               <Route path="/authority/investigation/:id" element={<PropertyInvestigation />} />
               <Route path="/authority/risk-monitor" element={<RiskMonitor />} />
               <Route path="/authority/search" element={<WalletSearch />} />
+              <Route path="/authority/face-scan" element={<FaceScanLookup />} />
               <Route path="/authority/revenue" element={<RevenueAnalytics />} />
               <Route path="/authority/disputes" element={<DisputeCenter />} />
               <Route path="/authority/blockchain-health" element={<BlockchainHealth />} />
+              <Route path="/authority/succession" element={<SuccessionApproval />} />
+              <Route path="/authority/tax-vault" element={<TaxVaultManagement />} />
               <Route path="/authority/logs" element={<SystemLogs />} />
             </Route>
           </Routes>

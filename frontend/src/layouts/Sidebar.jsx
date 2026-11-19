@@ -24,7 +24,9 @@ import {
     Globe,
     ChevronRight,
     ShieldCheck,
-    ExternalLink
+    ExternalLink,
+    Scale,
+    Landmark
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -56,7 +58,7 @@ const Sidebar = () => {
     const getBreadcrumbInfo = () => {
         const path = location.pathname;
         if (path === '/dashboard') return { category: 'Portal', title: 'Dashboard' };
-        if (path === '/profile') return { category: 'Account', title: 'Profile & Verification' };
+        if (path === '/profile') return { category: 'Account', title: 'Profile' };
         if (path === '/my-properties') return { category: 'Properties', title: 'My Properties' };
         if (path === '/register-property') return { category: 'Properties', title: 'Add Property' };
         if (path === '/search-property') return { category: 'Registry', title: 'Search Properties' };
@@ -68,6 +70,8 @@ const Sidebar = () => {
         if (path.includes('/fund-block')) return { category: 'Payments', title: 'Locked Payments' };
         if (path === '/notifications') return { category: 'Updates', title: 'Notifications' };
         if (path === '/wallet-recovery') return { category: 'Security', title: 'Wallet Recovery' };
+        if (path === '/succession') return { category: 'Succession', title: 'Legal Heir Succession Claims' };
+        if (path === '/tax-vault') return { category: 'Municipal Tax', title: 'Property Tax & NOC Vault' };
         if (path === '/reapply-kyc' || path === '/kyc/reapply') return { category: 'Account', title: 'Reapply Identity Verification (KYC)' };
         return { category: 'Portal', title: 'Services' };
     };
@@ -110,13 +114,12 @@ const Sidebar = () => {
                 {/* Top Institutional Bar / Emblem */}
                 <div className="user-topbar">
                     <div className={`user-logo-box ${isCollapsed ? 'collapsed' : ''}`}>
-                        <div className="gov-emblem-badge">
-                            <ShieldCheck size={20} className="emblem-icon" />
+                        <div className="gov-emblem-badge" style={{ padding: 0, overflow: 'hidden' }}>
+                            <img src="/logo.png" alt="DigiVerify Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                         <div className="user-logo-text">
                             <div className="title-row">
                                 <span className="title">Digi<span className="accent">Verify</span></span>
-                                <span className="gov-tag">GOV</span>
                             </div>
                             <span className="subtitle">Secure Land Registry Portal</span>
                         </div>
@@ -145,7 +148,7 @@ const Sidebar = () => {
                     <NavSection title="Account & Identity" divider={true}>
                         <NavItem
                             icon={UserIcon}
-                            label="Profile & Verification"
+                            label="Profile"
                             active={isPathActive('/profile')}
                             onClick={() => navigate('/profile')}
                         />
@@ -184,6 +187,21 @@ const Sidebar = () => {
                             label="Sell Property"
                             active={isPathActive('/sale')}
                             onClick={() => navigate('/sale')}
+                        />
+                    </NavSection>
+
+                    <NavSection title="Succession & Taxes" divider={true}>
+                        <NavItem
+                            icon={Scale}
+                            label="Succession Claims"
+                            active={isPathActive('/succession')}
+                            onClick={() => navigate('/succession')}
+                        />
+                        <NavItem
+                            icon={Landmark}
+                            label="Property Tax Vault"
+                            active={isPathActive('/tax-vault')}
+                            onClick={() => navigate('/tax-vault')}
                         />
                     </NavSection>
 

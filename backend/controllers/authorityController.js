@@ -22,6 +22,8 @@ const approveProperty = catchAsync(async (req, res) => {
         metadata: { reason },
     });
 
+    if (res.headersSent) return;
+
     return res.status(200).json({
         success: true,
         message: 'Property approved.',
@@ -44,6 +46,8 @@ const rejectProperty = catchAsync(async (req, res) => {
         entityType: 'property',
         metadata: { reason },
     });
+
+    if (res.headersSent) return;
 
     return res.status(200).json({
         success: true,
@@ -74,6 +78,8 @@ const approveSale = catchAsync(async (req, res) => {
         entityType: 'sale_transaction',
         metadata: { reason },
     });
+
+    if (res.headersSent) return;
 
     return res.status(200).json({
         success: true,

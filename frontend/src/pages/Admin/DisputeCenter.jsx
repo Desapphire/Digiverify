@@ -619,7 +619,7 @@ const DisputeCenter = () => {
                         {loading ? <Loader2 size={24} className="animate-spin" /> : `${stats.activeCount} Properties`}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '6px' }}>
-                        Transactions cryptographically locked on Avalanche
+                        Transactions cryptographically locked on Ethereum
                     </div>
                 </div>
 

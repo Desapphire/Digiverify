@@ -32,7 +32,7 @@ const env = {
 
     // Blockchain
     BLOCKCHAIN: {
-        rpcUrl: process.env.AVALANCHE_RPC_URL,
+        rpcUrl: process.env.ETHEREUM_RPC_URL || process.env.AVALANCHE_RPC_URL,
         chainId: parseInt(process.env.CHAIN_ID, 10),
         signerKey: process.env.SIGNER_PRIVATE_KEY,
         contracts: {

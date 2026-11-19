@@ -309,7 +309,7 @@ const RegisterProperty = () => {
                         Property Registration Submitted
                     </h2>
                     <p style={{ color: '#475569', maxWidth: '520px', margin: '0 auto 2rem', fontSize: '0.95rem', lineHeight: 1.6 }}>
-                        Your identity has been biometrically matched with your KYC record, and your property deed is queued for Government Registrar inspection.
+                        Your identity has been biometrically matched with your KYC record, and your property deed is queued for Registrar inspection.
                     </p>
 
                     {submittedProp && (

@@ -13,25 +13,33 @@ import {
 
 // District standard circle guidance values (INR per sq.ft) for algorithmic comparison
 const DISTRICT_GUIDANCE_RATES = {
+    'Nashik': 8800,
     'Bengaluru Urban': 3800,
     'Bengaluru Rural': 2600,
     'Mumbai Suburban': 12000,
     'Mumbai City': 16500,
-    'Pune': 3200,
-    'Hyderabad': 3600,
+    'Pune': 4500,
+    'Thane': 9500,
+    'Navi Mumbai': 11000,
+    'Hyderabad': 4200,
     'Delhi NCR': 11000,
     'South Delhi': 14500,
     'Chennai': 4800,
-    'Ahmedabad': 2800,
+    'Ahmedabad': 3200,
     'Kolkata': 3500,
 };
 
-const getDistrictGuidanceRate = (district) => {
-    if (!district) return 3000;
-    const match = Object.entries(DISTRICT_GUIDANCE_RATES).find(([k]) =>
-        district.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(district.toLowerCase())
-    );
-    return match ? match[1] : 3000;
+const getDistrictGuidanceRate = (district, estimatedFairPrice = null, areaSqft = null) => {
+    if (district) {
+        const match = Object.entries(DISTRICT_GUIDANCE_RATES).find(([k]) =>
+            district.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(district.toLowerCase())
+        );
+        if (match) return match[1];
+    }
+    if (estimatedFairPrice && areaSqft && Number(areaSqft) > 0) {
+        return Math.round(Number(estimatedFairPrice) / Number(areaSqft));
+    }
+    return 3500;
 };
 
 const shorten = (str) => (str ? `${str.slice(0, 6)}...${str.slice(-4)}` : '—');
@@ -46,8 +54,9 @@ const getRiskColor = (score) => {
 const evaluatePropertyRecords = (rawProps, rawSales, rawUsers) => {
     const userByWallet = new Map();
     rawUsers.forEach(u => {
-        if (u.walletAddress) {
-            userByWallet.set(u.walletAddress.toLowerCase(), u);
+        const w = u.walletAddress || u.wallet_address;
+        if (w) {
+            userByWallet.set(w.toLowerCase(), u);
         }
     });
 
@@ -55,25 +64,28 @@ const evaluatePropertyRecords = (rawProps, rawSales, rawUsers) => {
         const areaSqft = Number(p.areaSqft || p.area_sqft || 1800);
         const district = p.district || 'State Land Registry';
         const state = p.state || 'India';
-        const guidanceRate = getDistrictGuidanceRate(district);
+        const fairVal = Number(p.estimatedFairPrice || p.estimated_fair_price || 0);
+        const guidanceRate = getDistrictGuidanceRate(district, fairVal, areaSqft);
         const guidanceValue = Math.round(areaSqft * guidanceRate);
 
         const propSales = rawSales.filter(s => s.propertyId === p.id || s.property_id === p.id);
-        const activeSale = propSales.find(s => s.status !== 'cancelled' && s.status !== 'completed') || propSales[0];
+        const activeSale = propSales.find(s => s.status && !['cancelled', 'completed', 'rejected'].includes(s.status.toLowerCase()));
+        const completedSales = propSales.filter(s => s.status && s.status.toLowerCase() === 'completed');
 
-        const listedPrice = Number(activeSale?.salePrice || p.estimatedFairPrice || p.price || guidanceValue);
+        const listedPrice = activeSale ? Number(activeSale.salePrice || activeSale.sale_price) : (fairVal || guidanceValue);
         const priceDeviation = guidanceValue > 0 ? ((listedPrice - guidanceValue) / guidanceValue) * 100 : 0;
 
         const ownerWallet = p.ownerWallet || p.owner_wallet || '';
         const ownerUser = ownerWallet ? userByWallet.get(ownerWallet.toLowerCase()) : null;
-        const ownerName = ownerUser?.name || p.ownerName || (ownerWallet ? `Owner (${ownerWallet.slice(0, 6)}...${ownerWallet.slice(-4)})` : 'Registered Holder');
+        const primaryCoOwner = p.coOwners?.find(c => c.isPrimary) || p.coOwners?.[0];
+        const ownerName = ownerUser?.name || primaryCoOwner?.name || p.ownerName || (ownerWallet ? `Owner (${shorten(ownerWallet)})` : 'Registered Holder');
 
-        const isFaceVerified = ownerUser ? Boolean(ownerUser.faceVerified) : true;
-        const isKycApproved = ownerUser ? ownerUser.kycStatus === 'approved' : true;
+        const isFaceVerified = ownerUser ? Boolean(ownerUser.faceVerified !== undefined ? ownerUser.faceVerified : ownerUser.face_verified) : (primaryCoOwner ? Boolean(primaryCoOwner.faceVerified) : true);
+        const kycStatus = ownerUser?.kycStatus || ownerUser?.kyc_status || primaryCoOwner?.kycStatus || 'unverified';
+        const isKycApproved = ['approved', 'verified'].includes(String(kycStatus).toLowerCase());
         const isFrozen = Boolean(p.isFrozen || p.status === 'frozen' || p.status === 'disputed');
         const isEncumbered = Boolean(p.encumbranceStatus || p.isEncumbered);
 
-        const salesVelocityCount = propSales.length;
         const anomalyTags = [];
 
         if (isFrozen) {
@@ -83,21 +95,21 @@ const evaluatePropertyRecords = (rawProps, rawSales, rawUsers) => {
             anomalyTags.push({ label: 'Encumbrance Notice Registered', type: 'legal', icon: AlertOctagon });
         }
 
-        if (priceDeviation <= -25) {
+        if (priceDeviation <= -30) {
             anomalyTags.push({ label: `${Math.abs(Math.round(priceDeviation))}% Below Circle Rate Guidance`, type: 'price', icon: TrendingDown });
         } else if (priceDeviation >= 40) {
             anomalyTags.push({ label: `+${Math.round(priceDeviation)}% Spike Over Guidance Value`, type: 'price', icon: TrendingUp });
         }
 
-        if (salesVelocityCount >= 2) {
-            anomalyTags.push({ label: `High Turnover Velocity (${salesVelocityCount} transfers)`, type: 'velocity', icon: Clock });
+        if (completedSales.length >= 2) {
+            anomalyTags.push({ label: `Historical Velocity (${completedSales.length} transfers)`, type: 'velocity', icon: Clock });
         }
 
         if (!isFaceVerified) {
             anomalyTags.push({ label: 'Owner Live Face Match Pending', type: 'biometric', icon: ScanFace });
         }
         if (!isKycApproved) {
-            anomalyTags.push({ label: `Owner KYC: ${ownerUser?.kycStatus?.toUpperCase() || 'UNVERIFIED'}`, type: 'identity', icon: User });
+            anomalyTags.push({ label: `Owner KYC: ${String(kycStatus).toUpperCase()}`, type: 'identity', icon: User });
         }
 
         if (!p.geoLat || !p.geoLng) {
@@ -108,54 +120,43 @@ const evaluatePropertyRecords = (rawProps, rawSales, rawUsers) => {
             anomalyTags.push({ label: 'Title Verified & Clear Lineage', type: 'verified', icon: CheckCircle2 });
         }
 
-        const priceIntegrity = Math.max(10, Math.min(100, Math.round(100 - Math.abs(priceDeviation) * 1.2)));
-        const velocityScore = Math.min(100, Math.max(10, salesVelocityCount * 45));
-        const identityTrust = isFaceVerified && isKycApproved ? 95 : (!isFaceVerified && !isKycApproved ? 25 : 55);
-        const boundaryGeometry = (p.geoLat && p.geoLng) ? 92 : 45;
+        // Connect directly to live DB ML risk evaluation
+        const dbRisk = p.riskEvaluation;
+        let calculatedRiskScore = dbRisk?.overallScore !== undefined 
+            ? Math.round(dbRisk.overallScore) 
+            : (activeSale?.riskScore ? Math.round(activeSale.riskScore) : 18);
 
-        let calculatedRiskScore = 15;
-        if (isFrozen) calculatedRiskScore += 45;
-        if (isEncumbered) calculatedRiskScore += 25;
-        if (priceDeviation <= -25 || priceDeviation >= 40) calculatedRiskScore += 25;
-        if (salesVelocityCount >= 2) calculatedRiskScore += 20;
-        if (!isFaceVerified) calculatedRiskScore += 20;
-        if (!isKycApproved) calculatedRiskScore += 15;
-        if (!p.geoLat || !p.geoLng) calculatedRiskScore += 10;
-
-        if (activeSale?.riskScore) {
-            calculatedRiskScore = Math.round(activeSale.riskScore);
-        }
+        if (isFrozen) calculatedRiskScore = Math.max(calculatedRiskScore, 85);
+        else if (isEncumbered) calculatedRiskScore = Math.max(calculatedRiskScore, 48);
 
         calculatedRiskScore = Math.min(99, Math.max(8, calculatedRiskScore));
 
-        let riskLevel = 'low';
-        if (calculatedRiskScore >= 80) riskLevel = 'critical';
-        else if (calculatedRiskScore >= 40) riskLevel = 'medium';
+        let riskLevel = dbRisk?.riskLevel?.toLowerCase() || (calculatedRiskScore >= 80 ? 'critical' : calculatedRiskScore >= 40 ? 'medium' : 'low');
+        if (isFrozen) riskLevel = 'critical';
 
-        let aiSummary = 'Standard verified land record.';
-        if (isFrozen) {
-            aiSummary = 'Property is currently frozen by court order.';
-        } else if (priceDeviation <= -25) {
-            aiSummary = `Price is ${Math.abs(priceDeviation).toFixed(1)}% below standard government circle rate.`;
-        } else if (salesVelocityCount >= 2) {
-            aiSummary = `Multiple sales recorded recently (${salesVelocityCount} sales).`;
-        } else if (!isFaceVerified) {
-            aiSummary = 'Owner photo verification is pending.';
-        }
-
+        let aiSummary = dbRisk?.recommendedAction || (isFrozen ? 'Property is currently frozen by court order.' : 'Standard verified land record with clean lineage.');
         const recommendedActions = [];
         if (isFrozen) {
-            recommendedActions.push('Keep property frozen until court clearance.');
+            recommendedActions.push('Keep property title frozen pending judicial clearance.');
         }
-        if (priceDeviation <= -25) {
-            recommendedActions.push('Review property valuation against circle rate.');
+        if (dbRisk?.recommendedAction) {
+            recommendedActions.push(dbRisk.recommendedAction);
+        }
+        if (isEncumbered && !isFrozen) {
+            recommendedActions.push('Verify municipal encumbrance / tax lien status.');
         }
         if (!isFaceVerified) {
-            recommendedActions.push('Request owner to complete face verification.');
+            recommendedActions.push('Request owner biometric face verification.');
         }
-        if (salesVelocityCount >= 2) {
-            recommendedActions.push('Verify past sales history.');
-        }
+
+        const amlRisk = dbRisk?.fullAnalysis?.aml_risk;
+        const buyerRisk = dbRisk?.fullAnalysis?.buyer_risk;
+        const priceRisk = dbRisk?.fullAnalysis?.price_risk;
+
+        const priceIntegrity = priceRisk ? Math.max(10, Math.min(100, Math.round(100 - (priceRisk.score || 0)))) : Math.max(10, Math.min(100, Math.round(100 - Math.abs(priceDeviation) * 1.2)));
+        const velocityScore = amlRisk ? Math.max(10, Math.min(100, Math.round(amlRisk.score || (completedSales.length * 30)))) : Math.min(100, Math.max(10, completedSales.length * 30));
+        const identityTrust = isFaceVerified && isKycApproved ? 98 : (!isFaceVerified && !isKycApproved ? 25 : 65);
+        const boundaryGeometry = (p.geoLat && p.geoLng) ? 96 : 45;
 
         return {
             id: p.id,
@@ -167,7 +168,8 @@ const evaluatePropertyRecords = (rawProps, rawSales, rawUsers) => {
             ownerWallet,
             ownerUser,
             faceVerified: isFaceVerified,
-            kycStatus: ownerUser?.kycStatus || 'unverified',
+            kycStatus,
+            isKycApproved,
             listedPrice,
             guidanceValue,
             areaSqft,
@@ -185,7 +187,7 @@ const evaluatePropertyRecords = (rawProps, rawSales, rawUsers) => {
             },
             aiSummary,
             recommendedActions,
-            lastAnalyzed: p.updatedAt ? new Date(p.updatedAt).toLocaleString() : new Date().toLocaleString(),
+            lastAnalyzed: dbRisk?.calculatedAt ? new Date(dbRisk.calculatedAt).toLocaleString() : (p.updatedAt ? new Date(p.updatedAt).toLocaleString() : new Date().toLocaleString()),
             activeSaleId: activeSale?.id || null,
             rawProperty: p
         };
@@ -399,12 +401,41 @@ const RiskMonitor = () => {
                 res = await riskService.getSaleRisk(prop.activeSaleId).catch(() => null);
             }
             if (!res) {
-                res = await riskService.getPropertyValuation(prop.id, prop.listedPrice).catch(() => null);
+                res = await riskService.getPropertyValuation(prop.id, null, true).catch(() => null);
             }
 
-            if (res) {
-                setMlEvaluationResult(res);
-                showToast('Python ML Risk Model evaluation completed successfully!');
+            const valuationData = res?.data || res;
+            if (valuationData) {
+                setMlEvaluationResult(valuationData);
+                const newFairPrice = valuationData.fairPriceEstimated || valuationData.priceRisk?.fair_price || prop.listedPrice;
+                const newScore = Math.round(valuationData.fullRiskAnalysis?.overall_score || valuationData.riskScore || prop.riskScore);
+                const newLevel = (valuationData.fullRiskAnalysis?.risk_level || valuationData.riskLevel || prop.riskLevel).toLowerCase();
+                const newAction = valuationData.fullRiskAnalysis?.action || valuationData.recommendedAction || prop.aiSummary;
+
+                setRecords(prev => prev.map(item => {
+                    if (item.id === prop.id) {
+                        return {
+                            ...item,
+                            listedPrice: newFairPrice,
+                            riskScore: newScore,
+                            riskLevel: newLevel,
+                            aiSummary: newAction,
+                            lastAnalyzed: new Date().toLocaleString(),
+                        };
+                    }
+                    return item;
+                }));
+
+                setSelectedProperty(prev => prev && prev.id === prop.id ? {
+                    ...prev,
+                    listedPrice: newFairPrice,
+                    riskScore: newScore,
+                    riskLevel: newLevel,
+                    aiSummary: newAction,
+                    lastAnalyzed: new Date().toLocaleString(),
+                } : prev);
+
+                showToast(`Python ML Risk Engine evaluated ${prop.propertyCode}: Fair Price ${formatINR(newFairPrice)} (${newLevel.toUpperCase()})`, 'success');
             } else {
                 showToast('ML evaluation completed using cached algorithmic parameters.', 'info');
             }
@@ -1581,9 +1612,9 @@ const RiskMonitor = () => {
                                 </div>
                                 {mlEvaluationResult ? (
                                     <div style={{ fontSize: '0.8rem', color: '#166534', marginTop: '8px' }}>
-                                        <div>Estimated Fair Price: <strong>{formatINR(mlEvaluationResult.fairPriceEstimated || mlEvaluationResult.riskReport?.price_risk?.fair_price)}</strong></div>
-                                        <div>ML Risk Level: <strong>{(mlEvaluationResult.riskLevel || mlEvaluationResult.riskReport?.risk_level || 'LOW').toUpperCase()}</strong></div>
-                                        <div>Evaluation Confidence: <strong>94.2%</strong></div>
+                                        <div>Estimated Fair Price: <strong>{formatINR(mlEvaluationResult.fairPriceEstimated || mlEvaluationResult.priceRisk?.fair_price || mlEvaluationResult.riskReport?.price_risk?.fair_price)}</strong></div>
+                                        <div>ML Risk Level: <strong>{(mlEvaluationResult.riskLevel || mlEvaluationResult.fullRiskAnalysis?.risk_level || mlEvaluationResult.riskReport?.risk_level || 'LOW').toUpperCase()}</strong></div>
+                                        <div>Evaluation Source: <strong>{mlEvaluationResult.isCached ? 'PostgreSQL Evaluation Vault (Live Cache)' : 'Real-time Python ML Inference Node'}</strong></div>
                                     </div>
                                 ) : (
                                     <p style={{ fontSize: '0.78rem', color: '#166534', margin: 0 }}>

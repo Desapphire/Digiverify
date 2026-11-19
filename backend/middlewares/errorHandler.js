@@ -7,6 +7,10 @@ const env = require('../config/env');
 
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
+    // If response headers have already been sent (e.g., from gateway timeout), delegate to default Express handler
+    if (res.headersSent) {
+        return next(err);
+    }
     // Default values
     let statusCode = err.statusCode || 500;
     let message = err.message || 'Internal Server Error';

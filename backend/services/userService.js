@@ -13,7 +13,7 @@ const AppError = require('../utils/AppError');
 /**
  * Register a new user with wallet address.
  */
-const register = async ({ walletAddress, name, email, password, phone, governmentId, governmentIdType, houseNumber, locality, city, pinCode, state, country, role, birthdate }) => {
+const register = async ({ walletAddress, name, email, password, phone, governmentId, governmentIdType, houseNumber, locality, city, pinCode, state, country, role, birthdate, faceIdHash }) => {
     // Check uniqueness
     const existingWallet = await User.findByWallet(walletAddress);
     if (existingWallet) {
@@ -25,8 +25,17 @@ const register = async ({ walletAddress, name, email, password, phone, governmen
         throw new AppError('Email already registered.', 409);
     }
 
+    // Format & normalize government ID before encryption
+    let cleanedGovernmentId = governmentId;
+    if (governmentId && governmentIdType === 'Aadhar') {
+        const rawDigits = governmentId.replace(/\D/g, '');
+        cleanedGovernmentId = rawDigits.match(/.{1,4}/g)?.join(' ') || governmentId;
+    } else if (governmentId && governmentIdType === 'Passport') {
+        cleanedGovernmentId = governmentId.trim().toUpperCase();
+    }
+
     // Encrypt government ID before storage
-    const governmentIdHash = governmentId ? encrypt(governmentId) : null;
+    const governmentIdHash = cleanedGovernmentId ? encrypt(cleanedGovernmentId) : null;
 
     // Hash the password securely
     const salt = await bcrypt.genSalt(10);
@@ -52,6 +61,8 @@ const register = async ({ walletAddress, name, email, password, phone, governmen
         role: role || 'user',
         authNonce,
         birthdate,
+        faceIdHash: faceIdHash || null,
+        faceVerified: !!faceIdHash,
     });
 
     return {
@@ -61,6 +72,10 @@ const register = async ({ walletAddress, name, email, password, phone, governmen
         email: user.email,
         role: user.role,
         kycStatus: user.kycStatus,
+        faceVerified: user.faceVerified,
+        faceIdHash: user.faceIdHash,
+        governmentIdType: user.governmentIdType,
+        birthdate: user.birthdate,
     };
 };
 
@@ -117,7 +132,9 @@ const approveKyc = async (userId, reason = null) => {
         }
     }
 
-    return User.updateKycStatus(userId, 'verified', null, reason);
+    // Clear rejection comments upon approval unless explicit approval notes were passed
+    const finalReason = reason || null;
+    return User.updateKycStatus(userId, 'verified', null, finalReason);
 };
 
 
@@ -199,7 +216,16 @@ const reKyc = async (userId, { name, phone, governmentId, governmentIdType, birt
     const user = await User.findById(userId);
     if (!user) throw new AppError('User not found.', 404);
 
-    const governmentIdHash = governmentId ? encrypt(governmentId) : user.governmentIdHash;
+    let cleanedGovernmentId = governmentId;
+    const docType = governmentIdType || user.governmentIdType;
+    if (governmentId && docType === 'Aadhar') {
+        const rawDigits = governmentId.replace(/\D/g, '');
+        cleanedGovernmentId = rawDigits.match(/.{1,4}/g)?.join(' ') || governmentId;
+    } else if (governmentId && docType === 'Passport') {
+        cleanedGovernmentId = governmentId.trim().toUpperCase();
+    }
+
+    const governmentIdHash = cleanedGovernmentId ? encrypt(cleanedGovernmentId) : user.governmentIdHash;
 
     const updatedUser = await User.updateReKyc(userId, {
         name: name || user.name,

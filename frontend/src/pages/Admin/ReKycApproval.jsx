@@ -685,7 +685,9 @@ const ReKycApproval = () => {
                                                 </div>
                                                 <div>
                                                     <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', margin: '0 0 2px 0' }}>Date of Birth</p>
-                                                    <p style={{ fontSize: '0.88rem', fontWeight: 600, color: '#0F172A', margin: 0 }}>{u.birthdate ? new Date(u.birthdate).toLocaleDateString() : '—'}</p>
+                                                    <p style={{ fontSize: '0.88rem', fontWeight: 600, color: '#0F172A', margin: 0 }}>
+                                                        {u.birthdate ? new Date(u.birthdate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
@@ -701,7 +703,7 @@ const ReKycApproval = () => {
                                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
                                                 <div>
                                                     <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', margin: '0 0 2px 0' }}>Document Type</p>
-                                                    <p style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0F172A', margin: 0 }}>{u.governmentIdType || 'Aadhaar Card'}</p>
+                                                    <p style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0F172A', margin: 0 }}>{u.governmentIdType || 'Aadhar'}</p>
                                                 </div>
                                                 <div>
                                                     <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B', margin: '0 0 2px 0' }}>ID Number</p>

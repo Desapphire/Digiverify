@@ -30,7 +30,8 @@ const {
     approveKyc,
     rejectKyc,
     requestReKyc,
-    listUsers
+    listUsers,
+    getUserById
 } = require('../controllers/userController');
 
 const {
@@ -68,17 +69,17 @@ router.use(authorize(ROLES.AUTHORITY, ROLES.COURT, ROLES.BANK_ADMIN, ROLES.SUPER
 
 // --- Property & Sale Management (Authority) ---
 // Approve property: long timeout (5 min) — Sepolia needs ~12s per block, IPFS + 2 txns can take 2-3 min
-router.put('/property/:id/approve', (req, res, next) => { res.setTimeout(300000); next(); }, approveProperty);
+router.put('/property/:id/approve', (req, res, next) => { if (res.extendTimeout) res.extendTimeout(300000); next(); }, approveProperty);
 router.put('/property/:id/reject', rejectProperty);
-router.post('/sale/:id/approve', approveSale);
+router.post('/sale/:id/approve', (req, res, next) => { if (res.extendTimeout) res.extendTimeout(300000); next(); }, approveSale);
 router.post('/sale/:id/reject', rejectSale);
-router.post('/sale/:id/complete', completeSale);
+router.post('/sale/:id/complete', (req, res, next) => { if (res.extendTimeout) res.extendTimeout(300000); next(); }, completeSale);
 router.put('/property/:id/encumbrance', setEncumbrance);
 
-// --- Property Legal Actions (Court) ---
-router.post('/property/freeze', validate(freezePropertySchema), freezeProperty);
-router.post('/property/reverse-freeze/:freezeOrderId', validate(reverseFreezeOrderSchema), reverseFreezeOrder);
-router.post('/property/force-transfer', validate(forceTransferSchema), forceTransfer);
+// --- Property Legal Actions (Court: long timeout for on-chain block mining) ---
+router.post('/property/freeze', (req, res, next) => { if (res.extendTimeout) res.extendTimeout(300000); next(); }, validate(freezePropertySchema), freezeProperty);
+router.post('/property/reverse-freeze/:freezeOrderId', (req, res, next) => { if (res.extendTimeout) res.extendTimeout(300000); next(); }, validate(reverseFreezeOrderSchema), reverseFreezeOrder);
+router.post('/property/force-transfer', (req, res, next) => { if (res.extendTimeout) res.extendTimeout(300000); next(); }, validate(forceTransferSchema), forceTransfer);
 
 // --- Blockchain Network & Health Telemetry ---
 router.get('/blockchain-health', catchAsync(async (req, res) => {
@@ -201,6 +202,8 @@ router.get('/property/:id/history', catchAsync(async (req, res) => {
         events.push({
             id: `reg-${property.id}`,
             eventType: 'PROPERTY_REGISTERED',
+            fromWallet: null,
+            toWallet: property.owner_wallet,
             timestamp: property.created_at,
             data: {
                 propertyId: property.id,
@@ -232,6 +235,8 @@ router.get('/property/:id/history', catchAsync(async (req, res) => {
                 : (isCompleted ? 'SALE_COMPLETED' : 'SALE_INITIATED'),
             isFirstSale,
             saleOrderNumber: index + 1,
+            fromWallet: sale.seller_wallet,
+            toWallet: sale.buyer_wallet,
             timestamp: sale.created_at,
             data: {
                 saleId: sale.id,
@@ -268,6 +273,8 @@ router.get('/property/:id/history', catchAsync(async (req, res) => {
         events.push({
             id: `fundblock-${fb.id}`,
             eventType,
+            fromWallet: fb.buyer_wallet,
+            toWallet: null,
             timestamp: fb.bank_confirm_ts || fb.unblocked_at || fb.blocked_at,
             data: {
                 fundBlockId: fb.id,
@@ -297,6 +304,8 @@ router.get('/property/:id/history', catchAsync(async (req, res) => {
         events.push({
             id: `audit-${log.id}`,
             eventType: log.action_type,
+            fromWallet: log.actor_wallet,
+            toWallet: null,
             timestamp: log.created_at,
             data: {
                 actorWallet: log.actor_wallet,
@@ -314,6 +323,8 @@ router.get('/property/:id/history', catchAsync(async (req, res) => {
         events.push({
             id: `freeze-${freeze.id}`,
             eventType: freeze.reason?.startsWith('FORCE_TRANSFER') ? 'COURT_FORCE_TRANSFER' : 'COURT_FREEZE',
+            fromWallet: null,
+            toWallet: null,
             timestamp: freeze.frozen_at,
             data: {
                 freezeOrderId: freeze.id,
@@ -332,6 +343,8 @@ router.get('/property/:id/history', catchAsync(async (req, res) => {
         events.push({
             id: `reversal-${rev.id}`,
             eventType: 'COURT_REVERSAL',
+            fromWallet: null,
+            toWallet: rev.previous_owner_wallet,
             timestamp: rev.reversed_at,
             data: {
                 reversalId: rev.id,
@@ -349,7 +362,8 @@ router.get('/property/:id/history', catchAsync(async (req, res) => {
 
 // --- User KYC Management ---
 router.get('/users', listUsers);
-router.put('/kyc/:id/approve', approveKyc);
+router.get('/users/:id', getUserById);
+router.put('/kyc/:id/approve', (req, res, next) => { if (res.extendTimeout) res.extendTimeout(300000); next(); }, approveKyc);
 router.put('/kyc/:id/reject', rejectKyc);
 router.put('/kyc/:id/request-rekyc', requestReKyc);
 router.put('/kyc/:id/rekyc', requestReKyc);
@@ -374,6 +388,21 @@ router.get('/properties', catchAsync(async (req, res) => {
     return res.json({ success: true, data: properties });
 }));
 
+router.get('/risk/evaluations', catchAsync(async (req, res) => {
+    const { pool: dbPool } = require('../config/db');
+    const result = await dbPool.query(`
+        SELECT DISTINCT ON (pre.property_id) 
+            pre.id, pre.property_id, pre.overall_score, pre.risk_level, 
+            pre.recommended_action, pre.fair_price_estimated, pre.price_deviation, 
+            pre.full_analysis, pre.calculated_at,
+            p.property_code, p.survey_number, p.district, p.state, p.owner_wallet
+        FROM property_risk_evaluations pre
+        JOIN properties p ON pre.property_id = p.id
+        ORDER BY pre.property_id, pre.calculated_at DESC
+    `);
+    return res.json({ success: true, data: result.rows });
+}));
+
 router.get('/sales', catchAsync(async (req, res) => {
     const { limit = 50, offset = 0 } = req.query;
     const sales = await SaleTransaction.findAll(parseInt(limit), parseInt(offset));
@@ -383,7 +412,7 @@ router.get('/sales', catchAsync(async (req, res) => {
 router.get('/fund-blocks/pending', catchAsync(async (req, res) => {
     const { pool: dbPool } = require('../config/db');
     const result = await dbPool.query(
-        "SELECT * FROM fund_blocks WHERE status = 'pending' OR bank_confirmed = FALSE ORDER BY blocked_at DESC"
+        "SELECT * FROM fund_blocks ORDER BY blocked_at DESC"
     );
     return res.json({ success: true, data: result.rows });
 }));

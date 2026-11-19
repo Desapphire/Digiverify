@@ -28,11 +28,14 @@ const getSaleRiskScore = catchAsync(async (req, res) => {
 const getPropertyValuation = catchAsync(async (req, res) => {
     const { propertyId } = req.params;
     const proposedPrice = req.body?.proposedPrice || req.query?.proposedPrice || null;
-    const valuation = await mlRiskService.assessPropertyValuation(propertyId, proposedPrice);
+    const forceRefresh = req.query?.refresh === 'true' || req.body?.refresh === true;
+    const valuation = await mlRiskService.assessPropertyValuation(propertyId, proposedPrice, forceRefresh);
 
     return res.status(200).json({
         success: true,
-        message: 'Property valuation and risk assessment completed successfully.',
+        message: valuation.isCached 
+            ? 'Property valuation retrieved from cache (computed within last 60 minutes).' 
+            : 'Property valuation and risk assessment computed successfully.',
         data: valuation,
     });
 });

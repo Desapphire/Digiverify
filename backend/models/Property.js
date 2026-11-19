@@ -4,7 +4,7 @@
 
 const { pool } = require('../config/db');
 
-const mapProperty = (row, coOwners = []) => {
+const mapProperty = (row, coOwners = [], riskEvaluation = null) => {
     if (!row) return null;
     return {
         id: row.id,
@@ -26,6 +26,7 @@ const mapProperty = (row, coOwners = []) => {
         status: row.status,
         adminComments: row.admin_comments,
         coOwners: coOwners || [],
+        riskEvaluation: riskEvaluation || null,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
@@ -75,6 +76,37 @@ const getCoOwnersByPropertyIds = async (propertyIds) => {
     }
 };
 
+const getLatestRiskEvaluationsByPropertyIds = async (propertyIds) => {
+    if (!propertyIds || propertyIds.length === 0) return {};
+    try {
+        const result = await pool.query(`
+            SELECT DISTINCT ON (property_id) 
+                id, property_id, overall_score, risk_level, recommended_action, fair_price_estimated, price_deviation, full_analysis, calculated_at
+            FROM property_risk_evaluations
+            WHERE property_id = ANY($1::uuid[])
+            ORDER BY property_id, calculated_at DESC
+        `, [propertyIds]);
+
+        const map = {};
+        result.rows.forEach(r => {
+            map[r.property_id] = {
+                id: r.id,
+                overallScore: parseFloat(r.overall_score),
+                riskLevel: r.risk_level,
+                recommendedAction: r.recommended_action,
+                fairPriceEstimated: r.fair_price_estimated ? parseFloat(r.fair_price_estimated) : null,
+                priceDeviation: r.price_deviation ? parseFloat(r.price_deviation) : null,
+                fullAnalysis: r.full_analysis,
+                calculatedAt: r.calculated_at,
+            };
+        });
+        return map;
+    } catch (err) {
+        console.warn('Error fetching latest risk evaluations:', err.message);
+        return {};
+    }
+};
+
 const generatePropertyCode = async (state) => {
     const prefix = (state || 'XX').substring(0, 2).toUpperCase();
     const year = new Date().getFullYear();
@@ -120,8 +152,11 @@ const create = async (data, client = null) => {
 const findById = async (id) => {
     const result = await pool.query('SELECT * FROM properties WHERE id = $1 LIMIT 1', [id]);
     if (!result.rows[0]) return null;
-    const coOwnersMap = await getCoOwnersByPropertyIds([id]);
-    return mapProperty(result.rows[0], coOwnersMap[id] || []);
+    const [coOwnersMap, riskMap] = await Promise.all([
+        getCoOwnersByPropertyIds([id]),
+        getLatestRiskEvaluationsByPropertyIds([id]),
+    ]);
+    return mapProperty(result.rows[0], coOwnersMap[id] || [], riskMap[id] || null);
 };
 
 const findByOwner = async (ownerWallet) => {
@@ -134,15 +169,21 @@ const findByOwner = async (ownerWallet) => {
     `, [ownerWallet]);
 
     const ids = result.rows.map(r => r.id);
-    const coOwnersMap = await getCoOwnersByPropertyIds(ids);
-    return result.rows.map(r => mapProperty(r, coOwnersMap[r.id] || []));
+    const [coOwnersMap, riskMap] = await Promise.all([
+        getCoOwnersByPropertyIds(ids),
+        getLatestRiskEvaluationsByPropertyIds(ids),
+    ]);
+    return result.rows.map(r => mapProperty(r, coOwnersMap[r.id] || [], riskMap[r.id] || null));
 };
 
 const findByCode = async (propertyCode) => {
     const result = await pool.query('SELECT * FROM properties WHERE property_code = $1 LIMIT 1', [propertyCode]);
     if (!result.rows[0]) return null;
-    const coOwnersMap = await getCoOwnersByPropertyIds([result.rows[0].id]);
-    return mapProperty(result.rows[0], coOwnersMap[result.rows[0].id] || []);
+    const [coOwnersMap, riskMap] = await Promise.all([
+        getCoOwnersByPropertyIds([result.rows[0].id]),
+        getLatestRiskEvaluationsByPropertyIds([result.rows[0].id]),
+    ]);
+    return mapProperty(result.rows[0], coOwnersMap[result.rows[0].id] || [], riskMap[result.rows[0].id] || null);
 };
 
 const search = async ({ district, state, status, limit = 50, offset = 0 }) => {
@@ -159,9 +200,12 @@ const search = async ({ district, state, status, limit = 50, offset = 0 }) => {
 
     const result = await pool.query(query, params);
     const ids = result.rows.map(r => r.id);
-    const coOwnersMap = await getCoOwnersByPropertyIds(ids);
+    const [coOwnersMap, riskMap] = await Promise.all([
+        getCoOwnersByPropertyIds(ids),
+        getLatestRiskEvaluationsByPropertyIds(ids),
+    ]);
 
-    return result.rows.map(r => mapProperty(r, coOwnersMap[r.id] || []));
+    return result.rows.map(r => mapProperty(r, coOwnersMap[r.id] || [], riskMap[r.id] || null));
 };
 
 const updateStatus = async (id, status, adminComments = null, client = null) => {

@@ -438,7 +438,7 @@ const PurchaseReview = () => {
                             <div style={{ width: '54px', height: '54px', borderRadius: '50%', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
                                 <CheckCircle2 size={28} />
                             </div>
-                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', marginBottom: '0.5rem' }}>Government Approval Complete</h3>
+                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', marginBottom: '0.5rem' }}>Authority Verification Complete</h3>
                             <p style={{ fontSize: '0.85rem', color: '#64748B', marginBottom: '1.5rem', lineHeight: 1.5 }}>
                                 The land records authority has approved the sale. {isBuyer ? 'Complete the purchase to receive your property title.' : 'The sale is ready for final completion.'}
                             </p>

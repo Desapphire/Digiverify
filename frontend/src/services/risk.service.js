@@ -8,10 +8,12 @@ export const riskService = {
     },
 
     // Get fair market valuation and price deviation for a property
-    getPropertyValuation: async (propertyId, proposedPrice = null) => {
-        const url = proposedPrice
-            ? `/risk/property/${propertyId}?proposedPrice=${proposedPrice}`
-            : `/risk/property/${propertyId}`;
+    getPropertyValuation: async (propertyId, proposedPrice = null, forceRefresh = false) => {
+        let url = `/risk/property/${propertyId}`;
+        const params = [];
+        if (proposedPrice) params.push(`proposedPrice=${proposedPrice}`);
+        if (forceRefresh) params.push('refresh=true');
+        if (params.length > 0) url += `?${params.join('&')}`;
         const response = await api.get(url);
         return response.data;
     },

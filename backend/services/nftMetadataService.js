@@ -5,6 +5,19 @@
 
 const axios = require('axios');
 const FormData = require('form-data');
+const fs = require('fs');
+const path = require('path');
+
+// Read DigiVerify logo for NFT embedding
+let logoBase64 = '';
+try {
+    const logoPath = path.join(__dirname, '../assets/logo.png');
+    if (fs.existsSync(logoPath)) {
+        logoBase64 = fs.readFileSync(logoPath).toString('base64');
+    }
+} catch (e) {
+    console.warn('Could not load logo for NFT embedding:', e.message);
+}
 
 /**
  * Generates an SVG certificate for the Land Title Deed.
@@ -44,6 +57,19 @@ const generateCertificateSVG = (property) => {
   <rect width="1000" height="700" fill="url(#bgGrad)" />
   <rect width="1000" height="700" fill="url(#grid)" />
 
+  <!-- Diagonal Security Watermark: DigiVerify • Date • Owner Address • Approval Date -->
+  <g transform="translate(500, 360) rotate(-28)" text-anchor="middle" pointer-events="none" user-select="none">
+    <text x="0" y="-30" font-family="'JetBrains Mono', 'Fira Code', 'Courier New', monospace" font-size="28" font-weight="900" fill="#ffffff" fill-opacity="0.045" letter-spacing="8">
+      DIGIVERIFY PROTOCOL
+    </text>
+    <text x="0" y="8" font-family="'JetBrains Mono', 'Fira Code', 'Courier New', monospace" font-size="12" font-weight="700" fill="#ffffff" fill-opacity="0.04" letter-spacing="2">
+      DATE: ${date} • APPROVED: ${date}
+    </text>
+    <text x="0" y="32" font-family="'JetBrains Mono', 'Fira Code', 'Courier New', monospace" font-size="11" font-weight="700" fill="#ffffff" fill-opacity="0.038" letter-spacing="1">
+      ${owner}
+    </text>
+  </g>
+
   <!-- Outer Certificate Border -->
   <rect x="25" y="25" width="950" height="650" rx="20" fill="none" stroke="url(#goldGrad)" stroke-width="3" stroke-dasharray="6,4" />
   <rect x="35" y="35" width="930" height="630" rx="16" fill="rgba(15, 23, 42, 0.6)" stroke="rgba(255, 215, 0, 0.2)" stroke-width="1.5" />
@@ -56,17 +82,24 @@ const generateCertificateSVG = (property) => {
 
   <!-- Header / Crest -->
   <g transform="translate(500, 100)" text-anchor="middle">
-    <!-- Emblem Circle -->
-    <circle cx="0" cy="-20" r="32" fill="#1e293b" stroke="url(#goldGrad)" stroke-width="2"/>
-    <text x="0" y="-12" font-size="24" fill="#fbbf24" font-family="Arial, sans-serif" font-weight="bold">🏛️</text>
+    <!-- Emblem Circle with DigiVerify Logo -->
+    <clipPath id="emblemClip">
+      <circle cx="0" cy="-20" r="34" />
+    </clipPath>
+    <circle cx="0" cy="-20" r="36" fill="#1e293b" stroke="url(#goldGrad)" stroke-width="2.5" />
+    ${logoBase64 ? `
+    <image href="data:image/png;base64,${logoBase64}" x="-34" y="-54" width="68" height="68" clip-path="url(#emblemClip)" preserveAspectRatio="xMidYMid slice" />
+    ` : `
+    <text x="0" y="-12" font-size="24" fill="#ffffff" font-family="Arial, sans-serif" font-weight="bold">🏛️</text>
+    `}
     
-    <text x="0" y="30" font-size="14" font-family="Segoe UI, Helvetica, sans-serif" font-weight="bold" fill="#06b6d4" letter-spacing="4">GOVERNMENT OF INDIA • REVENUE DEPARTMENT</text>
-    <text x="0" y="65" font-size="30" font-family="Georgia, serif" font-weight="bold" fill="url(#goldGrad)" letter-spacing="2">DIGITAL LAND TITLE DEED</text>
-    <text x="0" y="90" font-size="13" font-family="Segoe UI, sans-serif" fill="#94a3b8" letter-spacing="1">SOVEREIGN ON-CHAIN DEED CERTIFICATE • ETHEREUM SEPOLIA</text>
+    <text x="0" y="30" font-size="13" font-family="Segoe UI, Helvetica, sans-serif" font-weight="bold" fill="#ffffff" letter-spacing="4">DIGIVERIFY • DECENTRALIZED LAND REGISTRY PROTOCOL</text>
+    <text x="0" y="65" font-size="30" font-family="Georgia, serif" font-weight="bold" fill="#ffffff" letter-spacing="2">DIGITAL LAND TITLE DEED</text>
+    <text x="0" y="90" font-size="13" font-family="Segoe UI, sans-serif" fill="#ffffff" letter-spacing="1">AUTONOMOUS ON-CHAIN DEED CERTIFICATE</text>
   </g>
 
   <!-- Divider -->
-  <line x1="120" y1="210" x2="880" y2="210" stroke="rgba(251, 191, 36, 0.4)" stroke-width="1.5" />
+  <line x1="120" y1="210" x2="880" y2="210" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1.5" />
 
   <!-- Property Details Grid -->
   <g transform="translate(100, 245)" font-family="Segoe UI, Helvetica, sans-serif">
@@ -74,60 +107,60 @@ const generateCertificateSVG = (property) => {
     <!-- Left Column: Property Identity -->
     <g transform="translate(0, 0)">
       <rect width="380" height="68" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
-      <text x="20" y="26" font-size="11" fill="#94a3b8" font-weight="bold" letter-spacing="1">PROPERTY IDENTIFIER CODE</text>
-      <text x="20" y="52" font-size="20" fill="#38bdf8" font-weight="bold" font-family="Courier, monospace">${code}</text>
+      <text x="20" y="26" font-size="11" fill="#ffffff" font-weight="bold" letter-spacing="1" opacity="0.75">PROPERTY IDENTIFIER CODE</text>
+      <text x="20" y="52" font-size="20" fill="#ffffff" font-weight="bold" font-family="Courier, monospace">${code}</text>
     </g>
 
     <g transform="translate(0, 85)">
       <rect width="380" height="68" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
-      <text x="20" y="26" font-size="11" fill="#94a3b8" font-weight="bold" letter-spacing="1">REVENUE SURVEY / HISSA NO.</text>
-      <text x="20" y="52" font-size="18" fill="#f8fafc" font-weight="bold">${survey}</text>
+      <text x="20" y="26" font-size="11" fill="#ffffff" font-weight="bold" letter-spacing="1" opacity="0.75">REVENUE SURVEY / HISSA NO.</text>
+      <text x="20" y="52" font-size="18" fill="#ffffff" font-weight="bold">${survey}</text>
     </g>
 
     <g transform="translate(0, 170)">
       <rect width="380" height="68" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
-      <text x="20" y="26" font-size="11" fill="#94a3b8" font-weight="bold" letter-spacing="1">REGISTERED PLOT AREA</text>
-      <text x="20" y="52" font-size="18" fill="#4ade80" font-weight="bold">${area}</text>
+      <text x="20" y="26" font-size="11" fill="#ffffff" font-weight="bold" letter-spacing="1" opacity="0.75">REGISTERED PLOT AREA</text>
+      <text x="20" y="52" font-size="18" fill="#ffffff" font-weight="bold">${area}</text>
     </g>
 
     <g transform="translate(0, 255)">
       <rect width="380" height="68" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
-      <text x="20" y="26" font-size="11" fill="#94a3b8" font-weight="bold" letter-spacing="1">JURISDICTION / DISTRICT &amp; STATE</text>
-      <text x="20" y="52" font-size="17" fill="#f8fafc" font-weight="600">${district}, ${state}</text>
+      <text x="20" y="26" font-size="11" fill="#ffffff" font-weight="bold" letter-spacing="1" opacity="0.75">JURISDICTION / DISTRICT &amp; STATE</text>
+      <text x="20" y="52" font-size="17" fill="#ffffff" font-weight="600">${district}, ${state}</text>
     </g>
 
     <!-- Right Column: Blockchain Title & Verification -->
     <g transform="translate(420, 0)">
       <rect width="380" height="68" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
-      <text x="20" y="26" font-size="11" fill="#94a3b8" font-weight="bold" letter-spacing="1">LEGAL TITLE STATUS</text>
-      <text x="20" y="52" font-size="18" fill="#22c55e" font-weight="bold">✔ VERIFIED CLEAR TITLE</text>
+      <text x="20" y="26" font-size="11" fill="#ffffff" font-weight="bold" letter-spacing="1" opacity="0.75">LEGAL TITLE STATUS</text>
+      <text x="20" y="52" font-size="18" fill="#ffffff" font-weight="bold">VERIFIED CLEAR TITLE</text>
     </g>
 
     <g transform="translate(420, 85)">
       <rect width="380" height="68" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
-      <text x="20" y="26" font-size="11" fill="#94a3b8" font-weight="bold" letter-spacing="1">REGISTERED PRIMARY OWNER</text>
-      <text x="20" y="52" font-size="14" fill="#cbd5e1" font-weight="bold" font-family="Courier, monospace">${shortOwner}</text>
+      <text x="20" y="26" font-size="11" fill="#ffffff" font-weight="bold" letter-spacing="1" opacity="0.75">REGISTERED PRIMARY OWNER</text>
+      <text x="20" y="52" font-size="11.5" fill="#ffffff" font-weight="bold" font-family="'JetBrains Mono', 'Fira Code', 'Courier New', monospace" letter-spacing="-0.2px">${owner}</text>
     </g>
 
     <g transform="translate(420, 170)">
       <rect width="380" height="68" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
-      <text x="20" y="26" font-size="11" fill="#94a3b8" font-weight="bold" letter-spacing="1">ENCUMBRANCE / LIEN STATUS</text>
-      <text x="20" y="52" font-size="16" fill="${property.isEncumbered ? '#ef4444' : '#10b981'}" font-weight="bold">
-        ${property.isEncumbered ? '⚠ ENCUMBERED' : '🛡 UNENCUMBERED (CLEAR)'}
+      <text x="20" y="26" font-size="11" fill="#ffffff" font-weight="bold" letter-spacing="1" opacity="0.75">ENCUMBRANCE / LIEN STATUS</text>
+      <text x="20" y="52" font-size="16" fill="#ffffff" font-weight="bold">
+        ${property.isEncumbered ? 'ENCUMBERED' : 'UNENCUMBERED (CLEAR)'}
       </text>
     </g>
 
     <g transform="translate(420, 255)">
       <rect width="380" height="68" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
-      <text x="20" y="26" font-size="11" fill="#94a3b8" font-weight="bold" letter-spacing="1">APPROVAL DATE &amp; NETWORK</text>
-      <text x="20" y="52" font-size="16" fill="#f8fafc" font-weight="600">${date} • Ethereum Sepolia (11155111)</text>
+      <text x="20" y="26" font-size="11" fill="#ffffff" font-weight="bold" letter-spacing="1" opacity="0.75">APPROVAL DATE</text>
+      <text x="20" y="52" font-size="16" fill="#ffffff" font-weight="600">${date}</text>
     </g>
   </g>
 
   <!-- Footer Seal & Cryptographic Security Stamp -->
   <g transform="translate(500, 605)" text-anchor="middle" font-family="Segoe UI, sans-serif">
-    <text x="0" y="0" font-size="11" fill="#64748b" letter-spacing="2">IMMUTABLE DEED • SECURED BY DIGIVERIFY PROTOCOL • ERC-721 SOVEREIGN TOKEN</text>
-    <text x="0" y="20" font-size="10" fill="#475569">Certified authentic by Department of Revenue &amp; Land Administration Registry</text>
+    <text x="0" y="0" font-size="11" fill="#ffffff" opacity="0.8" letter-spacing="2">IMMUTABLE DEED • SECURED BY DIGIVERIFY PROTOCOL • ERC-721 AUTONOMOUS TOKEN</text>
+    <text x="0" y="20" font-size="10" fill="#ffffff" opacity="0.6">Verified and Anchored on DigiVerify Decentralized Land Registry</text>
   </g>
 </svg>`;
 };
@@ -229,7 +262,7 @@ const generateAndPinNFTMetadata = async (property) => {
         // 2. Build ERC-721 Standard Metadata
         const metadata = {
             name: `DigiVerify Land Title — ${pCode}`,
-            description: `Official Sovereign Land Title Deed & Ownership Certificate for Property ${pCode}, Survey #${property.surveyNumber || 'N/A'} located in ${property.district || ''}, ${property.state || ''}. Digitally authenticated by the Revenue Authority and permanently anchored on Ethereum Sepolia Testnet.`,
+            description: `Official Autonomous Land Title Deed & Ownership Certificate for Property ${pCode}, Survey #${property.surveyNumber || 'N/A'} located in ${property.district || ''}, ${property.state || ''}. Digitally authenticated and permanently anchored on DigiVerify.`,
             image: imageURI,
             external_url: `https://sepolia.etherscan.io/token/0xbCB28DC4eF6242572c0a65D1643595C582106249`,
             attributes: [

@@ -174,6 +174,18 @@ const forceTransferNFT = async (fromAddress, toAddress, tokenId, reason) => {
     const signer = getSigner();
     if (!landNFT || !signer) return { txHash: null };
 
+    // Automatic pre-transfer unfreeze safeguard if token is frozen under dispute
+    try {
+        const isFrozen = await landNFT.isFrozen(tokenId).catch(() => false);
+        if (isFrozen) {
+            console.log(`[SafeGuard] Pre-unfreezing token ${tokenId} prior to forceTransferNFT...`);
+            const unfreezeTx = await landNFT.connect(signer).unfreezeProperty(tokenId);
+            await unfreezeTx.wait();
+        }
+    } catch (unfreezeErr) {
+        console.warn(`[SafeGuard] Pre-unfreeze check note for token ${tokenId}:`, unfreezeErr.message);
+    }
+
     const tx = await landNFT.connect(signer).forceTransfer(
         fromAddress,
         toAddress,
@@ -235,9 +247,26 @@ const courtFreezeProperty = async (propertyId, reason, caseNumber, courtOrderHas
 };
 
 const courtReverseTransfer = async (propertyId, previousOwner, reason, caseNumber, courtOrderHash, benchName) => {
-    const { courtOverride } = getContracts();
+    const { courtOverride, landNFT } = getContracts();
+    const { getSigner } = require('../config/blockchain');
+    const signer = getSigner();
     if (!courtOverride) return { txHash: null };
-    const tx = await courtOverride.reverseTransferWithCourtOrder(
+
+    // Automatic pre-transfer unfreeze safeguard if token is currently frozen
+    if (landNFT && signer) {
+        try {
+            const isFrozen = await landNFT.isFrozen(propertyId).catch(() => false);
+            if (isFrozen) {
+                console.log(`[SafeGuard] Pre-unfreezing token ${propertyId} prior to courtReverseTransfer...`);
+                const unfreezeTx = await landNFT.connect(signer).unfreezeProperty(propertyId);
+                await unfreezeTx.wait();
+            }
+        } catch (unfreezeErr) {
+            console.warn(`[SafeGuard] Pre-unfreeze check note for token ${propertyId}:`, unfreezeErr.message);
+        }
+    }
+
+    const tx = await courtOverride.connect(signer).reverseTransferWithCourtOrder(
         propertyId,
         previousOwner,
         caseNumber || 'HC-ORDER',

@@ -113,6 +113,8 @@ const approveKyc = catchAsync(async (req, res) => {
         metadata: { reason },
     });
 
+    if (res.headersSent) return;
+
     return res.status(200).json({
         success: true,
         message: 'KYC approved.',
@@ -135,6 +137,8 @@ const rejectKyc = catchAsync(async (req, res) => {
         entityType: 'user',
         metadata: { reason },
     });
+
+    if (res.headersSent) return;
 
     return res.status(200).json({
         success: true,
@@ -291,6 +295,41 @@ const listUsers = catchAsync(async (req, res) => {
     });
 });
 
+const getUserById = catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const user = await User.findById(id);
+
+    if (!user) {
+        return res.status(404).json({ success: false, message: 'Citizen record not found' });
+    }
+
+    let decryptedGovtId = null;
+    if (user.governmentIdHash && typeof user.governmentIdHash === 'string' && user.governmentIdHash.includes(':')) {
+        try {
+            decryptedGovtId = decrypt(user.governmentIdHash);
+        } catch (err) {
+            decryptedGovtId = user.governmentIdHash;
+        }
+    } else {
+        decryptedGovtId = user.governmentIdHash || null;
+    }
+
+    // Look up properties owned or co-owned by this citizen's wallet
+    let properties = [];
+    if (user.walletAddress) {
+        const Property = require('../models/Property');
+        properties = await Property.findByOwner(user.walletAddress).catch(() => []);
+    }
+
+    return res.status(200).json({
+        success: true,
+        data: {
+            ...user,
+            governmentId: decryptedGovtId,
+            properties
+        }
+    });
+});
 
 module.exports = { 
     register, 
@@ -302,7 +341,8 @@ module.exports = {
     bindFaceId, 
     reKyc,
     requestReKyc,
-    listUsers, 
+    listUsers,
+    getUserById,
     getMyNotifications 
 };
 

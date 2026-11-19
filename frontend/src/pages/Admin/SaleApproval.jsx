@@ -8,7 +8,7 @@ import {
     ChevronDown, ChevronUp, ShieldCheck, Clock,
     Ban, Landmark, Hash, FileCheck, BrainCircuit,
     ArrowLeft, Check, Copy, UserCheck, AlertTriangle,
-    BadgeDollarSign, Sparkles, Building2, Shield, AlertCircle
+    BadgeDollarSign, Sparkles, Building2, Shield, AlertCircle, ExternalLink
 } from 'lucide-react';
 
 const SaleApproval = () => {
@@ -643,16 +643,22 @@ const SaleApproval = () => {
                                 }}
                             >
                                 {/* Card Primary Header */}
-                                <div style={{
-                                    padding: '1.25rem 1.5rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    flexWrap: 'wrap',
-                                    gap: '1rem',
-                                    borderBottom: isExpanded ? '1px solid #E2E8F0' : 'none',
-                                    backgroundColor: isExpanded ? '#F8FAFC' : '#FFFFFF'
-                                }}>
+                                <div
+                                    onClick={() => navigate(`/authority/sale/${sale.id}`)}
+                                    style={{
+                                        padding: '1.25rem 1.5rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        flexWrap: 'wrap',
+                                        gap: '1rem',
+                                        cursor: 'pointer',
+                                        backgroundColor: '#FFFFFF',
+                                        transition: 'background-color 0.15s ease'
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#FFFFFF'; }}
+                                >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '240px' }}>
                                         <div style={{
                                             width: '44px',
@@ -858,26 +864,35 @@ const SaleApproval = () => {
                                         )}
 
                                         <button
-                                            onClick={() => setExpandedSale(isExpanded ? null : sale.id)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                navigate(`/authority/sale/${sale.id}`);
+                                            }}
                                             style={{
                                                 display: 'inline-flex',
                                                 alignItems: 'center',
-                                                gap: '6px',
-                                                padding: '7px 12px',
+                                                gap: '5px',
+                                                padding: '7px 14px',
                                                 borderRadius: '8px',
                                                 backgroundColor: '#FFFFFF',
                                                 border: '1px solid #CBD5E1',
-                                                color: '#334155',
+                                                color: '#1E293B',
                                                 fontSize: '0.8rem',
-                                                fontWeight: 600,
+                                                fontWeight: 700,
                                                 cursor: 'pointer',
                                                 transition: 'all 0.15s ease'
                                             }}
-                                            onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#F1F5F9'; }}
-                                            onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#FFFFFF'; }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.borderColor = '#2563EB';
+                                                e.currentTarget.style.color = '#2563EB';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.borderColor = '#CBD5E1';
+                                                e.currentTarget.style.color = '#1E293B';
+                                            }}
                                         >
-                                            {isExpanded ? 'Hide Details' : 'View Details'}
-                                            {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                                            View Sale Record
+                                            <ExternalLink size={13} />
                                         </button>
                                     </div>
                                 </div>
